@@ -3,7 +3,7 @@
 import { and, desc, eq, lt } from "drizzle-orm";
 import type { EventoTimeline, ReferenciaEntidade } from "@hallaxos/shared";
 import type { DbConn } from "../db/client";
-import { timeline } from "../db/schema";
+import { timeline, usuarios } from "../db/schema";
 import { novoId } from "../lib/ids";
 import { validarReferencia } from "./refTransversal";
 
@@ -52,10 +52,22 @@ export async function listarTimeline(
 ) {
   const filtros = [eq(timeline.entidadeTipo, entidadeTipo), eq(timeline.entidadeId, entidadeId)];
   if (antesDe) filtros.push(lt(timeline.id, antesDe));
-  return conn
-    .select()
+  const linhas = await conn
+    .select({
+      id: timeline.id,
+      evento: timeline.evento,
+      descricao: timeline.descricao,
+      dados: timeline.dados,
+      createdAt: timeline.createdAt,
+      usuarioNome: usuarios.nome,
+    })
     .from(timeline)
+    .leftJoin(usuarios, eq(usuarios.id, timeline.usuarioId))
     .where(and(...filtros))
     .orderBy(desc(timeline.id))
     .limit(limite);
+  return linhas.map(({ usuarioNome, ...e }) => ({
+    ...e,
+    usuario: usuarioNome ? { nome: usuarioNome } : null,
+  }));
 }

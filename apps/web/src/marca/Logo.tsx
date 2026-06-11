@@ -1,0 +1,29 @@
+// Marca Hallax — monograma extraído da arte vetorial oficial (cartão de
+// visitas). NUNCA redesenhar: este path É a logo.
+export function Monograma({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 30.56 37.35" fill="currentColor" className={className} aria-label="Hallax">
+      <path
+        fillRule="evenodd"
+        d="M15.11 15.90 L26.98 0.00 L30.56 0.00 L30.56 15.43 L26.98 15.43 L26.98 5.01 L18.44 16.79 L26.98 16.79 L26.98 16.79 L30.56 16.79 L30.56 37.28 L27.04 37.28 L26.98 37.35 L15.09 21.40 L3.57 37.28 L0.00 37.28 L0.00 16.79 L3.57 16.79 L3.57 16.79 L11.65 16.79 L3.57 5.96 L3.57 15.43 L0.00 15.43 L0.00 0.00 L3.57 0.00 L15.11 15.90 M26.98 32.29 L26.98 20.37 L18.34 20.37 L26.98 32.29 M3.57 31.34 L11.77 20.37 L3.57 20.37 L3.57 31.34 Z"
+      />
+    </svg>
+  );
+}
+
+export function Wordmark({ os = true }: { os?: boolean }) {
+  return (
+    <span className="font-display text-lg font-bold tracking-[0.18em] text-texto">
+      HALLAX{os && <span className="text-ouro">OS</span>}
+    </span>
+  );
+}
+
+export function LogoCompleta() {
+  return (
+    <span className="flex items-center gap-2.5">
+      <Monograma className="h-7 w-auto text-ouro" />
+      <Wordmark />
+    </span>
+  );
+}

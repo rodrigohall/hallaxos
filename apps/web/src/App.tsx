@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProvedorAuth, useAuth } from "./auth";
+import { ProvedorToast } from "./componentes/ui";
 import { Layout } from "./componentes/Layout";
 import { Login } from "./paginas/Login";
 import { Dashboard } from "./paginas/Dashboard";
@@ -26,6 +27,7 @@ export function App() {
   return (
     <QueryClientProvider client={filaQueries}>
       <ProvedorAuth>
+        <ProvedorToast>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -40,6 +42,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        </ProvedorToast>
       </ProvedorAuth>
     </QueryClientProvider>
   );

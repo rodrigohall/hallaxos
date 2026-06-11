@@ -1,5 +1,41 @@
 # Changelog
 
+## Sprint 1.5 — Design System oficial (2026-06-11)
+
+A identidade Hallax entra no produto. Nenhuma funcionalidade nova — toda a
+experiência refeita sobre a marca real.
+
+### Adicionado
+
+- **Marca extraída da arte oficial**: monograma vetorial extraído do PDF do
+  cartão de visitas (path SVG fiel, 548 bytes), paleta dourado `#F3C625` +
+  navy `#002044` lidas dos valores CMYK/RGB do arquivo, tipografia Montserrat
+  (a fonte embutida na arte) + Inter. Favicon gerado do monograma.
+- **Design tokens** (`styles.css @theme`): superfícies em escala navy,
+  semânticas (ok/alerta/erro/info), tipografia, raios, sombras, animações com
+  `prefers-reduced-motion`.
+- **Biblioteca de componentes** (`componentes/ui/`): Botão (4 variantes +
+  loading), Campo/Entrada/Seleção/ÁreaTexto, Card, KPI, Selo (mapa central
+  status→cor), Chip, Lista/ListaLinha, Tabela, Modal, Drawer, Toasts,
+  Skeleton, EstadoVazio, EstadoErro, Timeline e formatadores pt-BR.
+- **Busca global como paleta de comando**: `⌘K`/`Ctrl+K` em qualquer tela,
+  resultados agrupados por tipo com ícones e navegação por teclado.
+- **Timeline visual** (assinatura do sistema): trilho com nós iconografados
+  por tipo de evento, diff campo a campo, data/hora/responsável; a API passou
+  a devolver o nome do autor de cada evento.
+- **Dashboard centro de comando**: ordem fixa de leitura (atenção → KPIs do
+  dia com lucro estimado → frota → operação → fluxo de caixa), skeletons e
+  estados vazios por bloco.
+- **Login como momento de marca**: monograma em marca d'água, como no verso
+  do cartão de visitas.
+- `docs/07-design-system.md` com todas as decisões visuais.
+
+### Verificado
+
+Typecheck e build de produção limpos; API + web servindo; timeline com autor
+e dashboard testados via API real. Verificação visual em navegador não foi
+possível neste ambiente (CDN de browser bloqueada) — validar no `pnpm dev`.
+
 ## Sprint 1 — Fundação executável (2026-06-11)
 
 Primeira versão executável do HallaxOS: `pnpm dev` sobe banco, API e interface.

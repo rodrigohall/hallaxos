@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Plus, Users } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Botao, Card, Entrada, Selo } from "../componentes/ui";
+import {
+  Botao, Card, Entrada, Selo, Lista, ListaLinha, SkeletonLinhas, EstadoVazio,
+} from "../componentes/ui";
 
 export interface Pessoa {
   id: string;
   tipo: "pf" | "pj";
   nome: string;
-  nome_fantasia?: string | null;
-  nomeFantasia?: string | null;
   cpfCnpj: string;
   telefone: string | null;
   email: string | null;
@@ -25,20 +26,20 @@ export function Pessoas() {
   const { data, isLoading } = useQuery({
     queryKey: ["pessoas", busca],
     queryFn: () =>
-      api
-        .get<{ dados: Pessoa[]; meta: { total: number } }>(
-          `/pessoas?por_pagina=50${busca ? `&busca=${encodeURIComponent(busca)}` : ""}`
-        )
-        .then((r) => r),
+      api.get<{ dados: Pessoa[]; meta: { total: number } }>(
+        `/pessoas?por_pagina=50${busca ? `&busca=${encodeURIComponent(busca)}` : ""}`
+      ),
   });
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <h1 className="text-xl font-bold">Clientes</h1>
+        <h1 className="font-display text-lg font-bold">Clientes</h1>
         {pode("pessoas", "criar") && (
           <Link to="/clientes/novo" className="ml-auto">
-            <Botao>+ Novo cadastro</Botao>
+            <Botao tamanho="sm">
+              <Plus className="h-3.5 w-3.5" /> Novo cadastro
+            </Botao>
           </Link>
         )}
       </div>
@@ -51,39 +52,45 @@ export function Pessoas() {
       />
 
       <Card>
-        {isLoading && <p className="text-sm text-suave">Buscando…</p>}
-        {data && data.dados.length === 0 && (
-          <p className="text-sm text-suave">
-            Nenhum cadastro encontrado.{" "}
-            {pode("pessoas", "criar") && (
-              <Link to="/clientes/novo" className="text-marca-forte underline">
-                Criar agora
-              </Link>
-            )}
-          </p>
-        )}
-        <ul className="divide-y divide-borda">
-          {data?.dados.map((p) => (
-            <li key={p.id}>
-              <Link to={`/clientes/${p.id}`} className="flex items-center gap-3 py-3 hover:bg-borda/20">
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{p.nome}</p>
-                  <p className="text-xs text-suave">
-                    {p.tipo === "pj" ? "CNPJ" : "CPF"} {p.cpfCnpj}
-                    {p.telefone ? ` · ${p.telefone}` : ""}
-                    {p.cidade ? ` · ${p.cidade}` : ""}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  {p.papeis.map((papel) => (
+        {isLoading ? (
+          <SkeletonLinhas linhas={5} />
+        ) : !data || data.dados.length === 0 ? (
+          <EstadoVazio
+            icone={Users}
+            titulo={busca ? `Nenhum cadastro para “${busca}”` : "Nenhum cliente ainda"}
+            descricao="Confira a grafia ou crie um novo cadastro."
+            acao={
+              pode("pessoas", "criar") && (
+                <Link to="/clientes/novo">
+                  <Botao variante="secundario" tamanho="sm">
+                    <Plus className="h-3.5 w-3.5" /> Criar cadastro
+                  </Botao>
+                </Link>
+              )
+            }
+          />
+        ) : (
+          <>
+            <Lista>
+              {data.dados.map((p) => (
+                <ListaLinha
+                  key={p.id}
+                  para={`/clientes/${p.id}`}
+                  titulo={p.nome}
+                  subtitulo={
+                    `${p.tipo === "pj" ? "CNPJ" : "CPF"} ${p.cpfCnpj}` +
+                    (p.telefone ? ` · ${p.telefone}` : "") +
+                    (p.cidade ? ` · ${p.cidade}` : "")
+                  }
+                  direita={p.papeis.map((papel) => (
                     <Selo key={papel}>{papel}</Selo>
                   ))}
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        {data && <p className="mt-2 text-xs text-suave">{data.meta.total} cadastro(s)</p>}
+                />
+              ))}
+            </Lista>
+            <p className="mt-3 text-xs text-mudo">{data.meta.total} cadastro(s)</p>
+          </>
+        )}
       </Card>
     </div>
   );

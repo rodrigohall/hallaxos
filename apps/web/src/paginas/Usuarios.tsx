@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PAPEIS_USUARIO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
-import { Botao, Campo, Card, Entrada, Selecao, Selo } from "../componentes/ui";
+import { Botao, Campo, Card, Entrada, Selecao, Selo, useToast } from "../componentes/ui";
 
 interface Usuario {
   id: string;
@@ -17,6 +17,7 @@ interface Usuario {
 export function Usuarios() {
   const { pode, usuario: logado } = useAuth();
   const filaQueries = useQueryClient();
+  const notificar = useToast();
   const [form, setForm] = useState({ nome: "", email: "", senha: "", papel: "operador" });
   const [erro, setErro] = useState("");
   const [criando, setCriando] = useState(false);
@@ -34,6 +35,7 @@ export function Usuarios() {
       await api.post("/usuarios", form);
       setForm({ nome: "", email: "", senha: "", papel: "operador" });
       filaQueries.invalidateQueries({ queryKey: ["usuarios"] });
+      notificar({ tipo: "ok", titulo: "Usuário criado" });
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Erro ao criar usuário.");
     } finally {
@@ -48,7 +50,7 @@ export function Usuarios() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Usuários</h1>
+      <h1 className="font-display text-lg font-bold">Usuários</h1>
 
       {pode("usuarios", "criar") && (
         <Card titulo="Novo usuário">

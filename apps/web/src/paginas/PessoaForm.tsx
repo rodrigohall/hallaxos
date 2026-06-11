@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../api";
-import { Botao, Campo, Card, Entrada, Selecao } from "../componentes/ui";
+import { Botao, Campo, Card, Entrada, Selecao, Chip, useToast } from "../componentes/ui";
 
 const VAZIO = {
   tipo: "pf",
@@ -17,6 +17,7 @@ export function PessoaForm() {
   const { id } = useParams();
   const navegar = useNavigate();
   const filaQueries = useQueryClient();
+  const notificar = useToast();
   const [form, setForm] = useState<Formulario>(VAZIO);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState("");
@@ -62,6 +63,11 @@ export function PessoaForm() {
         ? await api.patch<{ dados: { id: string } }>(`/pessoas/${id}`, corpo)
         : await api.post<{ dados: { id: string } }>("/pessoas", corpo);
       filaQueries.invalidateQueries({ queryKey: ["pessoas"] });
+      notificar({
+        tipo: "ok",
+        titulo: id ? "Cadastro atualizado" : "Cadastro criado",
+        descricao: "A alteração já está na timeline.",
+      });
       navegar(`/clientes/${dados.id}`);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -81,20 +87,13 @@ export function PessoaForm() {
 
   return (
     <form onSubmit={enviar} className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-xl font-bold">{id ? "Editar cadastro" : "Novo cadastro"}</h1>
+      <h1 className="font-display text-lg font-bold">{id ? "Editar cadastro" : "Novo cadastro"}</h1>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {etapas.map((nome, i) => (
-          <button
-            key={nome}
-            type="button"
-            onClick={() => setEtapa(i)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              etapa === i ? "bg-marca/20 text-marca-forte" : "bg-borda/40 text-suave"
-            }`}
-          >
+          <Chip key={nome} ativo={etapa === i} onClick={() => setEtapa(i)}>
             {i + 1}. {nome}
-          </button>
+          </Chip>
         ))}
       </div>
 

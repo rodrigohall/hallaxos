@@ -15,6 +15,8 @@
 | Auditoria de negações de acesso (doc 05 §4.3) | Negações retornam 403 mas não geram evento | Sprint 3 |
 | Testes automatizados | Verificação da Sprint 1 foi manual via API real | Iniciar na Sprint 2 (services críticos primeiro) |
 | Comentários, tags e favoritos: tabelas existem, sem API/UI | Schema completo desde a 0001 | Sprint 2 (junto com timeline/documentos) |
+| Verificação visual em navegador real | Ambiente remoto sem browser (CDN bloqueada); design validado por build/tipos/API | Validar no primeiro `pnpm dev` local |
+| Componentes especificados sem implementação: Calendário, paginação visual, upload arrastar-soltar | Doc 07 §6 | Entram com as telas que os usam (Sprints 2+) |
 
 ## Próximos passos — Sprint 2 (Ativos · Operações · Timeline · Documentos)
 

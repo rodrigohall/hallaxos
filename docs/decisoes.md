@@ -31,6 +31,18 @@
 | 17 | Status `vencido`/`atrasada` calculados na consulta do dashboard | Coerente com a decisão 5 — nunca gravados |
 | 18 | Erros da API com código estável + mensagem pt-BR pronta para exibir | O frontend não traduz nem interpreta; mostra |
 
+## Sprint 1.5 — Design System
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 19 | Marca extraída da arte vetorial, nunca interpretada | O monograma é o path do PDF oficial; cores lidas do arquivo (#F3C625 / #002044). Identidade não se "recria" |
+| 20 | Dourado restrito a CTA, estado ativo e momentos de marca | Escassez = valor. Aviso é laranja para nunca competir com a marca |
+| 21 | Montserrat (display) + Inter (UI) | Montserrat é a fonte embutida na arte; Inter é o equivalente digital do Roboto do impresso |
+| 22 | Mapa status→cor centralizado no componente Selo | Telas nunca escolhem cores de status — consistência por construção |
+| 23 | Busca global como paleta de comando (⌘K) | Sempre acessível, navegável por teclado; será a porta da IA |
+| 24 | Skeletons por bloco, nunca spinner de tela cheia | O layout aparece imediatamente; o conteúdo preenche |
+| 25 | Confirmação destrutiva sempre em Modal explicando consequência | `confirm()` nativo quebra a experiência e não educa sobre soft delete |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica
