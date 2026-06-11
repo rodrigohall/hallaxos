@@ -8,6 +8,9 @@ import { Dashboard } from "./paginas/Dashboard";
 import { Pessoas } from "./paginas/Pessoas";
 import { PessoaForm } from "./paginas/PessoaForm";
 import { PessoaDetalhe } from "./paginas/PessoaDetalhe";
+import { Ativos } from "./paginas/Ativos";
+import { AtivoForm } from "./paginas/AtivoForm";
+import { AtivoDetalhe } from "./paginas/AtivoDetalhe";
 import { Usuarios } from "./paginas/Usuarios";
 
 const filaQueries = new QueryClient({
@@ -37,6 +40,10 @@ export function App() {
               <Route path="/clientes/novo" element={<PessoaForm />} />
               <Route path="/clientes/:id" element={<PessoaDetalhe />} />
               <Route path="/clientes/:id/editar" element={<PessoaForm />} />
+              <Route path="/ativos" element={<Ativos />} />
+              <Route path="/ativos/novo" element={<AtivoForm />} />
+              <Route path="/ativos/:id" element={<AtivoDetalhe />} />
+              <Route path="/ativos/:id/editar" element={<AtivoForm />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

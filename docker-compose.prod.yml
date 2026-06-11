@@ -26,6 +26,8 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_SENHA: ${ADMIN_SENHA:-}
+    volumes:
+      - arquivos:/app/apps/api/dados
     depends_on:
       db:
         condition: service_healthy
@@ -48,3 +50,4 @@ services:
 volumes:
   pgdata:
   caddy_dados:
+  arquivos:

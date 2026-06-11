@@ -15,7 +15,7 @@ interface Resultado {
 
 const TIPOS: Record<string, { icone: LucideIcon; rotulo: string; rota?: (id: string) => string }> = {
   pessoa: { icone: User, rotulo: "Pessoas", rota: (id) => `/clientes/${id}` },
-  ativo: { icone: Car, rotulo: "Ativos" },
+  ativo: { icone: Car, rotulo: "Ativos", rota: (id) => `/ativos/${id}` },
   operacao: { icone: Workflow, rotulo: "Operações" },
   manutencao: { icone: Wrench, rotulo: "Manutenções" },
   lancamento: { icone: CircleDollarSign, rotulo: "Financeiro" },

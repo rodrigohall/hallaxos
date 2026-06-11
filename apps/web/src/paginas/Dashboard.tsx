@@ -11,7 +11,13 @@ import {
 } from "../componentes/ui";
 
 interface DadosDashboard {
-  ativos_por_status: Record<string, number> | null;
+  patrimonio: {
+    total: number;
+    valor_patrimonial: string;
+    disponiveis: number;
+    em_operacao: number;
+    indisponiveis: number;
+  } | null;
   guinchos_em_andamento: Array<{
     codigo: string; cliente: string; status: string; origem_endereco: string; destino_endereco: string;
   }>;
@@ -28,12 +34,6 @@ interface DadosDashboard {
     a_vencer_7d: { quantidade: number; total: string };
   };
 }
-
-const ROTULOS_STATUS: Record<string, string> = {
-  disponivel: "disponíveis", reservado: "reservados", alugado: "alugados",
-  em_manutencao: "em manutenção", em_uso_interno: "em uso interno",
-  vendido: "vendidos", baixado: "baixados",
-};
 
 function SkeletonDashboard() {
   return (
@@ -114,18 +114,27 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Frota / patrimônio em um relance */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Object.entries(data.ativos_por_status ?? {}).map(([status, total]) => (
+      {/* Patrimônio em um relance */}
+      {data.patrimonio && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi
-            key={status}
-            rotulo={`Ativos ${ROTULOS_STATUS[status] ?? status}`}
-            valor={total}
-            icone={status === "alugado" ? KeyRound : CarFront}
-            tom={status === "disponivel" ? "ok" : "neutro"}
+            rotulo="Patrimônio"
+            valor={data.patrimonio.total}
+            icone={CarFront}
+            tom="ouro"
+            detalhe={`${dinheiro(data.patrimonio.valor_patrimonial)} em ativos`}
           />
-        ))}
-      </div>
+          <Kpi rotulo="Disponíveis" valor={data.patrimonio.disponiveis} icone={CarFront} tom="ok" />
+          <Kpi rotulo="Em operação" valor={data.patrimonio.em_operacao} icone={KeyRound} />
+          <Kpi
+            rotulo="Indisponíveis"
+            valor={data.patrimonio.indisponiveis}
+            icone={Wrench}
+            tom={data.patrimonio.indisponiveis > 0 ? "erro" : "neutro"}
+            detalhe="em manutenção"
+          />
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card titulo="Agenda do dia" icone={CalendarClock}>

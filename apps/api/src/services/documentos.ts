@@ -1,0 +1,222 @@
+// Documentos e fotos: serviço transversal de anexos (doc 04 §5).
+// Arquivos no disco com path imutável; metadados no banco; tudo na timeline.
+import { mkdir, writeFile, unlink } from "node:fs/promises";
+import { createReadStream, existsSync } from "node:fs";
+import { join, extname } from "node:path";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import type { ReferenciaEntidade, TipoDocumento } from "@hallaxos/shared";
+import { db } from "../db/client";
+import { documentos } from "../db/schema";
+import { novoId } from "../lib/ids";
+import { naoEncontrado, regraNegocio } from "../lib/erros";
+import { registrarEvento } from "./timeline";
+import { validarReferencia } from "./refTransversal";
+import { indexar, removerDoIndice } from "./busca";
+import { config } from "../config";
+
+const MIMES: Record<string, string> = {
+  "application/pdf": ".pdf",
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+};
+
+export interface NovoDocumento {
+  entidadeTipo: ReferenciaEntidade;
+  entidadeId: string;
+  tipo: TipoDocumento;
+  nome: string;
+  mimeType: string;
+  conteudo: Buffer;
+  dataValidade?: string | null;
+}
+
+async function gravarArquivo(id: string, mimeType: string, conteudo: Buffer) {
+  const extensao = MIMES[mimeType];
+  if (!extensao) throw regraNegocio("Formato não aceito. Envie PDF, JPG, PNG ou WEBP.");
+  if (conteudo.length === 0) throw regraNegocio("Arquivo vazio.");
+  if (conteudo.length > config.uploadMaxBytes) {
+    throw regraNegocio("Arquivo maior que 15 MB.");
+  }
+  const pasta = join(config.arquivosDir, id.slice(0, 2));
+  await mkdir(pasta, { recursive: true });
+  const caminho = join(pasta, `${id}${extensao}`);
+  await writeFile(caminho, conteudo);
+  return caminho;
+}
+
+export async function criarDocumento(d: NovoDocumento, usuarioId: string) {
+  await validarReferencia(db, d.entidadeTipo, d.entidadeId);
+  const id = novoId();
+  const caminho = await gravarArquivo(id, d.mimeType, d.conteudo);
+
+  return db.transaction(async (tx) => {
+    const [{ proximaOrdem }] = (
+      await tx.execute(sql`
+        SELECT coalesce(max(ordem) + 1, 0)::int AS "proximaOrdem" FROM documentos
+        WHERE entidade_tipo = ${d.entidadeTipo} AND entidade_id = ${d.entidadeId}`)
+    ).rows as [{ proximaOrdem: number }];
+
+    const [criado] = await tx
+      .insert(documentos)
+      .values({
+        id,
+        entidadeTipo: d.entidadeTipo,
+        entidadeId: d.entidadeId,
+        tipo: d.tipo,
+        nome: d.nome,
+        arquivoPath: caminho,
+        mimeType: d.mimeType,
+        tamanhoBytes: d.conteudo.length,
+        dataValidade: d.dataValidade ?? null,
+        ordem: proximaOrdem,
+        usuarioId,
+      })
+      .returning();
+
+    await registrarEvento(tx, {
+      entidadeTipo: d.entidadeTipo,
+      entidadeId: d.entidadeId,
+      evento: "documento_anexado",
+      descricao: d.tipo === "foto" ? `Foto "${d.nome}" adicionada` : `Documento "${d.nome}" anexado`,
+      usuarioId,
+    });
+    if (d.tipo !== "foto") {
+      await indexar(tx, {
+        entidadeTipo: "documento",
+        entidadeId: id,
+        titulo: d.nome,
+        subtitulo: `Documento · ${d.tipo}`,
+        termos: [d.nome, d.tipo],
+      });
+    }
+    return criado!;
+  });
+}
+
+export async function listarDocumentos(
+  entidadeTipo: ReferenciaEntidade,
+  entidadeId: string,
+  tipo?: "foto" | "documento"
+) {
+  const filtros = [
+    eq(documentos.entidadeTipo, entidadeTipo),
+    eq(documentos.entidadeId, entidadeId),
+    isNull(documentos.deletedAt),
+  ];
+  const linhas = await db
+    .select()
+    .from(documentos)
+    .where(and(...filtros))
+    .orderBy(desc(documentos.principal), asc(documentos.ordem), asc(documentos.createdAt));
+  if (tipo === "foto") return linhas.filter((d) => d.tipo === "foto");
+  if (tipo === "documento") return linhas.filter((d) => d.tipo !== "foto");
+  return linhas;
+}
+
+export async function obterArquivo(id: string) {
+  const [d] = await db
+    .select()
+    .from(documentos)
+    .where(and(eq(documentos.id, id), isNull(documentos.deletedAt)));
+  if (!d || !existsSync(d.arquivoPath)) throw naoEncontrado("Arquivo");
+  return { documento: d, stream: createReadStream(d.arquivoPath) };
+}
+
+export async function substituirArquivo(
+  id: string,
+  novo: { nome: string; mimeType: string; conteudo: Buffer },
+  usuarioId: string
+) {
+  const [d] = await db
+    .select()
+    .from(documentos)
+    .where(and(eq(documentos.id, id), isNull(documentos.deletedAt)));
+  if (!d) throw naoEncontrado("Documento");
+
+  const caminho = await gravarArquivo(novoId(), novo.mimeType, novo.conteudo);
+  const caminhoAntigo = d.arquivoPath;
+
+  const atualizado = await db.transaction(async (tx) => {
+    const [linha] = await tx
+      .update(documentos)
+      .set({
+        nome: novo.nome,
+        arquivoPath: caminho,
+        mimeType: novo.mimeType,
+        tamanhoBytes: novo.conteudo.length,
+      })
+      .where(eq(documentos.id, id))
+      .returning();
+    await registrarEvento(tx, {
+      entidadeTipo: d.entidadeTipo,
+      entidadeId: d.entidadeId,
+      evento: "atualizado",
+      descricao: `Documento "${d.nome}" substituído por "${novo.nome}"`,
+      usuarioId,
+    });
+    if (d.tipo !== "foto") {
+      await indexar(tx, {
+        entidadeTipo: "documento",
+        entidadeId: id,
+        titulo: novo.nome,
+        subtitulo: `Documento · ${d.tipo}`,
+        termos: [novo.nome, d.tipo],
+      });
+    }
+    return linha!;
+  });
+  await unlink(caminhoAntigo).catch(() => {});
+  return atualizado;
+}
+
+export async function excluirDocumento(id: string, usuarioId: string) {
+  const [d] = await db
+    .select()
+    .from(documentos)
+    .where(and(eq(documentos.id, id), isNull(documentos.deletedAt)));
+  if (!d) throw naoEncontrado("Documento");
+
+  await db.transaction(async (tx) => {
+    await tx.update(documentos).set({ deletedAt: new Date(), principal: false }).where(eq(documentos.id, id));
+    await registrarEvento(tx, {
+      entidadeTipo: d.entidadeTipo,
+      entidadeId: d.entidadeId,
+      evento: "atualizado",
+      descricao: d.tipo === "foto" ? `Foto "${d.nome}" removida` : `Documento "${d.nome}" removido`,
+      usuarioId,
+    });
+    await removerDoIndice(tx, "documento", id);
+  });
+}
+
+export async function definirFotoPrincipal(id: string, usuarioId: string) {
+  const [d] = await db
+    .select()
+    .from(documentos)
+    .where(and(eq(documentos.id, id), isNull(documentos.deletedAt)));
+  if (!d || d.tipo !== "foto") throw naoEncontrado("Foto");
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(documentos)
+      .set({ principal: false })
+      .where(and(eq(documentos.entidadeTipo, d.entidadeTipo), eq(documentos.entidadeId, d.entidadeId)));
+    await tx.update(documentos).set({ principal: true }).where(eq(documentos.id, id));
+    await registrarEvento(tx, {
+      entidadeTipo: d.entidadeTipo,
+      entidadeId: d.entidadeId,
+      evento: "atualizado",
+      descricao: `Foto "${d.nome}" definida como principal`,
+      usuarioId,
+    });
+  });
+}
+
+export async function reordenarDocumentos(ids: string[]) {
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      await tx.update(documentos).set({ ordem: i }).where(eq(documentos.id, ids[i]!));
+    }
+  });
+}

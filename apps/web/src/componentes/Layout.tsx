@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, Users, ShieldCheck, LogOut, Menu, X, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Users, CarFront, ShieldCheck, LogOut, Menu, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
 import { LogoCompleta, Monograma } from "../marca/Logo";
@@ -18,6 +18,7 @@ export function Layout() {
 
   const navegacao: ItemNav[] = [
     { para: "/", rotulo: "Dashboard", icone: LayoutDashboard, fim: true },
+    { para: "/ativos", rotulo: "Ativos", icone: CarFront },
     { para: "/clientes", rotulo: "Clientes", icone: Users },
     ...(pode("usuarios", "ler")
       ? [{ para: "/usuarios", rotulo: "Usuários", icone: ShieldCheck }]

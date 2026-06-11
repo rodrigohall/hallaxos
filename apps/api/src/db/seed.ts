@@ -97,12 +97,12 @@ async function seed() {
   const empilhadeira = novoId();
   const camaElastica = novoId();
   await sqlExec(sql`
-    INSERT INTO ativos (id, categoria_id, nome, status, valor_aquisicao, data_aquisicao, localizacao) VALUES
-      (${corolla}, ${cat.carro}, 'Toyota Corolla XEi 2022', 'alugado', 115000, '2024-03-10', 'Com cliente'),
-      (${onix}, ${cat.carro}, 'Chevrolet Onix LT 2023', 'disponivel', 78000, '2024-07-22', 'Pátio'),
-      (${guincho1}, ${cat.guincho}, 'Guincho Mercedes Accelo', 'em_uso_interno', 210000, '2023-01-15', 'Em serviço'),
-      (${empilhadeira}, ${cat.empilhadeira}, 'Empilhadeira Yale 2.5t', 'disponivel', 65000, '2022-05-02', 'Galpão'),
-      (${camaElastica}, ${cat.equipamento}, 'Cama Elástica Profissional 4m', 'disponivel', 4500, '2025-02-01', 'Galpão')`);
+    INSERT INTO ativos (id, categoria_id, nome, status, valor_aquisicao, valor_fipe, data_aquisicao, localizacao) VALUES
+      (${corolla}, ${cat.carro}, 'Toyota Corolla XEi 2022', 'alugado', 115000, 124300, '2024-03-10', 'Com cliente'),
+      (${onix}, ${cat.carro}, 'Chevrolet Onix LT 2023', 'disponivel', 78000, 82500, '2024-07-22', 'Pátio'),
+      (${guincho1}, ${cat.guincho}, 'Guincho Mercedes Accelo', 'em_uso_interno', 210000, 198000, '2023-01-15', 'Em serviço'),
+      (${empilhadeira}, ${cat.empilhadeira}, 'Empilhadeira Yale 2.5t', 'disponivel', 65000, NULL, '2022-05-02', 'Galpão'),
+      (${camaElastica}, ${cat.equipamento}, 'Cama Elástica Profissional 4m', 'disponivel', 4500, NULL, '2025-02-01', 'Galpão')`);
   await sqlExec(sql`
     INSERT INTO ativos_veiculos (ativo_id, placa, marca, modelo, ano_fabricacao, ano_modelo, cor, combustivel, km_atual) VALUES
       (${corolla}, 'RTX2B45', 'Toyota', 'Corolla XEi', 2021, 2022, 'Prata', 'flex', 45230),
@@ -126,7 +126,7 @@ async function seed() {
     await indexar(db, {
       entidadeTipo: "ativo", entidadeId: a.id, titulo: a.nome, subtitulo: `${a.sub} · ${codigo}`,
       // Placa é alfanumérica: entra nos termos de texto E (só dígitos) nos numéricos
-      termos: [a.nome, codigo, a.placa], termosNumericos: a.placa ? [a.placa] : [],
+      termos: [a.nome, codigo, a.placa], termosNumericos: [codigo, a.placa],
     });
   }
 

@@ -4,4 +4,6 @@ export const config = {
   porta: Number(process.env.API_PORT ?? 3333),
   cookieSeguro: process.env.COOKIE_SECURE === "true",
   sessaoDuracaoHoras: 12,
+  arquivosDir: process.env.ARQUIVOS_DIR ?? "dados/arquivos",
+  uploadMaxBytes: 15 * 1024 * 1024,
 };

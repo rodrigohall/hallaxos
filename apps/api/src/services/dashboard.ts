@@ -17,6 +17,15 @@ async function blocoOperacional() {
         (SELECT status, count(*)::int AS total FROM ativos
          WHERE deleted_at IS NULL GROUP BY status) s)                       AS ativos_por_status,
 
+      (SELECT jsonb_build_object(
+         'total', count(*)::int,
+         'valor_patrimonial', coalesce(sum(valor_aquisicao), 0),
+         'disponiveis', count(*) FILTER (WHERE status = 'disponivel')::int,
+         'em_operacao', count(*) FILTER (WHERE status IN ('alugado', 'reservado', 'em_uso_interno'))::int,
+         'indisponiveis', count(*) FILTER (WHERE status = 'em_manutencao')::int)
+       FROM ativos
+       WHERE deleted_at IS NULL AND status NOT IN ('vendido', 'baixado'))   AS patrimonio,
+
       (SELECT coalesce(jsonb_agg(g), '[]'::jsonb) FROM
         (SELECT o.id, o.codigo, p.nome AS cliente, o.status,
                 og.origem_endereco, og.destino_endereco

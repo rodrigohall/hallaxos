@@ -1,17 +1,23 @@
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
+import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
 import authPlugin from "./plugins/auth";
 import rotasAuth from "./routes/auth";
 import rotasPessoas from "./routes/pessoas";
 import rotasUsuarios from "./routes/usuarios";
 import rotasSistema from "./routes/sistema";
+import rotasAtivos from "./routes/ativos";
+import rotasDocumentos from "./routes/documentos";
+import rotasComentarios from "./routes/comentarios";
 import { AppError } from "./lib/erros";
+import { config } from "./config";
 
 export function criarApp() {
   const app = Fastify({ logger: { level: "info" } });
 
   app.register(cookie);
+  app.register(multipart, { limits: { fileSize: config.uploadMaxBytes, files: 20 } });
   app.register(authPlugin);
 
   app.setErrorHandler((err, _req, reply) => {
@@ -40,6 +46,9 @@ export function criarApp() {
       await v1.register(rotasAuth);
       await v1.register(rotasPessoas);
       await v1.register(rotasUsuarios);
+      await v1.register(rotasAtivos);
+      await v1.register(rotasDocumentos);
+      await v1.register(rotasComentarios);
       await v1.register(rotasSistema);
     },
     { prefix: "/api/v1" }
