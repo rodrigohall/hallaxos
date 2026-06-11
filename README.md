@@ -47,6 +47,26 @@ Acesse http://localhost:5173 e entre com:
 
 Com Postgres próprio (sem Docker): copie `.env.example` para `.env`, ajuste `DATABASE_URL` e rode `pnpm dev`.
 
+## Deploy em VPS (produção)
+
+Em um VPS Ubuntu/Debian limpo, três comandos:
+
+```bash
+git clone -b claude/stoic-shannon-d3fxpi https://github.com/rodrigohall/hallaxos.git
+cd hallaxos
+./deploy/instalar.sh                       # acesso por IP (http)
+# ou, com domínio apontado para o VPS (HTTPS automático):
+DOMINIO=os.hallax.com ./deploy/instalar.sh
+```
+
+O instalador cuida de tudo: instala o Docker se faltar, gera senhas fortes em
+`.env` (banco + admin), constrói as imagens, aplica as migrations e sobe
+banco + API + site. Ao final, imprime o endereço e o login inicial.
+
+- Atualizar versão: `git pull && ./deploy/instalar.sh`
+- Logs: `docker compose -f docker-compose.prod.yml logs -f`
+- Sem dados de demonstração em produção — o admin inicial vem do `.env`.
+
 ## Documentação
 
 A arquitetura é definida **antes** do código. Leia em ordem:

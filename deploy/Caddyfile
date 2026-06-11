@@ -1,0 +1,15 @@
+# Com DOMINIO definido: HTTPS automático (Let's Encrypt).
+# Sem DOMINIO: serve em HTTP na porta 80 (acesso por IP).
+{$DOMINIO::80} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:3333
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

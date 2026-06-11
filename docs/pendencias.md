@@ -11,7 +11,9 @@
 | Notificações: tabela existe, gatilhos não disparam | Regras definidas no doc 04 §4 | Sprint 2/3, conforme módulos que as geram |
 | Reindexação completa da busca (`busca:reindexar`) | Índice é reconstruível por design; falta o comando | Sprint 3 (busca global completa) |
 | Bloqueio progressivo de login após falhas (doc 05 §1) | Falhas já vão para a timeline | Sprint 3 |
-| Rate limiting e CORS de produção | Irrelevante em dev; obrigatório antes de produção | Antes do deploy |
+| Rate limiting e CORS de produção | Deploy existe; rate limit ainda não | Próxima sprint que tocar a API |
+| Tela de troca de senha do próprio usuário | Admin define senhas; usuário ainda não troca a sua | Sprint 3 |
+| Backup automático do Postgres em produção | Volume persiste, mas sem rotina de dump | Antes de uso real intenso |
 | Auditoria de negações de acesso (doc 05 §4.3) | Negações retornam 403 mas não geram evento | Sprint 3 |
 | Testes automatizados | Verificação da Sprint 1 foi manual via API real | Iniciar na Sprint 2 (services críticos primeiro) |
 | Comentários, tags e favoritos: tabelas existem, sem API/UI | Schema completo desde a 0001 | Sprint 2 (junto com timeline/documentos) |

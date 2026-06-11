@@ -1,0 +1,50 @@
+# Produção: banco + API + web atrás do Caddy.
+# Uso: ./deploy/instalar.sh  (gera o .env e sobe tudo)
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hallax
+      POSTGRES_PASSWORD: ${DB_SENHA:?rode ./deploy/instalar.sh para gerar o .env}
+      POSTGRES_DB: hallaxos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hallax -d hallaxos"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://hallax:${DB_SENHA}@db:5432/hallaxos
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_SENHA: ${ADMIN_SENHA:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_dados:/data
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  caddy_dados:

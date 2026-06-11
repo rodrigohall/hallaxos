@@ -1,5 +1,17 @@
 # Changelog
 
+## Deploy em produção (2026-06-11)
+
+- Dockerfiles de API (migrations automáticas no arranque) e web (build
+  estático servido pelo Caddy, HTTPS automático com domínio).
+- `docker-compose.prod.yml` com Postgres persistente e reinício automático.
+- `deploy/instalar.sh`: instalador idempotente para VPS — instala Docker se
+  faltar, gera senhas fortes em `.env`, builda e sobe tudo, imprime o login.
+- Bootstrap do administrador inicial por variáveis de ambiente no primeiro
+  arranque (testado contra banco vazio, incluindo idempotência). Produção não
+  recebe dados de demonstração.
+- Instruções no README (§ Deploy em VPS).
+
 ## Sprint 1.5 — Design System oficial (2026-06-11)
 
 A identidade Hallax entra no produto. Nenhuma funcionalidade nova — toda a
