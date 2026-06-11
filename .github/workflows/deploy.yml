@@ -1,0 +1,43 @@
+# Deploy automático no VPS a cada push.
+# Configuração única (no GitHub → Settings → Secrets and variables → Actions):
+#   VPS_HOST     → IP ou domínio do servidor
+#   VPS_USER     → usuário SSH (ex.: root)
+#   VPS_SSH_KEY  → chave privada com acesso ao servidor
+# O código vai do runner para o VPS via rsync — o VPS não precisa de acesso ao GitHub.
+name: Deploy VPS
+
+on:
+  push:
+    branches: [claude/stoic-shannon-d3fxpi]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ATIVO != 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Enviar código para o VPS
+        run: |
+          rsync -az --delete \
+            --exclude '.git' --exclude '.env' --exclude 'node_modules' \
+            --exclude 'dados' --exclude 'dist' \
+            -e "ssh -i ~/.ssh/id_deploy" \
+            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/hallaxos/"
+
+      - name: Executar instalador
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "cd ~/hallaxos && DOMINIO='${{ vars.DOMINIO }}' ./deploy/instalar.sh"
