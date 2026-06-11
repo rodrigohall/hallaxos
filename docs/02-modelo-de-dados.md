@@ -271,10 +271,11 @@ Sem origem = lançamento avulso (aluguel do galpão, conta de luz).
 ## 6. Documentos
 
 Anexos de qualquer entidade (CRLV do veículo, contrato da locação, CNH do
-cliente, NF da manutenção). Referência polimórfica — escolha consciente:
-documentos e timeline são as duas únicas entidades que se ligam a *tudo*, e
-criar uma tabela de junção por entidade multiplicaria estrutura sem ganho. A
-integridade é garantida na camada de serviço.
+cliente, NF da manutenção). Usa a **referência transversal** — exceção
+aprovada de arquitetura, formalizada no doc 04 §0, que define o enum
+compartilhado `referencia_entidade`, a lista fechada de tabelas autorizadas e
+como a camada de aplicação garante a integridade (validação em transação,
+soft delete nos alvos, job detector de órfãos).
 
 ### `documentos`
 
@@ -347,9 +348,9 @@ Serve de timeline de negócio (visível ao usuário) e de auditoria (diffs em `d
 | Campo         | Tipo             | Notas                                                |
 | ------------- | ---------------- | ---------------------------------------------------- |
 | id            | uuid PK          |                                                      |
-| entidade_tipo | enum             | `pessoa` \| `ativo` \| `operacao` \| `manutencao` \| `lancamento` \| `documento` |
+| entidade_tipo | enum             | `referencia_entidade` (doc 04 §0)                    |
 | entidade_id   | uuid             |                                                      |
-| evento        | enum             | `criado` \| `atualizado` \| `status_alterado` \| `comentario` \| `documento_anexado` \| `lancamento_gerado` |
+| evento        | enum             | `criado` \| `atualizado` \| `status_alterado` \| `comentario_adicionado` \| `documento_anexado` \| `lancamento_gerado` \| `login` \| `logout` \| `login_falhou` |
 | descricao     | text             | Legível por humanos: "Locação ativada — Corolla retirado com 45.230 km" |
 | dados         | jsonb NULL       | Diff estruturado: `{campo: {de, para}}` — auditoria e consumo por IA |
 | usuario_id    | FK usuarios NULL | NULL = ação automática do sistema                    |
@@ -360,6 +361,13 @@ Serve de timeline de negócio (visível ao usuário) e de auditoria (diffs em `d
 > não por cópia.
 
 ---
+
+## 10. Serviços transversais
+
+As tabelas `comentarios`, `tags`, `tags_vinculos`, `favoritos`, `notificacoes`,
+`busca_indice` e `sessoes` completam o modelo e estão definidas onde são
+explicadas — doc 04 (serviços transversais) e doc 05 (sessões). Cada tabela do
+sistema é definida em exatamente um documento.
 
 ## O que NÃO existe (de propósito)
 

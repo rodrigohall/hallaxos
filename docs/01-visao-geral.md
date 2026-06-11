@@ -19,6 +19,18 @@
 5. **Preparado para IA desde o dia 1.** O modelo relacional bem normalizado,
    com origem rastreável e timeline completa, é exatamente o que permite
    responder "quanto lucro tivemos com o Corolla em 2026?" sem retrabalho.
+6. **Timeline é cidadão de primeira classe.** Abrir qualquer registro e
+   entender toda a sua história cronológica não é uma feature — é uma
+   propriedade do sistema, garantida na camada de serviço do núcleo (doc 04 §6).
+7. **O Ativo é o centro físico do sistema.** Qualquer patrimônio — do caminhão
+   guincho à cama elástica. Nenhuma parte do sistema pode assumir que ativo = veículo.
+8. **Tudo é pesquisável.** Placa, telefone, CPF, nome, código — uma busca
+   global única encontra qualquer entidade (doc 04 §7). É também a base de
+   *grounding* do copiloto de IA futuro.
+9. **O Dashboard é o centro da operação.** Primeira tela do dia, com a
+   fotografia completa em tempo real — e sem nenhuma tabela própria (doc 06).
+10. **Rastreabilidade ponta a ponta.** Todo número responde "por que esse
+    valor apareceu?": lançamento → operação → ativo → pessoa → documentos → timeline.
 
 ## 2. A grande sacada: Operação como entidade unificada
 
