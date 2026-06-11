@@ -27,6 +27,26 @@ Nunca duplicamos dados. Nunca criamos entidades redundantes. Tudo reutiliza o n�
 
 Pessoas · Ativos · Operações · Financeiro · Documentos · Manutenções · Usuários · Timeline
 
+## Como rodar
+
+Pré-requisitos: Node 22+, pnpm 10+ e Docker (para o Postgres).
+
+```bash
+pnpm install
+pnpm dev        # sobe o banco, aplica migrations, semeia e inicia API (3333) + Web (5173)
+```
+
+Acesse http://localhost:5173 e entre com:
+
+| Papel      | Login                  | Senha      |
+| ---------- | ---------------------- | ---------- |
+| admin      | admin@hallax.com       | hallax123  |
+| gestor     | gestor@hallax.com      | hallax123  |
+| operador   | operador@hallax.com    | hallax123  |
+| financeiro | financeiro@hallax.com  | hallax123  |
+
+Com Postgres próprio (sem Docker): copie `.env.example` para `.env`, ajuste `DATABASE_URL` e rode `pnpm dev`.
+
 ## Documentação
 
 A arquitetura é definida **antes** do código. Leia em ordem:
@@ -38,8 +58,11 @@ A arquitetura é definida **antes** do código. Leia em ordem:
 5. [`docs/05-permissoes.md`](docs/05-permissoes.md) — autenticação, papéis e matriz de permissões
 6. [`docs/06-api.md`](docs/06-api.md) — convenções e contrato completo da API
 
+Documentos vivos, sincronizados a cada sprint: [`CHANGELOG.md`](CHANGELOG.md) ·
+[`docs/decisoes.md`](docs/decisoes.md) · [`docs/pendencias.md`](docs/pendencias.md)
+
 ## Status do projeto
 
-**Fase atual: Etapa 2 concluída, em validação** — arquitetura aprovada (Etapa 1);
-serviços transversais, permissões e contrato da API aguardando validação.
-Nenhuma linha de código de aplicação antes da validação do contrato.
+**Sprint 1 concluída** — sistema executável: login, permissões, clientes,
+busca global, timeline e dashboard. Banco completo desde a primeira migration.
+Próxima: Sprint 2 (Ativos · Operações · Timeline agregada · Documentos).

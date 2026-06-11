@@ -1,0 +1,24 @@
+{
+  "name": "hallaxos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "O cérebro operacional da Hallax",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "pnpm --filter @hallaxos/api migrate",
+    "db:seed": "pnpm --filter @hallaxos/api seed",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@node-rs/argon2"]
+  },
+  "packageManager": "pnpm@10.33.0"
+}
