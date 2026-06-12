@@ -1,50 +1,78 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento.
+> assumida — não esquecimento. Última revisão: fim do Sprint 5 (2026-06-12),
+> conferida contra o código (não contra a memória).
 
-## Pendências técnicas (Sprint 1)
+## Estado atual — o que está em produção
 
-| Pendência | Contexto | Quando resolver |
-|-----------|----------|-----------------|
-| Job detector de referências órfãs (doc 04 §0) | Estrutura pronta; job agendado ainda não roda | Sprint 2 (junto com documentos) |
-| Notificações: tabela existe, gatilhos não disparam | Regras definidas no doc 04 §4 | Sprint 2/3, conforme módulos que as geram |
-| Bloqueio progressivo de login após falhas (doc 05 §1) | Falhas já vão para a timeline | Sprint 3 |
-| Rate limiting e CORS de produção | Deploy existe; rate limit ainda não | Próxima sprint que tocar a API |
-| Tela de troca de senha do próprio usuário | Admin define senhas; usuário ainda não troca a sua | Sprint 3 |
-| Backup automático do Postgres em produção | Volume persiste, mas sem rotina de dump | Antes de uso real intenso |
-| Auditoria de negações de acesso (doc 05 §4.3) | Negações retornam 403 mas não geram evento | Sprint 3 |
-| Testes automatizados | Verificação da Sprint 1 foi manual via API real | Iniciar na Sprint 2 (services críticos primeiro) |
-| Comentários, tags e favoritos: tabelas existem, sem API/UI | Schema completo desde a 0001 | Sprint 2 (junto com timeline/documentos) |
-| Verificação visual em navegador real | Ambiente remoto sem browser (CDN bloqueada); design validado por build/tipos/API | Validar no primeiro `pnpm dev` local |
-| Componentes especificados sem implementação: Calendário, paginação visual, upload arrastar-soltar | Doc 07 §6 | Entram com as telas que os usam (Sprints 2+) |
+| Área | Estado |
+|------|--------|
+| Fundação (banco 25 tabelas, auth argon2id, permissões por papel, timeline imutável, busca global ⌘K) | ✅ Sprint 1 |
+| Design system Hallax (tokens, componentes, dashboard centro de comando) | ✅ Sprint 1.5 |
+| Deploy VPS em um comando + CI/CD por push (GitHub Actions) | ✅ |
+| Clientes/Pessoas (CRUD, papéis automáticos, timeline, arquivamento protegido) | ✅ Sprint 1 |
+| Ativos (núcleo + veicular, categorias, fotos/documentos, comentários, timeline agregada, FIPE, expectativa de lucro de venda) | ✅ Sprints 2 e 5 |
+| Financeiro (lançamentos, parcelas até 60x, estorno, contas com saldo derivado, fluxo de caixa) | ✅ Sprint 3 |
+| Relatórios (resultado/ROI por ativo, DRE mensal e por categoria) | ✅ Sprint 3 |
+| Operações unificadas: Guincho · Locação · Venda · Compra (máquinas de estado, financeiro automático, CNH bloqueia ativação) | ✅ Sprints 4 e 5 |
+| Anexos transversais (upload múltiplo, octet-stream/HEIC, foto principal, lightbox) | ✅ Sprints 2 e 5 |
 
-## Próximos passos — Sprint 2 (Ativos · Operações · Timeline · Documentos)
+## Pendências em aberto (consolidado, conferido no código)
 
-1. API + UI de **ativos** (núcleo + extensão veicular, categorias, status com máquina de estados).
-2. API + UI de **operações** (núcleo + criação por tipo; transições viram endpoints nomeados).
-3. **Timeline agregada do ativo** (eventos próprios + operações + manutenções, por consulta).
-4. **Documentos**: upload, vínculo transversal, validade alimentando alertas.
-5. Papéis automáticos de pessoa acionados pelas operações (`garantirPapel` já existe).
-6. Início dos testes automatizados pelos services de operação (transições de estado).
+### Funcional
+| Pendência | Contexto | Plano |
+|-----------|----------|-------|
+| **Manutenções sem API/UI de criação** | Tabela e leitura no detalhe do ativo existem; não há como criar/transicionar pela interface | Sprint 6 |
+| **Agenda** (tela calendário) | Todas as fontes derivadas existem (devoluções, manutenções, vencimentos, CNH, documentos); falta a tela | Sprint 6 |
+| Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 6 |
+| Notificações: tabela existe, gatilhos não disparam, sem sino na UI | Regras no doc 04 §4 | Sprint 7 |
+| Tags e favoritos: tabelas sem API/UI | Schema desde a 0001 | Sprint 7 (com notificações) |
+| Compra vincula ativo existente em vez de criá-lo na conclusão | Decisão registrada no Sprint 5 | Se houver demanda |
 
-## Sprint 5 — Operações unificadas (entregue)
+### Segurança e confiabilidade
+| Pendência | Contexto | Plano |
+|-----------|----------|-------|
+| **Testes automatizados: zero** | Toda verificação foi manual via API real | Sprint 7 — começar pelos services de transição e financeiro |
+| **Backup automático do Postgres** | Volume persiste, mas sem rotina de dump | Sprint 7 — urgente com uso real |
+| Rate limiting e CORS de produção | API sem proteção de volume | Sprint 7 |
+| Bloqueio progressivo de login após falhas (doc 05 §1) | Falhas já vão para a timeline | Sprint 7 |
+| Tela de troca de senha do próprio usuário | Hoje só o admin define senhas | Sprint 7 |
+| Auditoria de negações de acesso (doc 05 §4.3) | 403 não gera evento | Sprint 7 |
 
-Guincho, Locação, Venda e Compra convergiram para um módulo único de Operações
-(`/operacoes`). O Guincho standalone do Sprint 4 foi aposentado (telas próprias
-removidas; `/guinchos` redireciona). Mesmas tabelas da 0001 — sem migração,
-dados de produção preservados. Pendências assumidas:
+### Técnico (dívida pequena)
+| Pendência | Contexto | Plano |
+|-----------|----------|-------|
+| Índice parcial UNIQUE de `operacao_ativos` (objeto único não-terminal) | Validado no service; falta no banco (doc 03 §3) | Sprint 6 (migration) |
+| Job detector de referências órfãs (doc 04 §0) | Estrutura pronta; job agendado não roda | Sprint 7 |
+| Seed cria guinchos no estilo antigo | Novos indexam certo; `busca:reindexar` resolve | Sprint 6 |
+| Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
 
-| Pendência | Contexto | Quando resolver |
-|-----------|----------|-----------------|
-| Compra vincula ativo já cadastrado em vez de criá-lo na conclusão | Doc 03 §1 prevê a compra *criar* o ativo; mantivemos o cadastro de ativos como ponto único | Próxima sprint de Compra, se houver demanda |
-| Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação é fixado na finalização (diária × dias); ajustes finos pelo financeiro | Sprint de refino financeiro |
-| Índice parcial UNIQUE de `operacao_ativos` (objeto único não-terminal) | Validado no service; falta o índice no banco (doc 03 §3) | Migration futura |
-| Seed ainda cria guinchos no estilo antigo | Seed é anterior ao módulo; novos indexam certo | Reescrita do seed ou `busca:reindexar` |
-| Notificação `guincho_solicitado` (tabela existe, gatilho não dispara) | Regra no doc 04 §4 | Junto com o módulo de notificações |
+## Roadmap proposto
 
-## Sprints seguintes
+### Sprint 6 — Operação do dia a dia (Manutenções + Agenda)
+O que falta para a equipe viver dentro do sistema:
+1. **Manutenções completas**: criar/agendar pela UI (do ativo e de tela própria),
+   máquina de estados `agendada → em_andamento → concluida` movendo o ativo
+   para `em_manutencao` e de volta, custo via lançamentos vinculados,
+   fornecedor ganha papel automático.
+2. **Agenda** (componente Calendário do doc 07 §6): visão semana/mês com
+   devoluções de locação, manutenções agendadas, lançamentos a vencer, CNH e
+   documentos vencendo + compromissos manuais (`eventos_agenda`).
+3. **Refinos de Operações**: edição com recálculo de lançamentos previstos,
+   índice parcial UNIQUE no banco, seed atualizado.
 
-- **Sprint 6**: refino de Operações (edição/recálculo, agenda derivada, índice
-  parcial) e Manutenções com UI própria.
-- **Sprint 7**: IA e automações (copiloto consumindo os mesmos endpoints de relatórios).
+### Sprint 7 — Confiança (segurança, testes, notificações)
+Antes de intensificar o uso real:
+1. **Testes automatizados** dos services críticos (transições de operação,
+   geração/estorno financeiro, permissões) rodando no CI antes do deploy.
+2. **Backup automático** do Postgres (dump diário + retenção no VPS).
+3. **Endurecimento**: rate limiting, bloqueio progressivo de login, troca de
+   senha própria, auditoria de negações.
+4. **Notificações** que disparam de verdade (devolução atrasada, vencimentos,
+   CNH/documento vencendo, guincho solicitado) + sino na UI; tags/favoritos.
+
+### Sprint 8 — IA e automações
+O destino do modelo (doc 01 §6): copiloto consumindo busca global, relatórios
+e timeline — perguntas como "quanto lucro o Corolla deu em 2026?" respondidas
+sobre os mesmos endpoints que as telas já usam.

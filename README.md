@@ -84,6 +84,13 @@ Documentos vivos, sincronizados a cada sprint: [`CHANGELOG.md`](CHANGELOG.md) ·
 
 ## Status do projeto
 
-**Sprint 1 concluída** — sistema executável: login, permissões, clientes,
-busca global, timeline e dashboard. Banco completo desde a primeira migration.
-Próxima: Sprint 2 (Ativos · Operações · Timeline agregada · Documentos).
+**Sprint 5 concluída — em produção.** Sistema operacional de ponta a ponta:
+login e permissões por papel, clientes, **ativos** (fotos, documentos, FIPE,
+resultado financeiro e expectativa de lucro de venda), **operações unificadas**
+(guincho · locação · venda · compra, com máquinas de estado e financeiro
+automático), **financeiro** (parcelas, estorno, contas, fluxo de caixa),
+**relatórios** (ROI por ativo, DRE), busca global, timeline imutável e
+dashboard. Deploy contínuo no VPS a cada push.
+
+Próxima: **Sprint 6** (Manutenções com UI própria · Agenda derivada · refinos
+de operações). Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
