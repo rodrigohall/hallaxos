@@ -1,5 +1,41 @@
 # Changelog
 
+## Sprint 4 — Guincho (2026-06-12)
+
+Primeiro fluxo de operação completo sobre o núcleo: do acionamento à receita.
+
+### Adicionado
+
+- **Módulo Guincho** ponta a ponta sobre o núcleo `operacoes` + extensão
+  `operacoes_guincho` (sem tabela própria — a regra máxima preservada).
+- **Máquina de estados** no backend (doc 03): `solicitado → a_caminho →
+  em_execucao → concluido`, com `cancelada` a partir de qualquer estado não
+  terminal. O frontend só solicita transições; o estado é decidido na API,
+  em transação.
+- **Integração com o ativo recurso** (o caminhão): `a_caminho` o coloca em
+  `em_uso_interno`; `concluido`/`cancelada` o devolvem a `disponivel`. Um
+  caminhão só serve a um guincho aberto por vez (guarda na criação).
+- **Geração automática de financeiro**: ao concluir, gera a receita do serviço
+  (`valor_total − desconto`) como lançamento `previsto` vinculado à operação —
+  categoria "Guincho" e conta padrão são garantidas (criadas na 1ª vez).
+- **Hodômetro**: o km percorrido informado na conclusão soma ao `km_atual` do
+  caminhão.
+- **Papéis automáticos**: cliente vira `cliente`, motorista vira `motorista`.
+- **Telas** no design system: lista com filtros por estado e busca, criação
+  com *busca antes de cadastro* de cliente/motorista e seletor de caminhões
+  disponíveis, e detalhe com trajeto, envolvidos, valor, timeline, financeiro
+  gerado, documentos e comentários. Botões de transição contextuais ao estado.
+- Guinchos entram na **busca global** e na **timeline agregada do ativo**;
+  operações terminais saem do índice de busca.
+
+### Verificado em execução
+
+Fluxo completo (solicitar → despachar → executar → concluir) movendo o caminhão
+entre estados e somando km; receita de R$ 450 gerada e visível ao financeiro
+com origem protegida; cancelamento liberando o caminhão; guardas de transição
+inválida e de caminhão já ocupado; bloqueio do papel financeiro para criar;
+timeline agregada do ativo com os eventos do guincho; busca por cliente.
+
 ## Sprint 3 — Financeiro e Relatórios (2026-06-12)
 
 - Lançamentos: listagem com filtros, criação avulsa com parcelamento (até 60x,

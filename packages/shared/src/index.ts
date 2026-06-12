@@ -5,3 +5,4 @@ export * from "./schemas/auth";
 export * from "./schemas/pessoa";
 export * from "./schemas/ativo";
 export * from "./schemas/financeiro";
+export * from "./schemas/operacao";

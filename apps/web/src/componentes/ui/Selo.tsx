@@ -13,9 +13,13 @@ const TONS: Record<string, string> = {
   baixado: "text-suave bg-elevado ring-borda",
   // operações
   ativa: "text-ok bg-ok/10 ring-ok/20",
+  reservada: "text-alerta bg-alerta/10 ring-alerta/20",
   em_execucao: "text-info bg-info/10 ring-info/20",
   a_caminho: "text-info bg-info/10 ring-info/20",
   solicitado: "text-alerta bg-alerta/10 ring-alerta/20",
+  concluido: "text-ok bg-ok/10 ring-ok/20",
+  concluida: "text-ok bg-ok/10 ring-ok/20",
+  finalizada: "text-suave bg-elevado ring-borda",
   cancelada: "text-erro bg-erro/10 ring-erro/20",
   // genéricos
   ouro: "text-ouro bg-ouro/10 ring-ouro/25",

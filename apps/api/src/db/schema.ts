@@ -7,7 +7,8 @@ import {
 import {
   PAPEIS_USUARIO, TIPOS_PESSOA, PAPEIS_PESSOA, REFERENCIA_ENTIDADES, EVENTOS_TIMELINE,
   STATUS_ATIVO, COMBUSTIVEIS, TIPOS_DOCUMENTO, TIPOS_LANCAMENTO, STATUS_LANCAMENTO,
-  FORMAS_PAGAMENTO,
+  FORMAS_PAGAMENTO, TIPOS_OPERACAO, STATUS_OPERACAO, PAPEIS_OPERACAO_ATIVO,
+  STATUS_DOCUMENTACAO, TIPOS_MANUTENCAO, STATUS_MANUTENCAO,
 } from "@hallaxos/shared";
 
 export const papelUsuarioEnum = pgEnum("papel_usuario", PAPEIS_USUARIO);
@@ -111,6 +112,88 @@ export const ativosVeiculos = pgTable("ativos_veiculos", {
   cor: text("cor"),
   combustivel: combustivelEnum("combustivel"),
   kmAtual: integer("km_atual").notNull().default(0),
+});
+
+export const tipoOperacaoEnum = pgEnum("tipo_operacao", TIPOS_OPERACAO);
+export const statusOperacaoEnum = pgEnum("status_operacao", STATUS_OPERACAO);
+export const papelOperacaoAtivoEnum = pgEnum("papel_operacao_ativo", PAPEIS_OPERACAO_ATIVO);
+export const statusDocumentacaoEnum = pgEnum("status_documentacao", STATUS_DOCUMENTACAO);
+export const tipoManutencaoEnum = pgEnum("tipo_manutencao", TIPOS_MANUTENCAO);
+export const statusManutencaoEnum = pgEnum("status_manutencao", STATUS_MANUTENCAO);
+
+export const operacoes = pgTable("operacoes", {
+  id: uuid("id").primaryKey(),
+  codigo: text("codigo").notNull(),
+  tipo: tipoOperacaoEnum("tipo").notNull(),
+  clienteId: uuid("cliente_id").notNull().references(() => pessoas.id),
+  responsavelId: uuid("responsavel_id").notNull().references(() => usuarios.id),
+  status: statusOperacaoEnum("status").notNull(),
+  valorTotal: numeric("valor_total", { precision: 12, scale: 2 }).notNull().default("0"),
+  desconto: numeric("desconto", { precision: 12, scale: 2 }).notNull().default("0"),
+  dataInicio: timestamp("data_inicio", { withTimezone: true }).notNull().defaultNow(),
+  dataFim: timestamp("data_fim", { withTimezone: true }),
+  observacoes: text("observacoes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const operacaoAtivos = pgTable(
+  "operacao_ativos",
+  {
+    operacaoId: uuid("operacao_id").notNull().references(() => operacoes.id),
+    ativoId: uuid("ativo_id").notNull().references(() => ativos.id),
+    papel: papelOperacaoAtivoEnum("papel").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.operacaoId, t.ativoId] })]
+);
+
+export const operacoesGuincho = pgTable("operacoes_guincho", {
+  operacaoId: uuid("operacao_id").primaryKey().references(() => operacoes.id),
+  motoristaId: uuid("motorista_id").references(() => pessoas.id),
+  origemEndereco: text("origem_endereco").notNull(),
+  destinoEndereco: text("destino_endereco").notNull(),
+  veiculoClienteDescricao: text("veiculo_cliente_descricao").notNull(),
+  veiculoClientePlaca: text("veiculo_cliente_placa"),
+  kmPercorrido: integer("km_percorrido"),
+  dataAcionamento: timestamp("data_acionamento", { withTimezone: true }).notNull().defaultNow(),
+  dataConclusao: timestamp("data_conclusao", { withTimezone: true }),
+});
+
+export const operacoesLocacao = pgTable("operacoes_locacao", {
+  operacaoId: uuid("operacao_id").primaryKey().references(() => operacoes.id),
+  condutorId: uuid("condutor_id").references(() => pessoas.id),
+  valorDiaria: numeric("valor_diaria", { precision: 12, scale: 2 }).notNull(),
+  caucao: numeric("caucao", { precision: 12, scale: 2 }).notNull().default("0"),
+  dataRetirada: timestamp("data_retirada", { withTimezone: true }),
+  dataDevolucaoPrevista: timestamp("data_devolucao_prevista", { withTimezone: true }).notNull(),
+  dataDevolucaoReal: timestamp("data_devolucao_real", { withTimezone: true }),
+  kmSaida: integer("km_saida"),
+  kmRetorno: integer("km_retorno"),
+});
+
+export const operacoesCompraVenda = pgTable("operacoes_compra_venda", {
+  operacaoId: uuid("operacao_id").primaryKey().references(() => operacoes.id),
+  kmNoAto: integer("km_no_ato"),
+  dataTransferencia: date("data_transferencia"),
+  statusDocumentacao: statusDocumentacaoEnum("status_documentacao").notNull().default("pendente"),
+});
+
+export const manutencoes = pgTable("manutencoes", {
+  id: uuid("id").primaryKey(),
+  ativoId: uuid("ativo_id").notNull().references(() => ativos.id),
+  tipo: tipoManutencaoEnum("tipo").notNull(),
+  status: statusManutencaoEnum("status").notNull().default("agendada"),
+  descricao: text("descricao").notNull(),
+  fornecedorId: uuid("fornecedor_id").references(() => pessoas.id),
+  dataAgendada: date("data_agendada"),
+  dataInicio: timestamp("data_inicio", { withTimezone: true }),
+  dataConclusao: timestamp("data_conclusao", { withTimezone: true }),
+  kmNoMomento: integer("km_no_momento"),
+  observacoes: text("observacoes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const documentos = pgTable("documentos", {

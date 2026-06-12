@@ -43,6 +43,16 @@
 | 24 | Skeletons por bloco, nunca spinner de tela cheia | O layout aparece imediatamente; o conteúdo preenche |
 | 25 | Confirmação destrutiva sempre em Modal explicando consequência | `confirm()` nativo quebra a experiência e não educa sobre soft delete |
 
+## Sprint 4 — Guincho
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 26 | Guincho concluído gera receita `previsto` (a receber), não `pago` | Operador transiciona a operação mas não toca o caixa; o financeiro concilia o recebimento (separação de papéis, doc 05) |
+| 27 | Categoria "Guincho" e conta padrão são garantidas (criadas se faltarem) na geração | A regra "operação gera lançamento" não pode falhar por falta de cadastro prévio; produção nasce sem dados (bootstrap só cria o admin) |
+| 28 | Operação terminal (`concluido`/`cancelada`) sai do índice de busca | Coerente com ativo arquivado: a busca mostra o que está em jogo; o histórico permanece na timeline e no detalhe |
+| 29 | Um caminhão só serve a um guincho aberto por vez — guarda na criação, além do estado do ativo | Entre `solicitado` e `a_caminho` o ativo ainda está `disponivel`; sem a guarda, dois chamados pegariam o mesmo caminhão (integridade do doc 03 regra 1) |
+| 30 | Km percorrido informado na conclusão soma ao hodômetro do caminhão | O número existe uma vez e o ativo reflete a realidade sem digitação dupla |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica

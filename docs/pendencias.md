@@ -28,8 +28,29 @@
 5. Papéis automáticos de pessoa acionados pelas operações (`garantirPapel` já existe).
 6. Início dos testes automatizados pelos services de operação (transições de estado).
 
+## Próximos passos — Sprint 5 (Aluguel / Locação)
+
+1. Fluxo completo de **locação** sobre o núcleo: `orcamento → reservada → ativa
+   → finalizada` + `cancelada`, com extensão `operacoes_locacao` (diária,
+   caução, km saída/retorno, devolução prevista/real).
+2. Reaproveitar a **máquina de estados** e a **geração de financeiro** do
+   guincho (extrair os helpers `garantirCategoriaReceita`/`contaPadrao` para um
+   módulo comum quando o 2º consumidor entrar).
+3. **CNH vencida bloqueia ativação** com override do admin justificado (doc 03
+   regra 9) — primeiro uso do recurso `overrides`.
+4. Devolução gera/ajusta lançamentos (dias extras, desconto) e atualiza
+   `km_atual` do veículo.
+
 ## Sprints seguintes
 
-- **Sprint 3**: Financeiro (lançamentos, contas, fluxo de caixa, estorno) · Relatórios · Busca global completa.
-- **Sprint 4–6**: Guincho · Aluguel · Compra e venda (fluxos completos por módulo sobre o núcleo já existente).
+- **Sprint 6**: Compra e venda (compra concluída cria o ativo; venda leva a
+  status terminal `vendido`).
 - **Sprint 7**: IA e automações (copiloto consumindo os mesmos endpoints de relatórios).
+
+## Dívida conhecida da Sprint 4
+
+| Pendência | Contexto | Quando resolver |
+|-----------|----------|-----------------|
+| Helpers de financeiro (`garantirCategoriaReceita`, `contaPadrao`) vivem em `guincho.ts` | Só há um consumidor hoje | Extrair para módulo comum na Sprint 5, com o 2º consumidor |
+| Guinchos do seed indexados sem `veiculo_cliente_descricao` | Seed é anterior ao service; novos guinchos indexam certo | Próxima reescrita do seed ou `busca:reindexar` |
+| Notificação `guincho_solicitado` (tabela existe, gatilho não dispara) | Regra no doc 04 §4 | Junto com o módulo de notificações |
