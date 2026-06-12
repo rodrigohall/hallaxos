@@ -14,12 +14,40 @@ import { validarReferencia } from "./refTransversal";
 import { indexar, removerDoIndice } from "./busca";
 import { config } from "../config";
 
-const MIMES: Record<string, string> = {
-  "application/pdf": ".pdf",
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
+// Formatos aceitos. Mapeamos por tipo MIME canônico e também por extensão,
+// porque celulares e vários navegadores enviam o arquivo como
+// "application/octet-stream" (ou um MIME genérico) — nesses casos a extensão
+// do nome é a única pista confiável. Sem este fallback, fotos e PDFs legítimos
+// eram recusados com "Formato não aceito".
+const FORMATOS: Record<string, { mime: string; ext: string }> = {
+  "application/pdf": { mime: "application/pdf", ext: ".pdf" },
+  "image/jpeg": { mime: "image/jpeg", ext: ".jpg" },
+  "image/jpg": { mime: "image/jpeg", ext: ".jpg" },
+  "image/png": { mime: "image/png", ext: ".png" },
+  "image/webp": { mime: "image/webp", ext: ".webp" },
+  "image/gif": { mime: "image/gif", ext: ".gif" },
+  "image/heic": { mime: "image/heic", ext: ".heic" },
+  "image/heif": { mime: "image/heif", ext: ".heif" },
 };
+const FORMATOS_POR_EXT: Record<string, { mime: string; ext: string }> = {
+  ".pdf": { mime: "application/pdf", ext: ".pdf" },
+  ".jpg": { mime: "image/jpeg", ext: ".jpg" },
+  ".jpeg": { mime: "image/jpeg", ext: ".jpg" },
+  ".png": { mime: "image/png", ext: ".png" },
+  ".webp": { mime: "image/webp", ext: ".webp" },
+  ".gif": { mime: "image/gif", ext: ".gif" },
+  ".heic": { mime: "image/heic", ext: ".heic" },
+  ".heif": { mime: "image/heif", ext: ".heif" },
+};
+
+/** Resolve o formato pelo MIME e, se genérico/desconhecido, pela extensão do nome. */
+function resolverFormato(nome: string, mimeType: string): { mime: string; ext: string } {
+  const porMime = FORMATOS[mimeType.toLowerCase()];
+  if (porMime) return porMime;
+  const porExt = FORMATOS_POR_EXT[extname(nome).toLowerCase()];
+  if (porExt) return porExt;
+  throw regraNegocio("Formato não aceito. Envie PDF, JPG, PNG, WEBP, GIF ou HEIC.");
+}
 
 export interface NovoDocumento {
   entidadeTipo: ReferenciaEntidade;
@@ -31,24 +59,25 @@ export interface NovoDocumento {
   dataValidade?: string | null;
 }
 
-async function gravarArquivo(id: string, mimeType: string, conteudo: Buffer) {
-  const extensao = MIMES[mimeType];
-  if (!extensao) throw regraNegocio("Formato não aceito. Envie PDF, JPG, PNG ou WEBP.");
+// Grava o arquivo no disco e devolve o caminho + o MIME canônico (que pode
+// diferir do enviado quando o cliente mandou um MIME genérico).
+async function gravarArquivo(id: string, nome: string, mimeType: string, conteudo: Buffer) {
+  const formato = resolverFormato(nome, mimeType);
   if (conteudo.length === 0) throw regraNegocio("Arquivo vazio.");
   if (conteudo.length > config.uploadMaxBytes) {
-    throw regraNegocio("Arquivo maior que 15 MB.");
+    throw regraNegocio("Arquivo maior que 25 MB.");
   }
   const pasta = join(config.arquivosDir, id.slice(0, 2));
   await mkdir(pasta, { recursive: true });
-  const caminho = join(pasta, `${id}${extensao}`);
+  const caminho = join(pasta, `${id}${formato.ext}`);
   await writeFile(caminho, conteudo);
-  return caminho;
+  return { caminho, mime: formato.mime };
 }
 
 export async function criarDocumento(d: NovoDocumento, usuarioId: string) {
   await validarReferencia(db, d.entidadeTipo, d.entidadeId);
   const id = novoId();
-  const caminho = await gravarArquivo(id, d.mimeType, d.conteudo);
+  const { caminho, mime } = await gravarArquivo(id, d.nome, d.mimeType, d.conteudo);
 
   return db.transaction(async (tx) => {
     const [{ proximaOrdem }] = (
@@ -66,7 +95,7 @@ export async function criarDocumento(d: NovoDocumento, usuarioId: string) {
         tipo: d.tipo,
         nome: d.nome,
         arquivoPath: caminho,
-        mimeType: d.mimeType,
+        mimeType: mime,
         tamanhoBytes: d.conteudo.length,
         dataValidade: d.dataValidade ?? null,
         ordem: proximaOrdem,
@@ -134,7 +163,7 @@ export async function substituirArquivo(
     .where(and(eq(documentos.id, id), isNull(documentos.deletedAt)));
   if (!d) throw naoEncontrado("Documento");
 
-  const caminho = await gravarArquivo(novoId(), novo.mimeType, novo.conteudo);
+  const { caminho, mime } = await gravarArquivo(novoId(), novo.nome, novo.mimeType, novo.conteudo);
   const caminhoAntigo = d.arquivoPath;
 
   const atualizado = await db.transaction(async (tx) => {
@@ -143,7 +172,7 @@ export async function substituirArquivo(
       .set({
         nome: novo.nome,
         arquivoPath: caminho,
-        mimeType: novo.mimeType,
+        mimeType: mime,
         tamanhoBytes: novo.conteudo.length,
       })
       .where(eq(documentos.id, id))

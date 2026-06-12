@@ -11,8 +11,9 @@ import { PessoaDetalhe } from "./paginas/PessoaDetalhe";
 import { Ativos } from "./paginas/Ativos";
 import { AtivoForm } from "./paginas/AtivoForm";
 import { AtivoDetalhe } from "./paginas/AtivoDetalhe";
-import { Guinchos } from "./paginas/Guinchos";
-import { GuinchoDetalhe } from "./paginas/GuinchoDetalhe";
+import { Operacoes } from "./paginas/Operacoes";
+import { OperacaoNova } from "./paginas/OperacaoNova";
+import { OperacaoDetalhe } from "./paginas/OperacaoDetalhe";
 import { Financeiro } from "./paginas/Financeiro";
 import { Relatorios } from "./paginas/Relatorios";
 import { Usuarios } from "./paginas/Usuarios";
@@ -48,8 +49,12 @@ export function App() {
               <Route path="/ativos/novo" element={<AtivoForm />} />
               <Route path="/ativos/:id" element={<AtivoDetalhe />} />
               <Route path="/ativos/:id/editar" element={<AtivoForm />} />
-              <Route path="/guinchos" element={<Guinchos />} />
-              <Route path="/guinchos/:id" element={<GuinchoDetalhe />} />
+              <Route path="/operacoes" element={<Operacoes />} />
+              <Route path="/operacoes/nova" element={<OperacaoNova />} />
+              <Route path="/operacoes/:id" element={<OperacaoDetalhe />} />
+              {/* Guincho foi unificado em Operações (Sprint 5) — rotas antigas redirecionam */}
+              <Route path="/guinchos" element={<Navigate to="/operacoes?tipo=guincho" replace />} />
+              <Route path="/guinchos/:id" element={<Navigate to="/operacoes" replace />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/usuarios" element={<Usuarios />} />

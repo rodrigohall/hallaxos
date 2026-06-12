@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PencilLine, Archive, ArchiveRestore, History, TrendingUp, TrendingDown,
-  Scale, Percent, CarFront, Workflow, Wrench, CircleDollarSign,
+  Scale, Percent, CarFront, Workflow, Wrench, CircleDollarSign, Tag,
 } from "lucide-react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
@@ -32,7 +32,10 @@ interface AtivoDetalheDados {
     marca: string; modelo: string; anoFabricacao: number | null; anoModelo: number | null;
     cor: string | null; combustivel: string | null; kmAtual: number;
   } | null;
-  financeiro: { receita: number; custos: number; lucro: number; roi: number | null };
+  financeiro: {
+    receita: number; custos: number; lucro: number; roi: number | null;
+    precoVendaEstimado: number | null; lucroVendaEsperado: number | null;
+  };
   operacoes: Array<{ id: string; codigo: string; tipo: string; status: string; valor_total: string; data_inicio: string; cliente: string }>;
   manutencoes: Array<{ id: string; tipo: string; status: string; descricao: string; data_agendada: string | null; fornecedor: string | null; custo: string }>;
   lancamentos: Array<{ id: string; tipo: string; descricao: string; valor: string; status: string; data_vencimento: string; data_pagamento: string | null }>;
@@ -118,7 +121,7 @@ export function AtivoDetalhe() {
       </div>
 
       {/* Resultado financeiro do ativo — origem rastreável de cada número */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" />
         <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" />
         <Kpi rotulo="Lucro líquido" valor={dinheiro(fin.lucro)} icone={Scale} tom={fin.lucro >= 0 ? "ouro" : "erro"} />
@@ -128,6 +131,23 @@ export function AtivoDetalhe() {
           icone={Percent}
           tom={fin.roi !== null && fin.roi >= 0 ? "ouro" : "neutro"}
           detalhe={ativo.valorAquisicao ? `sobre ${dinheiro(ativo.valorAquisicao)}` : "sem valor de compra"}
+        />
+        <Kpi
+          rotulo="Expectativa de lucro de venda"
+          valor={fin.lucroVendaEsperado !== null ? dinheiro(fin.lucroVendaEsperado) : "—"}
+          icone={Tag}
+          tom={
+            fin.lucroVendaEsperado === null
+              ? "neutro"
+              : fin.lucroVendaEsperado >= 0
+                ? "ouro"
+                : "erro"
+          }
+          detalhe={
+            fin.precoVendaEstimado !== null
+              ? `venda a 95% FIPE = ${dinheiro(fin.precoVendaEstimado)}`
+              : "informe a FIPE"
+          }
         />
       </div>
 

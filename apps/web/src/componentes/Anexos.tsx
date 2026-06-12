@@ -189,8 +189,8 @@ export function Galeria(props: PropsEntidade) {
             <EstadoVazio icone={Images} titulo="Sem fotos" />
           )}
           {pode("documentos", "criar") && (
-            <AreaUpload aoEnviar={(a) => envio.mutate(a)} aceita="image/jpeg,image/png,image/webp">
-              {envio.isPending ? "Enviando…" : "Arraste fotos aqui ou clique para escolher (JPG, PNG, WEBP)"}
+            <AreaUpload aoEnviar={(a) => envio.mutate(a)} aceita="image/*,.heic,.heif">
+              {envio.isPending ? "Enviando…" : "Arraste fotos aqui ou clique para escolher (JPG, PNG, WEBP, HEIC)"}
             </AreaUpload>
           )}
         </div>
@@ -328,15 +328,15 @@ export function Documentos(props: PropsEntidade) {
           {pode("documentos", "criar") && (
             <AreaUpload
               aoEnviar={(a) => envio.mutate(a)}
-              aceita="application/pdf,image/jpeg,image/png,image/webp"
+              aceita="application/pdf,image/*,.pdf,.heic,.heif"
             >
-              {envio.isPending ? "Enviando…" : "Arraste documentos aqui ou clique (PDF, JPG, PNG, WEBP)"}
+              {envio.isPending ? "Enviando…" : "Arraste documentos aqui ou clique (PDF, JPG, PNG, WEBP, HEIC)"}
             </AreaUpload>
           )}
           <input
             ref={substituindo}
             type="file"
-            accept="application/pdf,image/jpeg,image/png,image/webp"
+            accept="application/pdf,image/*,.pdf,.heic,.heif"
             className="hidden"
             onChange={(e) => {
               if (e.target.files?.[0]) substituir(e.target.files[0]);

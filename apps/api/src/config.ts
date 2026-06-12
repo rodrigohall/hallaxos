@@ -5,5 +5,5 @@ export const config = {
   cookieSeguro: process.env.COOKIE_SECURE === "true",
   sessaoDuracaoHoras: 12,
   arquivosDir: process.env.ARQUIVOS_DIR ?? "dados/arquivos",
-  uploadMaxBytes: 15 * 1024 * 1024,
+  uploadMaxBytes: 25 * 1024 * 1024,
 };

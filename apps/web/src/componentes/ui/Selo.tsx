@@ -21,6 +21,9 @@ const TONS: Record<string, string> = {
   concluida: "text-ok bg-ok/10 ring-ok/20",
   finalizada: "text-suave bg-elevado ring-borda",
   cancelada: "text-erro bg-erro/10 ring-erro/20",
+  orcamento: "text-suave bg-elevado ring-borda",
+  negociacao: "text-suave bg-elevado ring-borda",
+  fechada: "text-info bg-info/10 ring-info/20",
   // genéricos
   ouro: "text-ouro bg-ouro/10 ring-ouro/25",
   ok: "text-ok bg-ok/10 ring-ok/20",

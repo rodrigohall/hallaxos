@@ -1,5 +1,50 @@
 # Changelog
 
+## Sprint 5 — Operações unificadas: Locação, Venda, Compra (e Guincho) (2026-06-12)
+
+O Guincho do Sprint 4 e os novos fluxos convergem para um **único módulo de
+Operações** (`/operacoes`), fiel ao modelo "Operação como entidade unificada"
+(doc 01 §2). Todos os tipos compartilham núcleo, timeline, financeiro e busca.
+As tabelas são as mesmas da migration 0001 — **nenhuma migração nova, dados de
+produção preservados**; os guinchos já cadastrados aparecem no novo módulo.
+
+### Unificação
+- Módulo **Operações** com criação por tipo (guincho · locação · venda ·
+  compra) e máquina de estados por tipo (doc 03 §1), com transição em
+  transação, efeito no ativo, geração/cancelamento de lançamentos e timeline.
+- O módulo Guincho standalone do Sprint 4 foi **aposentado**: `/guinchos`
+  redireciona para `/operacoes`; `services/guincho.ts` e as telas próprias
+  saíram. O comportamento do guincho foi preservado dentro do módulo unificado.
+- Menu passa a ter **Operações** no lugar de Guinchos.
+
+### Novos fluxos
+- **Locação**: orçamento → reservada (ativo→reservado) → ativa (→alugado,
+  `km_saida`, **CNH vencida bloqueia**, admin sobrepõe com justificativa) →
+  finalizada (→disponível, `km_retorno`, atualiza `km_atual`, receita = diária
+  × dias). Atraso de devolução é derivado.
+- **Venda**: negociação → fechada (receita) → concluída (ativo→vendido).
+- **Compra**: negociação → fechada (despesa) → concluída (ativo no patrimônio,
+  vinculado à origem).
+- Cancelar libera ativos bloqueados e cancela previstos; pagos não somem.
+- UI: lista com filtros (tipo, em aberto, atrasadas), criação em passos com
+  busca de cliente/ativo, e página de operação com transições nomeadas,
+  financeiro, ativos, documentos, comentários e história completa.
+
+### Ativos — correções e melhorias pedidas
+- **Anexos corrigidos**: upload de imagens e PDFs falhava quando o arquivo
+  chegava como `application/octet-stream` (comum em celular). O formato agora é
+  resolvido por MIME e, como fallback, pela extensão. Aceita GIF e HEIC/HEIF;
+  limite 25 MB.
+- **Quadro "Expectativa de lucro de venda"** no resultado do ativo:
+  `FIPE × 0,95 − (custo de compra + custos acumulados)`.
+
+### Verificado em execução
+Módulo unificado lendo guinchos já existentes (dados do Sprint 4 intactos);
+fluxos completos de locação, guincho, venda e compra (com parcelamento e
+cancelamento); transições movendo ativo e km; lançamentos gerados/cancelados;
+upload de PNG/PDF/HEIC como octet-stream → 201; expectativa de venda conferida.
+Typecheck e build limpos.
+
 ## Sprint 4 — Guincho (2026-06-12)
 
 Primeiro fluxo de operação completo sobre o núcleo: do acionamento à receita.

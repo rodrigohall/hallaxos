@@ -28,29 +28,23 @@
 5. Papéis automáticos de pessoa acionados pelas operações (`garantirPapel` já existe).
 6. Início dos testes automatizados pelos services de operação (transições de estado).
 
-## Próximos passos — Sprint 5 (Aluguel / Locação)
+## Sprint 5 — Operações unificadas (entregue)
 
-1. Fluxo completo de **locação** sobre o núcleo: `orcamento → reservada → ativa
-   → finalizada` + `cancelada`, com extensão `operacoes_locacao` (diária,
-   caução, km saída/retorno, devolução prevista/real).
-2. Reaproveitar a **máquina de estados** e a **geração de financeiro** do
-   guincho (extrair os helpers `garantirCategoriaReceita`/`contaPadrao` para um
-   módulo comum quando o 2º consumidor entrar).
-3. **CNH vencida bloqueia ativação** com override do admin justificado (doc 03
-   regra 9) — primeiro uso do recurso `overrides`.
-4. Devolução gera/ajusta lançamentos (dias extras, desconto) e atualiza
-   `km_atual` do veículo.
-
-## Sprints seguintes
-
-- **Sprint 6**: Compra e venda (compra concluída cria o ativo; venda leva a
-  status terminal `vendido`).
-- **Sprint 7**: IA e automações (copiloto consumindo os mesmos endpoints de relatórios).
-
-## Dívida conhecida da Sprint 4
+Guincho, Locação, Venda e Compra convergiram para um módulo único de Operações
+(`/operacoes`). O Guincho standalone do Sprint 4 foi aposentado (telas próprias
+removidas; `/guinchos` redireciona). Mesmas tabelas da 0001 — sem migração,
+dados de produção preservados. Pendências assumidas:
 
 | Pendência | Contexto | Quando resolver |
 |-----------|----------|-----------------|
-| Helpers de financeiro (`garantirCategoriaReceita`, `contaPadrao`) vivem em `guincho.ts` | Só há um consumidor hoje | Extrair para módulo comum na Sprint 5, com o 2º consumidor |
-| Guinchos do seed indexados sem `veiculo_cliente_descricao` | Seed é anterior ao service; novos guinchos indexam certo | Próxima reescrita do seed ou `busca:reindexar` |
+| Compra vincula ativo já cadastrado em vez de criá-lo na conclusão | Doc 03 §1 prevê a compra *criar* o ativo; mantivemos o cadastro de ativos como ponto único | Próxima sprint de Compra, se houver demanda |
+| Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação é fixado na finalização (diária × dias); ajustes finos pelo financeiro | Sprint de refino financeiro |
+| Índice parcial UNIQUE de `operacao_ativos` (objeto único não-terminal) | Validado no service; falta o índice no banco (doc 03 §3) | Migration futura |
+| Seed ainda cria guinchos no estilo antigo | Seed é anterior ao módulo; novos indexam certo | Reescrita do seed ou `busca:reindexar` |
 | Notificação `guincho_solicitado` (tabela existe, gatilho não dispara) | Regra no doc 04 §4 | Junto com o módulo de notificações |
+
+## Sprints seguintes
+
+- **Sprint 6**: refino de Operações (edição/recálculo, agenda derivada, índice
+  parcial) e Manutenções com UI própria.
+- **Sprint 7**: IA e automações (copiloto consumindo os mesmos endpoints de relatórios).

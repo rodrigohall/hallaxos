@@ -117,6 +117,16 @@ export async function obterAtivo(id: string) {
   const base = Number(linha.ativo.valorAquisicao ?? 0);
   const lucro = receita - custos;
 
+  // Expectativa de lucro de venda: se vendêssemos o ativo hoje a 95% da FIPE
+  // (preço de venda rápida), quanto sobraria depois do que já gastamos.
+  // lucro esperado = (FIPE × 0,95) − (custo de compra + custos extras já pagos).
+  const fipe = Number(linha.ativo.valorFipe ?? 0);
+  const precoVendaEstimado = fipe > 0 ? Number((fipe * 0.95).toFixed(2)) : null;
+  const lucroVendaEsperado =
+    precoVendaEstimado !== null
+      ? Number((precoVendaEstimado - (base + custos)).toFixed(2))
+      : null;
+
   const operacoes = (
     await db.execute(sql`
       SELECT o.id, o.codigo, o.tipo, o.status, o.valor_total, o.data_inicio, p.nome AS cliente
@@ -159,6 +169,8 @@ export async function obterAtivo(id: string) {
       custos,
       lucro,
       roi: base > 0 ? Number(((lucro / base) * 100).toFixed(1)) : null,
+      precoVendaEstimado,
+      lucroVendaEsperado,
     },
     operacoes,
     manutencoes,
