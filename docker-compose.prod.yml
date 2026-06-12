@@ -38,7 +38,8 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
-      DOMINIO: ${DOMINIO:-}
+      # Sem domínio (acesso por IP), cai em :80 — o Caddy não aceita endereço vazio.
+      DOMINIO: ${DOMINIO:-:80}
     ports:
       - "80:80"
       - "443:443"
