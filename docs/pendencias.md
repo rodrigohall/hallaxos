@@ -23,9 +23,9 @@
 ### Funcional
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| **Manutenções sem API/UI de criação** | Tabela e leitura no detalhe do ativo existem; não há como criar/transicionar pela interface | Sprint 6 |
-| **Agenda** (tela calendário) | Todas as fontes derivadas existem (devoluções, manutenções, vencimentos, CNH, documentos); falta a tela | Sprint 6 |
-| Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 6 |
+| ~~Manutenções sem API/UI~~ | ✅ Entregue no Sprint 6 (módulo completo com máquina de estados) | — |
+| ~~Agenda (tela calendário)~~ | ✅ Entregue no Sprint 6 (calendário mensal derivado + compromissos manuais) | — |
+| Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 7 |
 | Notificações: tabela existe, gatilhos não disparam, sem sino na UI | Regras no doc 04 §4 | Sprint 7 |
 | Tags e favoritos: tabelas sem API/UI | Schema desde a 0001 | Sprint 7 (com notificações) |
 | Compra vincula ativo existente em vez de criá-lo na conclusão | Decisão registrada no Sprint 5 | Se houver demanda |
@@ -43,24 +43,19 @@
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| Índice parcial UNIQUE de `operacao_ativos` (objeto único não-terminal) | Validado no service; falta no banco (doc 03 §3) | Sprint 6 (migration) |
+| ~~Helpers de financeiro em `guincho.ts`~~ | ✅ Extraídos para `origemFinanceira.ts` no Sprint 6 | — |
+| Índice parcial UNIQUE de `operacao_ativos` (objeto único não-terminal) | Validado no service; falta no banco (doc 03 §3) | Sprint 7 (migration) |
 | Job detector de referências órfãs (doc 04 §0) | Estrutura pronta; job agendado não roda | Sprint 7 |
-| Seed cria guinchos no estilo antigo | Novos indexam certo; `busca:reindexar` resolve | Sprint 6 |
+| Seed cria guinchos no estilo antigo | Novos indexam certo; `busca:reindexar` resolve | Sprint 7 |
 | Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
 
 ## Roadmap proposto
 
-### Sprint 6 — Operação do dia a dia (Manutenções + Agenda)
-O que falta para a equipe viver dentro do sistema:
-1. **Manutenções completas**: criar/agendar pela UI (do ativo e de tela própria),
-   máquina de estados `agendada → em_andamento → concluida` movendo o ativo
-   para `em_manutencao` e de volta, custo via lançamentos vinculados,
-   fornecedor ganha papel automático.
-2. **Agenda** (componente Calendário do doc 07 §6): visão semana/mês com
-   devoluções de locação, manutenções agendadas, lançamentos a vencer, CNH e
-   documentos vencendo + compromissos manuais (`eventos_agenda`).
-3. **Refinos de Operações**: edição com recálculo de lançamentos previstos,
-   índice parcial UNIQUE no banco, seed atualizado.
+### Sprint 6 — Operação do dia a dia (Manutenções + Agenda) ✅ ENTREGUE
+Módulo de Manutenções completo (máquina de estados, custo, hodômetro) e Agenda
+(calendário mensal derivado + compromissos manuais). Helpers financeiros
+extraídos para módulo comum. Falta apenas o refino de Operações (edição com
+recálculo, índice parcial) — movido para o Sprint 7.
 
 ### Sprint 7 — Confiança (segurança, testes, notificações)
 Antes de intensificar o uso real:

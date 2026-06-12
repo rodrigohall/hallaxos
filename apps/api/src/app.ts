@@ -9,6 +9,8 @@ import rotasUsuarios from "./routes/usuarios";
 import rotasSistema from "./routes/sistema";
 import rotasAtivos from "./routes/ativos";
 import rotasOperacoes from "./routes/operacoes";
+import rotasManutencoes from "./routes/manutencoes";
+import rotasAgenda from "./routes/agenda";
 import rotasDocumentos from "./routes/documentos";
 import rotasComentarios from "./routes/comentarios";
 import rotasFinanceiro from "./routes/financeiro";
@@ -50,6 +52,8 @@ export function criarApp() {
       await v1.register(rotasUsuarios);
       await v1.register(rotasAtivos);
       await v1.register(rotasOperacoes);
+      await v1.register(rotasManutencoes);
+      await v1.register(rotasAgenda);
       await v1.register(rotasDocumentos);
       await v1.register(rotasComentarios);
       await v1.register(rotasFinanceiro);

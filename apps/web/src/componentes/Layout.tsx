@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
-  LayoutDashboard, Users, CarFront, Workflow, CircleDollarSign, BarChart3, ShieldCheck,
-  LogOut, Menu, X, type LucideIcon,
+  LayoutDashboard, Users, CarFront, Workflow, Wrench, CalendarDays,
+  CircleDollarSign, BarChart3, ShieldCheck, LogOut, Menu, X, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
@@ -24,6 +24,12 @@ export function Layout() {
     { para: "/ativos", rotulo: "Ativos", icone: CarFront },
     ...(pode("operacoes", "ler")
       ? [{ para: "/operacoes", rotulo: "Operações", icone: Workflow }]
+      : []),
+    ...(pode("manutencoes", "ler")
+      ? [{ para: "/manutencoes", rotulo: "Manutenções", icone: Wrench }]
+      : []),
+    ...(pode("agenda", "ler")
+      ? [{ para: "/agenda", rotulo: "Agenda", icone: CalendarDays }]
       : []),
     { para: "/clientes", rotulo: "Clientes", icone: Users },
     ...(pode("lancamentos", "ler")

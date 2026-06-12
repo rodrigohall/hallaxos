@@ -196,6 +196,22 @@ export const manutencoes = pgTable("manutencoes", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
+export const eventosAgenda = pgTable("eventos_agenda", {
+  id: uuid("id").primaryKey(),
+  titulo: text("titulo").notNull(),
+  descricao: text("descricao"),
+  dataInicio: timestamp("data_inicio", { withTimezone: true }).notNull(),
+  dataFim: timestamp("data_fim", { withTimezone: true }),
+  diaInteiro: boolean("dia_inteiro").notNull().default(false),
+  responsavelId: uuid("responsavel_id").references(() => usuarios.id),
+  entidadeTipo: referenciaEntidadeEnum("entidade_tipo"),
+  entidadeId: uuid("entidade_id"),
+  concluido: boolean("concluido").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
 export const documentos = pgTable("documentos", {
   id: uuid("id").primaryKey(),
   entidadeTipo: referenciaEntidadeEnum("entidade_tipo").notNull(),

@@ -6,3 +6,5 @@ export * from "./schemas/pessoa";
 export * from "./schemas/ativo";
 export * from "./schemas/financeiro";
 export * from "./schemas/operacao";
+export * from "./schemas/manutencao";
+export * from "./schemas/agenda";

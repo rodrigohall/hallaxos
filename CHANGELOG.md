@@ -1,5 +1,41 @@
 # Changelog
 
+## Sprint 6 — Operação do dia a dia: Manutenções e Agenda (2026-06-12)
+
+A equipe passa a viver dentro do sistema: agendar manutenções e enxergar tudo
+o que vence/acontece num calendário único.
+
+### Manutenções (módulo completo)
+- API + UI sobre a tabela `manutencoes` (já existente desde a 0001).
+- **Máquina de estados** `agendada → em_andamento → concluida` (+ `cancelada`),
+  em transação e na timeline (doc 03 §1):
+  - **iniciar** coloca o ativo em `em_manutencao` (guarda: o ativo precisa estar
+    disponível/uso interno — bloqueia se alugado/reservado);
+  - **concluir** devolve o ativo a `disponível`, atualiza o `km_atual` do veículo
+    e gera o **custo** como despesa prevista vinculada (parcelável);
+  - **cancelar** libera o ativo se estava em manutenção.
+- Fornecedor ganha papel `fornecedor` automaticamente.
+- Telas: lista com filtro por estado, criação (busca de ativo/fornecedor) e
+  detalhe com transições, custos, timeline, documentos e comentários.
+
+### Agenda (calendário derivado)
+- Tela de **calendário mensal** que deriva tudo das origens, sem copiar nada:
+  devoluções de locação, manutenções agendadas, lançamentos a vencer, CNH e
+  documentos vencendo — mais **compromissos manuais** (`eventos_agenda`, única
+  fonte própria, doc 03 §2), que podem ser criados, concluídos e removidos.
+- Cada item leva à sua origem (operação, manutenção, financeiro, cliente).
+
+### Refino técnico
+- Helpers de geração de lançamentos (`contaPadrao`, `categoriaPadrao`,
+  `gerarLancamentosOrigem`) **extraídos para `origemFinanceira.ts`** e
+  compartilhados entre operações e manutenções — fecha a dívida do Sprint 4.
+
+### Verificado em execução
+Manutenção criada → iniciada (ativo→em manutenção) → concluída (ativo→
+disponível, km atualizado, custo R$ 850 em 2 parcelas); agenda do mês listando
+8 itens derivados de origens distintas; operações seguem gerando lançamentos
+após a extração dos helpers. Typecheck e build limpos.
+
 ## Sprint 5 — Operações unificadas: Locação, Venda, Compra (e Guincho) (2026-06-12)
 
 O Guincho do Sprint 4 e os novos fluxos convergem para um **único módulo de
