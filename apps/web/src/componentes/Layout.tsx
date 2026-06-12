@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, Users, CarFront, ShieldCheck, LogOut, Menu, X, type LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard, Users, CarFront, CircleDollarSign, BarChart3, ShieldCheck,
+  LogOut, Menu, X, type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
 import { LogoCompleta, Monograma } from "../marca/Logo";
@@ -20,6 +23,12 @@ export function Layout() {
     { para: "/", rotulo: "Dashboard", icone: LayoutDashboard, fim: true },
     { para: "/ativos", rotulo: "Ativos", icone: CarFront },
     { para: "/clientes", rotulo: "Clientes", icone: Users },
+    ...(pode("lancamentos", "ler")
+      ? [{ para: "/financeiro", rotulo: "Financeiro", icone: CircleDollarSign }]
+      : []),
+    ...(pode("relatorios_financeiros", "ler")
+      ? [{ para: "/relatorios", rotulo: "Relatórios", icone: BarChart3 }]
+      : []),
     ...(pode("usuarios", "ler")
       ? [{ para: "/usuarios", rotulo: "Usuários", icone: ShieldCheck }]
       : []),

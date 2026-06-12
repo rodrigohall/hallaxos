@@ -9,7 +9,6 @@
 |-----------|----------|-----------------|
 | Job detector de referências órfãs (doc 04 §0) | Estrutura pronta; job agendado ainda não roda | Sprint 2 (junto com documentos) |
 | Notificações: tabela existe, gatilhos não disparam | Regras definidas no doc 04 §4 | Sprint 2/3, conforme módulos que as geram |
-| Reindexação completa da busca (`busca:reindexar`) | Índice é reconstruível por design; falta o comando | Sprint 3 (busca global completa) |
 | Bloqueio progressivo de login após falhas (doc 05 §1) | Falhas já vão para a timeline | Sprint 3 |
 | Rate limiting e CORS de produção | Deploy existe; rate limit ainda não | Próxima sprint que tocar a API |
 | Tela de troca de senha do próprio usuário | Admin define senhas; usuário ainda não troca a sua | Sprint 3 |

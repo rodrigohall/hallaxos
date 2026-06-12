@@ -1,5 +1,19 @@
 # Changelog
 
+## Sprint 3 — Financeiro e Relatórios (2026-06-12)
+
+- Lançamentos: listagem com filtros, criação avulsa com parcelamento (até 60x,
+  vencimentos mensais, centavos ajustados na 1ª), edição restrita quando há
+  origem, pagar, cancelar (só previstos) e estorno por contrapartida.
+- Contas com saldo derivado e categorias financeiras (CRUD).
+- Fluxo de caixa por período; relatórios: resultado/ROI por ativo e DRE
+  mensal + por categoria.
+- Telas Financeiro e Relatórios no design system; reindexação completa da
+  busca (`busca:reindexar`); workflow de deploy com porta configurável
+  (VPS_PORT) e diagnósticos claros.
+- Verificado: parcelas, saldo derivado mudando ao pagar, estorno, guarda de
+  cancelamento de pagos, relatório com ROI, bloqueio do operador, reindex.
+
 ## Deploy em produção (2026-06-11)
 
 - Dockerfiles de API (migrations automáticas no arranque) e web (build

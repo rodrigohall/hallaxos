@@ -6,7 +6,8 @@ import {
 } from "drizzle-orm/pg-core";
 import {
   PAPEIS_USUARIO, TIPOS_PESSOA, PAPEIS_PESSOA, REFERENCIA_ENTIDADES, EVENTOS_TIMELINE,
-  STATUS_ATIVO, COMBUSTIVEIS, TIPOS_DOCUMENTO,
+  STATUS_ATIVO, COMBUSTIVEIS, TIPOS_DOCUMENTO, TIPOS_LANCAMENTO, STATUS_LANCAMENTO,
+  FORMAS_PAGAMENTO,
 } from "@hallaxos/shared";
 
 export const papelUsuarioEnum = pgEnum("papel_usuario", PAPEIS_USUARIO);
@@ -137,6 +138,48 @@ export const comentarios = pgTable("comentarios", {
   usuarioId: uuid("usuario_id").notNull().references(() => usuarios.id),
   texto: text("texto").notNull(),
   editadoEm: timestamp("editado_em", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const tipoLancamentoEnum = pgEnum("tipo_lancamento", TIPOS_LANCAMENTO);
+export const statusLancamentoEnum = pgEnum("status_lancamento", STATUS_LANCAMENTO);
+export const formaPagamentoEnum = pgEnum("forma_pagamento", FORMAS_PAGAMENTO);
+
+export const categoriasFinanceiras = pgTable("categorias_financeiras", {
+  id: uuid("id").primaryKey(),
+  nome: text("nome").notNull(),
+  tipo: tipoLancamentoEnum("tipo").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const contas = pgTable("contas", {
+  id: uuid("id").primaryKey(),
+  nome: text("nome").notNull().unique(),
+  saldoInicial: numeric("saldo_inicial", { precision: 12, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const lancamentos = pgTable("lancamentos", {
+  id: uuid("id").primaryKey(),
+  tipo: tipoLancamentoEnum("tipo").notNull(),
+  descricao: text("descricao").notNull(),
+  categoriaId: uuid("categoria_id").notNull().references(() => categoriasFinanceiras.id),
+  contaId: uuid("conta_id").notNull().references(() => contas.id),
+  pessoaId: uuid("pessoa_id").references(() => pessoas.id),
+  operacaoId: uuid("operacao_id"),
+  manutencaoId: uuid("manutencao_id"),
+  valor: numeric("valor", { precision: 12, scale: 2 }).notNull(),
+  dataVencimento: date("data_vencimento").notNull(),
+  dataPagamento: date("data_pagamento"),
+  status: statusLancamentoEnum("status").notNull().default("previsto"),
+  formaPagamento: formaPagamentoEnum("forma_pagamento"),
+  parcelaNumero: integer("parcela_numero"),
+  parcelaTotal: integer("parcela_total"),
+  grupoParcelasId: uuid("grupo_parcelas_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

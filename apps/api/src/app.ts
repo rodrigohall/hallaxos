@@ -10,6 +10,7 @@ import rotasSistema from "./routes/sistema";
 import rotasAtivos from "./routes/ativos";
 import rotasDocumentos from "./routes/documentos";
 import rotasComentarios from "./routes/comentarios";
+import rotasFinanceiro from "./routes/financeiro";
 import { AppError } from "./lib/erros";
 import { config } from "./config";
 
@@ -49,6 +50,7 @@ export function criarApp() {
       await v1.register(rotasAtivos);
       await v1.register(rotasDocumentos);
       await v1.register(rotasComentarios);
+      await v1.register(rotasFinanceiro);
       await v1.register(rotasSistema);
     },
     { prefix: "/api/v1" }

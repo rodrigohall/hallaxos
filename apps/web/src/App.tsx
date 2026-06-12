@@ -11,6 +11,8 @@ import { PessoaDetalhe } from "./paginas/PessoaDetalhe";
 import { Ativos } from "./paginas/Ativos";
 import { AtivoForm } from "./paginas/AtivoForm";
 import { AtivoDetalhe } from "./paginas/AtivoDetalhe";
+import { Financeiro } from "./paginas/Financeiro";
+import { Relatorios } from "./paginas/Relatorios";
 import { Usuarios } from "./paginas/Usuarios";
 
 const filaQueries = new QueryClient({
@@ -44,6 +46,8 @@ export function App() {
               <Route path="/ativos/novo" element={<AtivoForm />} />
               <Route path="/ativos/:id" element={<AtivoDetalhe />} />
               <Route path="/ativos/:id/editar" element={<AtivoForm />} />
+              <Route path="/financeiro" element={<Financeiro />} />
+              <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
