@@ -52,23 +52,35 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           PORTA="${{ vars.VPS_PORT || '22' }}"
           echo "porta=$PORTA" >> "$GITHUB_OUTPUT"
-          for i in 1 2 3; do
-            ssh-keyscan -p "$PORTA" -T 10 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null && exit 0
-            sleep 3
-          done
-          echo "::error::Não consegui alcançar o VPS na porta $PORTA. Verifique: (1) o IP em VPS_HOST, (2) firewall liberando a porta (ufw allow $PORTA), (3) se o SSH usa outra porta, crie a variável VPS_PORT em Settings → Variables."
-          exit 1
+          # ssh-keyscan é só best-effort: se a host key vier, ótimo; se não,
+          # a conexão real fixa com accept-new. NÃO abortamos aqui — o keyscan
+          # é flaky e não deve derrubar o deploy (regressão do Sprint 3).
+          ssh-keyscan -p "$PORTA" -T 10 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
         id: ssh
 
       - name: Enviar código para o VPS
         run: |
-          rsync -az --delete \
+          PORTA="${{ steps.ssh.outputs.porta }}"
+          SSH="ssh -i ~/.ssh/id_deploy -p $PORTA -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15"
+          # Até 4 tentativas com backoff — absorve a instabilidade intermitente da rede do VPS
+          n=0
+          until rsync -az --delete \
             --exclude '.git' --exclude '.env' --exclude 'node_modules' \
             --exclude 'dados' --exclude 'dist' \
-            -e "ssh -i ~/.ssh/id_deploy -p ${{ steps.ssh.outputs.porta }}" \
-            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/hallaxos/"
+            -e "$SSH" \
+            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/hallaxos/"; do
+            n=$((n+1))
+            if [ $n -ge 4 ]; then
+              echo "::error::Não consegui enviar ao VPS após 4 tentativas. Verifique se o SSH (porta $PORTA) está acessível: sshd ativo, firewall liberando a porta, sem fail2ban bloqueando os runners."
+              exit 1
+            fi
+            echo "Tentativa $n falhou; aguardando $((n*10))s…"; sleep $((n*10))
+          done
 
       - name: Executar instalador
         run: |
-          ssh -i ~/.ssh/id_deploy -p ${{ steps.ssh.outputs.porta }} "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+          PORTA="${{ steps.ssh.outputs.porta }}"
+          ssh -i ~/.ssh/id_deploy -p "$PORTA" \
+            -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "cd ~/hallaxos && DOMINIO='${{ vars.DOMINIO }}' ./deploy/instalar.sh"
