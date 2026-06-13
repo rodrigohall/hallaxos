@@ -29,7 +29,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Typecheck e build
         run: |
-          pnpm --filter @hallaxos/shared build
           pnpm --filter @hallaxos/api typecheck
           pnpm --filter @hallaxos/web build
       - name: Testes
