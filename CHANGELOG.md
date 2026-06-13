@@ -1,5 +1,29 @@
 # Changelog
 
+## Sprint 8 — Notificações, tags, favoritos e rate limiting (2026-06-13)
+
+Os serviços transversais que faltavam ganham vida, e a API fica pronta para uso real.
+
+### Notificações (sino na UI)
+- Tabelas `notificacoes`, `tags`, `tags_vinculos` e `favoritos` no schema Drizzle.
+- Service completo: criar, listar, contar não lidas, marcar lida / todas lidas.
+- Job de prazos (`verificarPrazos`): devolução atrasada, lançamento vencido,
+  CNH/documento vencendo em 30 dias e manutenção agendada para amanhã —
+  idempotente por dedupção diária. Roda no arranque e a cada hora.
+- Sino (Bell/BellDot) no header com badge de não lidas, painel dropdown com
+  ícones por tipo, navegação para a entidade de origem e polling de 30 s.
+
+### Tags e favoritos
+- Services de tags (criar, listar, soft delete, vincular/desvincular) e
+  favoritos (adicionar, remover, listar, verificar), com rotas dedicadas.
+- Frontend `TagsFavoritos`: estrela de favorito com update otimístico + chips
+  de tags coloridas + popover de busca/criação, na tela de detalhe do ativo.
+
+### Rate limiting e auditoria
+- `@fastify/rate-limit`: 200 req/min por IP em toda a API.
+- `exigirPermissao` passa a emitir `req.log.warn` com usuário, papel, recurso,
+  ação e URL em todo 403 — auditoria de negações de acesso.
+
 ## Sprint 7 — Confiança: backup, testes e endurecimento (2026-06-13)
 
 Antes de intensificar o uso real, blindar o que já está em produção.

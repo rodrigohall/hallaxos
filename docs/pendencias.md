@@ -1,7 +1,7 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: fim do Sprint 5 (2026-06-12),
+> assumida — não esquecimento. Última revisão: fim do Sprint 8 (2026-06-13),
 > conferida contra o código (não contra a memória).
 
 ## Estado atual — o que está em produção
@@ -17,6 +17,9 @@
 | Relatórios (resultado/ROI por ativo, DRE mensal e por categoria) | ✅ Sprint 3 |
 | Operações unificadas: Guincho · Locação · Venda · Compra (máquinas de estado, financeiro automático, CNH bloqueia ativação) | ✅ Sprints 4 e 5 |
 | Anexos transversais (upload múltiplo, octet-stream/HEIC, foto principal, lightbox) | ✅ Sprints 2 e 5 |
+| Manutenções (máquina de estados, custo, hodômetro) e Agenda (calendário derivado + compromissos) | ✅ Sprint 6 |
+| Confiança: backup automático do Postgres, suíte de testes no CI, bloqueio progressivo de login, troca de senha própria | ✅ Sprint 7 |
+| Notificações (sino + job de prazos), tags, favoritos, rate limiting (200 req/min por IP), auditoria de negações | ✅ Sprint 8 |
 
 ## Pendências em aberto (consolidado, conferido no código)
 
@@ -26,8 +29,8 @@
 | ~~Manutenções sem API/UI~~ | ✅ Entregue no Sprint 6 (módulo completo com máquina de estados) | — |
 | ~~Agenda (tela calendário)~~ | ✅ Entregue no Sprint 6 (calendário mensal derivado + compromissos manuais) | — |
 | Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 7 |
-| Notificações: tabela existe, gatilhos não disparam, sem sino na UI | Regras no doc 04 §4 | Sprint 7 |
-| Tags e favoritos: tabelas sem API/UI | Schema desde a 0001 | Sprint 7 (com notificações) |
+| ~~Notificações: tabela existe, gatilhos não disparam, sem sino na UI~~ | ✅ Sprint 8 — service + job de prazos (devolução, vencimentos, CNH/documento, manutenção) + sino na UI | — |
+| ~~Tags e favoritos: tabelas sem API/UI~~ | ✅ Sprint 8 — services, rotas e UI (estrela + chips de tags) na tela de ativo | — |
 | Compra vincula ativo existente em vez de criá-lo na conclusão | Decisão registrada no Sprint 5 | Se houver demanda |
 
 ### Segurança e confiabilidade
@@ -37,8 +40,9 @@
 | ~~Backup automático do Postgres~~ | ✅ Sprint 7 — sidecar `backup` com dump diário e retenção | — |
 | ~~Bloqueio progressivo de login~~ | ✅ Sprint 7 — 5 falhas/15 min bloqueiam (429) | — |
 | ~~Troca de senha do próprio usuário~~ | ✅ Sprint 7 — endpoint + modal; encerra outras sessões | — |
-| Rate limiting global e CORS de produção | Login já tem bloqueio; falta limite geral de requisições | Sprint 8 |
-| Auditoria de negações de acesso (doc 05 §4.3) | 403 não gera evento | Sprint 8 |
+| ~~Rate limiting global~~ | ✅ Sprint 8 — `@fastify/rate-limit`, 200 req/min por IP em toda a API | — |
+| ~~Auditoria de negações de acesso (doc 05 §4.3)~~ | ✅ Sprint 8 — todo 403 emite `req.log.warn` com usuário/papel/recurso/ação/URL | — |
+| CORS de produção restritivo | Falta restringir origens em produção | Próxima |
 
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |
@@ -62,17 +66,14 @@ Backup automático do Postgres, suíte de testes com porta de qualidade no CI,
 bloqueio progressivo de login e troca de senha própria. **Notificações** foram
 movidas para o Sprint 8 (com tags/favoritos e rate limiting global).
 
-### Sprint 8 — Notificações, tags e rate limiting
-Antes de intensificar o uso real:
-1. **Testes automatizados** dos services críticos (transições de operação,
-   geração/estorno financeiro, permissões) rodando no CI antes do deploy.
-2. **Backup automático** do Postgres (dump diário + retenção no VPS).
-3. **Endurecimento**: rate limiting, bloqueio progressivo de login, troca de
-   senha própria, auditoria de negações.
-4. **Notificações** que disparam de verdade (devolução atrasada, vencimentos,
-   CNH/documento vencendo, guincho solicitado) + sino na UI; tags/favoritos.
+### Sprint 8 — Notificações, tags e rate limiting ✅ ENTREGUE
+**Notificações** que disparam de verdade (devolução atrasada, vencimentos,
+CNH/documento vencendo, manutenção agendada) + sino na UI; **tags** e
+**favoritos** com API e UI; **rate limiting** global (200 req/min por IP) e
+**auditoria de negações** de acesso em todo 403. (Testes, backup e
+endurecimento de login foram antecipados no Sprint 7.)
 
-### Sprint 8 — IA e automações
+### Sprint 9 — IA e automações
 O destino do modelo (doc 01 §6): copiloto consumindo busca global, relatórios
 e timeline — perguntas como "quanto lucro o Corolla deu em 2026?" respondidas
 sobre os mesmos endpoints que as telas já usam.

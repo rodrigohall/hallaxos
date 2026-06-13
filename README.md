@@ -84,13 +84,18 @@ Documentos vivos, sincronizados a cada sprint: [`CHANGELOG.md`](CHANGELOG.md) ·
 
 ## Status do projeto
 
-**Sprint 5 concluída — em produção.** Sistema operacional de ponta a ponta:
+**Sprint 8 concluída — em produção.** Sistema operacional de ponta a ponta:
 login e permissões por papel, clientes, **ativos** (fotos, documentos, FIPE,
 resultado financeiro e expectativa de lucro de venda), **operações unificadas**
 (guincho · locação · venda · compra, com máquinas de estado e financeiro
 automático), **financeiro** (parcelas, estorno, contas, fluxo de caixa),
-**relatórios** (ROI por ativo, DRE), busca global, timeline imutável e
-dashboard. Deploy contínuo no VPS a cada push.
+**relatórios** (ROI por ativo, DRE), **manutenções** e **agenda** derivada,
+busca global, timeline imutável e dashboard. Confiabilidade: **backup
+automático** do Postgres, **suíte de testes** como porta de qualidade no CI,
+**bloqueio progressivo de login** e troca de senha própria. Serviços
+transversais: **notificações** (sino na UI + job de prazos), **tags**,
+**favoritos**, **rate limiting** (200 req/min por IP) e auditoria de negações.
+Deploy contínuo no VPS a cada push.
 
-Próxima: **Sprint 6** (Manutenções com UI própria · Agenda derivada · refinos
-de operações). Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
+Próxima: **Sprint 9** (copiloto de IA sobre busca global, relatórios e
+timeline). Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
