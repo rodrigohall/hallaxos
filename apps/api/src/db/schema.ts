@@ -8,7 +8,7 @@ import {
   PAPEIS_USUARIO, TIPOS_PESSOA, PAPEIS_PESSOA, REFERENCIA_ENTIDADES, EVENTOS_TIMELINE,
   STATUS_ATIVO, COMBUSTIVEIS, TIPOS_DOCUMENTO, TIPOS_LANCAMENTO, STATUS_LANCAMENTO,
   FORMAS_PAGAMENTO, TIPOS_OPERACAO, STATUS_OPERACAO, PAPEIS_OPERACAO_ATIVO,
-  STATUS_DOCUMENTACAO, TIPOS_MANUTENCAO, STATUS_MANUTENCAO,
+  STATUS_DOCUMENTACAO, TIPOS_MANUTENCAO, STATUS_MANUTENCAO, TIPOS_NOTIFICACAO,
 } from "@hallaxos/shared";
 
 export const papelUsuarioEnum = pgEnum("papel_usuario", PAPEIS_USUARIO);
@@ -294,3 +294,40 @@ export const timeline = pgTable("timeline", {
   usuarioId: uuid("usuario_id").references(() => usuarios.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const tipoNotificacaoEnum = pgEnum("tipo_notificacao", TIPOS_NOTIFICACAO);
+
+export const notificacoes = pgTable("notificacoes", {
+  id: uuid("id").primaryKey(),
+  usuarioId: uuid("usuario_id").notNull().references(() => usuarios.id),
+  tipo: tipoNotificacaoEnum("tipo").notNull(),
+  titulo: text("titulo").notNull(),
+  entidadeTipo: referenciaEntidadeEnum("entidade_tipo").notNull(),
+  entidadeId: uuid("entidade_id").notNull(),
+  lidaEm: timestamp("lida_em", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const tags = pgTable("tags", {
+  id: uuid("id").primaryKey(),
+  nome: text("nome").notNull(),
+  cor: text("cor").notNull().default("#6366f1"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const tagsVinculos = pgTable("tags_vinculos", {
+  tagId: uuid("tag_id").notNull().references(() => tags.id),
+  entidadeTipo: referenciaEntidadeEnum("entidade_tipo").notNull(),
+  entidadeId: uuid("entidade_id").notNull(),
+  usuarioId: uuid("usuario_id").notNull().references(() => usuarios.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.tagId, t.entidadeTipo, t.entidadeId] })]);
+
+export const favoritos = pgTable("favoritos", {
+  usuarioId: uuid("usuario_id").notNull().references(() => usuarios.id),
+  entidadeTipo: referenciaEntidadeEnum("entidade_tipo").notNull(),
+  entidadeId: uuid("entidade_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.usuarioId, t.entidadeTipo, t.entidadeId] })]);

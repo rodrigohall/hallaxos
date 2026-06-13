@@ -14,6 +14,7 @@ import {
 } from "../componentes/ui";
 import { Galeria, Documentos } from "../componentes/Anexos";
 import { Comentarios } from "../componentes/Comentarios";
+import { TagsFavoritos } from "../componentes/TagsFavoritos";
 
 interface AtivoDetalheDados {
   id: string;
@@ -119,6 +120,8 @@ export function AtivoDetalhe() {
             ))}
         </div>
       </div>
+
+      <TagsFavoritos entidadeTipo="ativo" entidadeId={ativo.id} />
 
       {/* Resultado financeiro do ativo — origem rastreável de cada número */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

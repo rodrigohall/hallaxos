@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
+import { Notificacoes } from "./Notificacoes";
 import { LogoCompleta, Monograma } from "../marca/Logo";
 import { ModalTrocarSenha } from "./TrocarSenha";
 
@@ -110,6 +111,7 @@ export function Layout() {
           <div className="flex-1">
             <BuscaGlobal />
           </div>
+          <Notificacoes />
         </header>
 
         {/* Menu mobile */}

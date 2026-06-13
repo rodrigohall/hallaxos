@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
+import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import authPlugin from "./plugins/auth";
 import rotasAuth from "./routes/auth";
@@ -14,6 +15,9 @@ import rotasAgenda from "./routes/agenda";
 import rotasDocumentos from "./routes/documentos";
 import rotasComentarios from "./routes/comentarios";
 import rotasFinanceiro from "./routes/financeiro";
+import rotasNotificacoes from "./routes/notificacoes";
+import rotasTags from "./routes/tags";
+import rotasFavoritos from "./routes/favoritos";
 import { AppError } from "./lib/erros";
 import { config } from "./config";
 
@@ -22,6 +26,8 @@ export function criarApp() {
 
   app.register(cookie);
   app.register(multipart, { limits: { fileSize: config.uploadMaxBytes, files: 20 } });
+  // Rate limiting global: máximo 200 req/min por IP. Login tem seu próprio limite no Sprint 7.
+  app.register(rateLimit, { max: 200, timeWindow: "1 minute", keyGenerator: (req) => req.ip });
   app.register(authPlugin);
 
   app.setErrorHandler((err, _req, reply) => {
@@ -57,6 +63,9 @@ export function criarApp() {
       await v1.register(rotasDocumentos);
       await v1.register(rotasComentarios);
       await v1.register(rotasFinanceiro);
+      await v1.register(rotasNotificacoes);
+      await v1.register(rotasTags);
+      await v1.register(rotasFavoritos);
       await v1.register(rotasSistema);
     },
     { prefix: "/api/v1" }

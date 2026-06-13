@@ -3,6 +3,7 @@ import { criarApp } from "./app";
 import { config } from "./config";
 import { limparSessoesExpiradas } from "./services/auth";
 import { garantirAdminInicial } from "./db/bootstrap";
+import { verificarPrazos } from "./services/notificacoes";
 
 const app = criarApp();
 
@@ -26,6 +27,9 @@ garantirAdminInicial()
   .then(() => app.listen({ port: config.porta, host: "0.0.0.0" }))
   .then(() => {
     setInterval(() => limparSessoesExpiradas().catch(() => {}), 3600_000);
+    // Verifica prazos uma vez por hora: devoluções atrasadas, CNH/doc vencendo, etc.
+    setInterval(() => verificarPrazos().catch(() => {}), 3600_000);
+    verificarPrazos().catch(() => {});
   })
   .catch((e) => {
     app.log.error(e);

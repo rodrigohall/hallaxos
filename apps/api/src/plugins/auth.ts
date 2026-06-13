@@ -43,6 +43,12 @@ export function exigirLogin(req: FastifyRequest): UsuarioAutenticado {
 export function exigirPermissao(recurso: Recurso, acao: Acao) {
   return async (req: FastifyRequest, _reply: FastifyReply) => {
     const usuario = exigirLogin(req);
-    if (!pode(usuario.papel, recurso, acao)) throw semPermissao();
+    if (!pode(usuario.papel, recurso, acao)) {
+      req.log.warn(
+        { usuarioId: usuario.id, papel: usuario.papel, recurso, acao, url: req.url },
+        "acesso_negado"
+      );
+      throw semPermissao();
+    }
   };
 }
