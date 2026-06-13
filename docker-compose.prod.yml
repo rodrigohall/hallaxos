@@ -26,6 +26,9 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_SENHA: ${ADMIN_SENHA:-}
+      # Copiloto de IA (Sprint 9): vazio = desligado. Defina IA_API_KEY no .env para ativar.
+      IA_API_KEY: ${IA_API_KEY:-}
+      IA_MODELO: ${IA_MODELO:-claude-opus-4-8}
     volumes:
       - arquivos:/app/apps/api/dados
     depends_on:

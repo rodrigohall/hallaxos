@@ -80,13 +80,13 @@ e timeline — perguntas como "quanto lucro o Corolla deu em 2026?" respondidas
 sobre os mesmos endpoints que as telas já usam.
 
 Plano:
-1. **Estabilizar o deploy** (pré-requisito): resolver o timeout SSH intermitente
-   do VPS para voltar a ter atualização automática confiável.
-2. **Camada de copiloto (backend)**: endpoint `/copiloto/perguntar` que orquestra
-   uma ferramenta de busca global + leituras de relatórios/timeline já existentes
-   (sem dados próprios — reusa o núcleo, conforme a regra máxima). Modelo Claude
-   (provedor a definir/chave a configurar como secret, nunca no repositório).
-3. **UI**: campo de pergunta no ⌘K / painel lateral, respondendo com citações
-   das entidades de origem (link para a tela real).
-4. **Permissões**: o copiloto respeita a matriz do doc 05 — só enxerga o que o
-   usuário logado já poderia ver.
+1. ~~**Camada de copiloto (backend)**~~ ✅ scaffold entregue — `POST /copiloto/perguntar`
+   orquestra o Claude com a busca global como ferramenta (sem dados próprios; reusa
+   o núcleo). **Desligado** até `IA_API_KEY` ser configurada (responde 503; sem custo).
+   Permissões respeitadas: a busca já filtra pelo papel do usuário (doc 05).
+2. **UI**: campo de pergunta no ⌘K / painel lateral, respondendo com citações
+   das entidades de origem (link para a tela real). — próximo
+3. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
+   (fail2ban/firewall) para voltar a ter atualização automática confiável.
+4. **Ligar a IA**: gerar a chave da Anthropic e defini-la como secret `IA_API_KEY`
+   no servidor; ampliar ferramentas (relatórios, timeline) conforme a demanda.

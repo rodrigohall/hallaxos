@@ -9,6 +9,8 @@ import { criarApp } from "../app";
 // boot sem abrir porta nem tocar no banco.
 test("app inicializa e registra todos os plugins (sem mismatch de versão)", async () => {
   const app = criarApp();
-  await assert.doesNotReject(app.ready());
+  await assert.doesNotReject(async () => {
+    await app.ready();
+  });
   await app.close();
 });

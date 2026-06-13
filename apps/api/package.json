@@ -13,6 +13,7 @@
     "busca:reindexar": "tsx src/db/reindexar.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
     "@fastify/cookie": "^11.0.1",
     "@fastify/multipart": "^10.0.0",
     "@fastify/rate-limit": "^10.1.1",

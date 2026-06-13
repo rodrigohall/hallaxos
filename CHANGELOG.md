@@ -1,5 +1,22 @@
 # Changelog
 
+## Sprint 9 — Copiloto de IA (em andamento) (2026-06-13)
+
+Início do copiloto de IA (doc 01 §6) — **scaffold desligado**, sem custo até
+configurar a chave.
+
+- **Backend** `POST /copiloto/perguntar`: orquestra o modelo Claude com a
+  **busca global** existente como ferramenta (o copiloto não tem dados próprios
+  — reusa o núcleo, conforme a regra máxima). A busca já filtra pelo papel do
+  usuário, então o copiloto só enxerga o que ele poderia ver (doc 05).
+- **Desligado por padrão**: sem `IA_API_KEY`, responde `503 IA_NAO_CONFIGURADA`
+  e nenhuma chamada paga é feita. Ativar = definir o secret `IA_API_KEY` no
+  servidor (exposto em `.env.example` e no compose; nunca versionado).
+- SDK oficial da Anthropic carregado sob demanda (import dinâmico) — não pesa
+  no arranque enquanto a IA está desligada.
+- Próximos passos: UI (campo de pergunta no ⌘K / painel) e estabilização do
+  deploy.
+
 ## Correções pós-Sprint 8 (2026-06-13)
 
 Hotfixes após o Sprint 8 entrar em produção — login estava inacessível.

@@ -18,6 +18,7 @@ import rotasFinanceiro from "./routes/financeiro";
 import rotasNotificacoes from "./routes/notificacoes";
 import rotasTags from "./routes/tags";
 import rotasFavoritos from "./routes/favoritos";
+import rotasCopiloto from "./routes/copiloto";
 import { AppError } from "./lib/erros";
 import { config } from "./config";
 
@@ -83,6 +84,7 @@ export function criarApp() {
       await v1.register(rotasNotificacoes);
       await v1.register(rotasTags);
       await v1.register(rotasFavoritos);
+      await v1.register(rotasCopiloto);
       await v1.register(rotasSistema);
     },
     { prefix: "/api/v1" }
