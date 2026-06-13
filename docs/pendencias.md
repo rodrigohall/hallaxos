@@ -43,6 +43,7 @@
 | ~~Rate limiting global~~ | ✅ Sprint 8 — `@fastify/rate-limit`, 200 req/min por IP em toda a API | — |
 | ~~Auditoria de negações de acesso (doc 05 §4.3)~~ | ✅ Sprint 8 — todo 403 emite `req.log.warn` com usuário/papel/recurso/ação/URL | — |
 | CORS de produção restritivo | Falta restringir origens em produção | Próxima |
+| Deploy intermitente: SSH do VPS dá timeout na :22 às vezes | Funciona ora sim ora não; suspeita de fail2ban banindo IPs dos runners ou firewall do Hostinger. `sshd` já está com `enable` (sobe no boot) | Sprint 9 — investigar e estabilizar |
 
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |
@@ -73,7 +74,19 @@ CNH/documento vencendo, manutenção agendada) + sino na UI; **tags** e
 **auditoria de negações** de acesso em todo 403. (Testes, backup e
 endurecimento de login foram antecipados no Sprint 7.)
 
-### Sprint 9 — IA e automações
+### Sprint 9 — IA e automações 🚧 EM ANDAMENTO
 O destino do modelo (doc 01 §6): copiloto consumindo busca global, relatórios
 e timeline — perguntas como "quanto lucro o Corolla deu em 2026?" respondidas
 sobre os mesmos endpoints que as telas já usam.
+
+Plano:
+1. **Estabilizar o deploy** (pré-requisito): resolver o timeout SSH intermitente
+   do VPS para voltar a ter atualização automática confiável.
+2. **Camada de copiloto (backend)**: endpoint `/copiloto/perguntar` que orquestra
+   uma ferramenta de busca global + leituras de relatórios/timeline já existentes
+   (sem dados próprios — reusa o núcleo, conforme a regra máxima). Modelo Claude
+   (provedor a definir/chave a configurar como secret, nunca no repositório).
+3. **UI**: campo de pergunta no ⌘K / painel lateral, respondendo com citações
+   das entidades de origem (link para a tela real).
+4. **Permissões**: o copiloto respeita a matriz do doc 05 — só enxerga o que o
+   usuário logado já poderia ver.

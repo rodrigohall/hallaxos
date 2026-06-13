@@ -1,5 +1,22 @@
 # Changelog
 
+## Correções pós-Sprint 8 (2026-06-13)
+
+Hotfixes após o Sprint 8 entrar em produção — login estava inacessível.
+
+- **API não subia (`FST_ERR_PLUGIN_VERSION_MISMATCH`)**: `@fastify/rate-limit`
+  estava em `^9.x` (só Fastify 4), enquanto rodamos Fastify 5. O registro do
+  plugin derrubava a API em loop de reinício e todo login retornava "erro
+  inesperado". Subido para `^10.x` (compatível com Fastify 5).
+- **Porta de qualidade de arranque**: novo teste `boot.test.ts` que dá
+  `app.ready()` no CI — pega incompatibilidade de plugin (que typecheck/build
+  não veem) antes do deploy. Teria barrado o bug acima.
+- **Rate limit atrás de proxy**: `trustProxy: true` no Fastify (o Caddy faz
+  reverse-proxy), para `req.ip` refletir o cliente real, e `errorResponseBuilder`
+  padroniza o 429 no envelope `{erro:{...}}` da API.
+- **SSH do VPS não subia no boot**: `systemctl enable ssh` no servidor — após
+  reinícios o `sshd` ficava desligado e o deploy não conectava (timeout :22).
+
 ## Sprint 8 — Notificações, tags, favoritos e rate limiting (2026-06-13)
 
 Os serviços transversais que faltavam ganham vida, e a API fica pronta para uso real.
