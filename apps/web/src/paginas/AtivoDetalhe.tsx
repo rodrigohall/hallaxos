@@ -121,7 +121,7 @@ export function AtivoDetalhe() {
       </div>
 
       {/* Resultado financeiro do ativo — origem rastreável de cada número */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" />
         <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" />
         <Kpi rotulo="Lucro líquido" valor={dinheiro(fin.lucro)} icone={Scale} tom={fin.lucro >= 0 ? "ouro" : "erro"} />
@@ -132,24 +132,35 @@ export function AtivoDetalhe() {
           tom={fin.roi !== null && fin.roi >= 0 ? "ouro" : "neutro"}
           detalhe={ativo.valorAquisicao ? `sobre ${dinheiro(ativo.valorAquisicao)}` : "sem valor de compra"}
         />
-        <Kpi
-          rotulo="Expectativa de lucro de venda"
-          valor={fin.lucroVendaEsperado !== null ? dinheiro(fin.lucroVendaEsperado) : "—"}
-          icone={Tag}
-          tom={
-            fin.lucroVendaEsperado === null
-              ? "neutro"
-              : fin.lucroVendaEsperado >= 0
-                ? "ouro"
-                : "erro"
-          }
-          detalhe={
-            fin.precoVendaEstimado !== null
-              ? `venda a 95% FIPE = ${dinheiro(fin.precoVendaEstimado)}`
-              : "informe a FIPE"
-          }
-        />
       </div>
+
+      {/* Projeção: lucro se vendermos hoje a 95% da FIPE (separado dos números realizados) */}
+      <Card>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex items-center gap-2 text-mudo">
+            <Tag className="h-4 w-4" />
+            <span className="text-xs font-medium uppercase tracking-wider">Expectativa de lucro de venda</span>
+          </div>
+          {fin.lucroVendaEsperado !== null ? (
+            <>
+              <p
+                className={`font-display text-2xl font-bold ${
+                  fin.lucroVendaEsperado >= 0 ? "text-ouro" : "text-erro"
+                }`}
+              >
+                {dinheiro(fin.lucroVendaEsperado)}
+              </p>
+              <p className="text-xs text-mudo">
+                vendendo a 95% da FIPE ({dinheiro(fin.precoVendaEstimado ?? 0)})
+                {" − "}
+                custo de compra e custos acumulados
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-mudo">Informe o valor FIPE do ativo para calcular.</p>
+          )}
+        </div>
+      </Card>
 
       <Galeria entidadeTipo="ativo" entidadeId={ativo.id} />
 

@@ -1,3 +1,4 @@
+import { mkdir, access, constants } from "node:fs/promises";
 import { criarApp } from "./app";
 import { config } from "./config";
 import { limparSessoesExpiradas } from "./services/auth";
@@ -5,7 +6,23 @@ import { garantirAdminInicial } from "./db/bootstrap";
 
 const app = criarApp();
 
+// Garante que o diretório de arquivos existe e é gravável — falha cedo e claro
+// se o volume de dados estiver mal montado (causa comum de upload quebrado).
+async function verificarArmazenamento() {
+  try {
+    await mkdir(config.arquivosDir, { recursive: true });
+    await access(config.arquivosDir, constants.W_OK);
+    app.log.info(`Armazenamento de arquivos OK: ${config.arquivosDir}`);
+  } catch (e) {
+    app.log.error(
+      `Diretório de arquivos não gravável (${config.arquivosDir}) — uploads vão falhar. ` +
+        `Verifique o volume de dados. Detalhe: ${(e as Error).message}`
+    );
+  }
+}
+
 garantirAdminInicial()
+  .then(() => verificarArmazenamento())
   .then(() => app.listen({ port: config.porta, host: "0.0.0.0" }))
   .then(() => {
     setInterval(() => limparSessoesExpiradas().catch(() => {}), 3600_000);

@@ -40,12 +40,45 @@ const FORMATOS_POR_EXT: Record<string, { mime: string; ext: string }> = {
   ".heif": { mime: "image/heif", ext: ".heif" },
 };
 
-/** Resolve o formato pelo MIME e, se genérico/desconhecido, pela extensão do nome. */
-function resolverFormato(nome: string, mimeType: string): { mime: string; ext: string } {
+/**
+ * Identifica o formato pelos magic bytes do conteúdo — a pista mais confiável,
+ * independente de MIME e de extensão. Resolve o caso de celulares que enviam
+ * "application/octet-stream" com nome sem extensão (ex.: "image", "blob").
+ */
+function sniffFormato(b: Buffer): { mime: string; ext: string } | null {
+  if (b.length < 12) return null;
+  // PDF: "%PDF"
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46)
+    return { mime: "application/pdf", ext: ".pdf" };
+  // JPEG: FF D8 FF
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { mime: "image/jpeg", ext: ".jpg" };
+  // PNG: 89 50 4E 47
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)
+    return { mime: "image/png", ext: ".png" };
+  // GIF: "GIF8"
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38)
+    return { mime: "image/gif", ext: ".gif" };
+  // RIFF....WEBP
+  const ascii = b.toString("ascii", 0, 12);
+  if (ascii.startsWith("RIFF") && ascii.slice(8, 12) === "WEBP")
+    return { mime: "image/webp", ext: ".webp" };
+  // ISO-BMFF "ftyp" (HEIC/HEIF) — marca em bytes 4..8
+  if (b.toString("ascii", 4, 8) === "ftyp") {
+    const marca = b.toString("ascii", 8, 12).toLowerCase();
+    if (["heic", "heix", "hevc", "heif", "mif1", "msf1"].includes(marca))
+      return { mime: "image/heic", ext: ".heic" };
+  }
+  return null;
+}
+
+/** Resolve o formato pelo MIME, depois pela extensão e por fim pelos magic bytes. */
+function resolverFormato(nome: string, mimeType: string, conteudo: Buffer): { mime: string; ext: string } {
   const porMime = FORMATOS[mimeType.toLowerCase()];
   if (porMime) return porMime;
   const porExt = FORMATOS_POR_EXT[extname(nome).toLowerCase()];
   if (porExt) return porExt;
+  const porConteudo = sniffFormato(conteudo);
+  if (porConteudo) return porConteudo;
   throw regraNegocio("Formato não aceito. Envie PDF, JPG, PNG, WEBP, GIF ou HEIC.");
 }
 
@@ -62,16 +95,28 @@ export interface NovoDocumento {
 // Grava o arquivo no disco e devolve o caminho + o MIME canônico (que pode
 // diferir do enviado quando o cliente mandou um MIME genérico).
 async function gravarArquivo(id: string, nome: string, mimeType: string, conteudo: Buffer) {
-  const formato = resolverFormato(nome, mimeType);
   if (conteudo.length === 0) throw regraNegocio("Arquivo vazio.");
   if (conteudo.length > config.uploadMaxBytes) {
     throw regraNegocio("Arquivo maior que 25 MB.");
   }
+  const formato = resolverFormato(nome, mimeType, conteudo);
   const pasta = join(config.arquivosDir, id.slice(0, 2));
-  await mkdir(pasta, { recursive: true });
-  const caminho = join(pasta, `${id}${formato.ext}`);
-  await writeFile(caminho, conteudo);
-  return { caminho, mime: formato.mime };
+  try {
+    await mkdir(pasta, { recursive: true });
+    const caminho = join(pasta, `${id}${formato.ext}`);
+    await writeFile(caminho, conteudo);
+    return { caminho, mime: formato.mime };
+  } catch (e) {
+    // Disco cheio / permissão: erro claro em vez de 500 genérico
+    const cod = (e as NodeJS.ErrnoException)?.code;
+    throw regraNegocio(
+      cod === "EACCES" || cod === "EROFS"
+        ? "Sem permissão para gravar o arquivo no servidor (volume de dados)."
+        : cod === "ENOSPC"
+          ? "Sem espaço em disco no servidor para gravar o arquivo."
+          : "Falha ao gravar o arquivo no servidor."
+    );
+  }
 }
 
 export async function criarDocumento(d: NovoDocumento, usuarioId: string) {
