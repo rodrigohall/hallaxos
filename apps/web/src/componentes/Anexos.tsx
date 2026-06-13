@@ -1,6 +1,6 @@
 // Anexos transversais: galeria de fotos e documentos de QUALQUER entidade.
 // Upload múltiplo com arrastar-soltar, foto principal, ordenação e lightbox.
-import { useRef, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   UploadCloud, Star, ChevronLeft, ChevronRight, Trash2, Download,
@@ -58,40 +58,46 @@ function AreaUpload({
   aceita: string;
   children: ReactNode;
 }) {
-  const entrada = useRef<HTMLInputElement>(null);
+  const inputId = useId();
   const [arrastando, setArrastando] = useState(false);
   return (
-    <button
-      type="button"
-      onClick={() => entrada.current?.click()}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setArrastando(true);
-      }}
-      onDragLeave={() => setArrastando(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setArrastando(false);
-        if (e.dataTransfer.files.length) aoEnviar(e.dataTransfer.files);
-      }}
-      className={`flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed p-5 text-sm transition-colors ${
-        arrastando ? "border-ouro bg-ouro/5 text-ouro" : "border-borda-forte text-suave hover:border-ouro/50 hover:text-texto"
-      }`}
-    >
-      <UploadCloud className="h-5 w-5" />
-      {children}
+    <>
+      {/* label associado ao input — clicar aqui abre o seletor de arquivos
+          diretamente, sem JS intermediário, o que funciona no iOS Safari onde
+          .click() em inputs display:none é bloqueado pelo sistema. */}
+      <label
+        htmlFor={inputId}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setArrastando(true);
+        }}
+        onDragLeave={() => setArrastando(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setArrastando(false);
+          if (e.dataTransfer.files.length) aoEnviar(e.dataTransfer.files);
+        }}
+        className={`flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed p-5 text-sm transition-colors ${
+          arrastando ? "border-ouro bg-ouro/5 text-ouro" : "border-borda-forte text-suave hover:border-ouro/50 hover:text-texto"
+        }`}
+      >
+        <UploadCloud className="h-5 w-5" />
+        {children}
+      </label>
+      {/* sr-only usa position:absolute (não display:none), o que permite ao
+          iOS Safari abrir o seletor de arquivos quando o label é tocado. */}
       <input
-        ref={entrada}
+        id={inputId}
         type="file"
         multiple
         accept={aceita}
-        className="hidden"
+        className="sr-only"
         onChange={(e) => {
           if (e.target.files?.length) aoEnviar(e.target.files);
           e.target.value = "";
         }}
       />
-    </button>
+    </>
   );
 }
 
@@ -246,21 +252,17 @@ export function Documentos(props: PropsEntidade) {
   const envio = useEnvio(props, "outro", invalidar);
   const { pode } = useAuth();
   const notificar = useToast();
-  const substituindo = useRef<HTMLInputElement>(null);
-  const [alvoSubstituir, setAlvoSubstituir] = useState<string | null>(null);
 
-  const substituir = async (arquivo: File) => {
-    if (!alvoSubstituir) return;
+  const substituirDoc = async (docId: string, arquivo: File) => {
     const form = new FormData();
     form.set("arquivo", arquivo);
     try {
-      await api.substituir(`/documentos/${alvoSubstituir}/arquivo`, form);
+      await api.substituir(`/documentos/${docId}/arquivo`, form);
       invalidar();
       notificar({ tipo: "ok", titulo: "Documento substituído" });
     } catch (e) {
       notificar({ tipo: "erro", titulo: "Falha ao substituir", descricao: e instanceof ApiError ? e.message : undefined });
     }
-    setAlvoSubstituir(null);
   };
 
   const remover = async (d: Documento) => {
@@ -277,49 +279,63 @@ export function Documentos(props: PropsEntidade) {
         <div className="space-y-3">
           {docs && docs.length > 0 && (
             <ul className="divide-y divide-borda">
-              {docs.map((d) => (
-                <li key={d.id} className="flex items-center gap-3 py-2.5">
-                  <FileText className="h-4 w-4 shrink-0 text-mudo" />
-                  <div className="min-w-0 flex-1">
+              {docs.map((d) => {
+                const inputSubstId = `subst-${d.id}`;
+                return (
+                  <li key={d.id} className="flex items-center gap-3 py-2.5">
+                    <FileText className="h-4 w-4 shrink-0 text-mudo" />
+                    <div className="min-w-0 flex-1">
+                      <a
+                        href={`/api/v1/documentos/${d.id}/arquivo`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-sm hover:text-ouro"
+                      >
+                        {d.nome}
+                      </a>
+                      <p className="text-xs text-mudo">
+                        {tamanhoLegivel(d.tamanhoBytes)} · {dataCurta(d.createdAt)}
+                        {d.dataValidade && ` · vence ${dataCurta(d.dataValidade)}`}
+                      </p>
+                    </div>
                     <a
-                      href={`/api/v1/documentos/${d.id}/arquivo`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block truncate text-sm hover:text-ouro"
-                    >
-                      {d.nome}
-                    </a>
-                    <p className="text-xs text-mudo">
-                      {tamanhoLegivel(d.tamanhoBytes)} · {dataCurta(d.createdAt)}
-                      {d.dataValidade && ` · vence ${dataCurta(d.dataValidade)}`}
-                    </p>
-                  </div>
-                  <a
-                    href={`/api/v1/documentos/${d.id}/arquivo?baixar=true`}
-                    title="Baixar"
-                    className="rounded p-1.5 text-suave hover:text-texto"
-                  >
-                    <Download className="h-4 w-4" />
-                  </a>
-                  {pode("documentos", "editar") && (
-                    <button
-                      title="Substituir"
-                      onClick={() => {
-                        setAlvoSubstituir(d.id);
-                        substituindo.current?.click();
-                      }}
+                      href={`/api/v1/documentos/${d.id}/arquivo?baixar=true`}
+                      title="Baixar"
                       className="rounded p-1.5 text-suave hover:text-texto"
                     >
-                      <RefreshCw className="h-4 w-4" />
-                    </button>
-                  )}
-                  {pode("documentos", "arquivar") && (
-                    <button title="Remover" onClick={() => remover(d)} className="rounded p-1.5 text-suave hover:text-erro">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </li>
-              ))}
+                      <Download className="h-4 w-4" />
+                    </a>
+                    {pode("documentos", "editar") && (
+                      <>
+                        {/* label abre o seletor de arquivos diretamente — sem JS
+                            intermediário, funcionando corretamente no iOS Safari. */}
+                        <label
+                          htmlFor={inputSubstId}
+                          title="Substituir"
+                          className="cursor-pointer rounded p-1.5 text-suave hover:text-texto"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </label>
+                        <input
+                          id={inputSubstId}
+                          type="file"
+                          accept="application/pdf,image/*,.pdf,.heic,.heif"
+                          className="sr-only"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) substituirDoc(d.id, e.target.files[0]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </>
+                    )}
+                    {pode("documentos", "arquivar") && (
+                      <button title="Remover" onClick={() => remover(d)} className="rounded p-1.5 text-suave hover:text-erro">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {docs?.length === 0 && !pode("documentos", "criar") && (
@@ -333,16 +349,6 @@ export function Documentos(props: PropsEntidade) {
               {envio.isPending ? "Enviando…" : "Arraste documentos aqui ou clique (PDF, JPG, PNG, WEBP, HEIC)"}
             </AreaUpload>
           )}
-          <input
-            ref={substituindo}
-            type="file"
-            accept="application/pdf,image/*,.pdf,.heic,.heif"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) substituir(e.target.files[0]);
-              e.target.value = "";
-            }}
-          />
         </div>
       )}
     </Card>
