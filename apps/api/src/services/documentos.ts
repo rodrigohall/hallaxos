@@ -45,7 +45,7 @@ const FORMATOS_POR_EXT: Record<string, { mime: string; ext: string }> = {
  * independente de MIME e de extensão. Resolve o caso de celulares que enviam
  * "application/octet-stream" com nome sem extensão (ex.: "image", "blob").
  */
-function sniffFormato(b: Buffer): { mime: string; ext: string } | null {
+export function sniffFormato(b: Buffer): { mime: string; ext: string } | null {
   if (b.length < 12) return null;
   // PDF: "%PDF"
   if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46)

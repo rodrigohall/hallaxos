@@ -32,6 +32,22 @@ services:
       db:
         condition: service_healthy
 
+  # Backup automático do Postgres: dump diário comprimido com retenção.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${DB_SENHA}
+      BACKUP_INTERVALO_SEG: ${BACKUP_INTERVALO_SEG:-86400}
+      BACKUP_RETENCAO: ${BACKUP_RETENCAO:-7}
+    volumes:
+      - backups:/backups
+      - ./deploy/backup.sh:/backup.sh:ro
+    entrypoint: ["sh", "/backup.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   web:
     build:
       context: .
@@ -52,3 +68,4 @@ volumes:
   pgdata:
   caddy_dados:
   arquivos:
+  backups:

@@ -2,11 +2,12 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, CarFront, Workflow, Wrench, CalendarDays,
-  CircleDollarSign, BarChart3, ShieldCheck, LogOut, Menu, X, type LucideIcon,
+  CircleDollarSign, BarChart3, ShieldCheck, KeyRound, LogOut, Menu, X, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
 import { LogoCompleta, Monograma } from "../marca/Logo";
+import { ModalTrocarSenha } from "./TrocarSenha";
 
 interface ItemNav {
   para: string;
@@ -18,6 +19,7 @@ interface ItemNav {
 export function Layout() {
   const { usuario, sair, pode } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
+  const [senhaAberta, setSenhaAberta] = useState(false);
 
   const navegacao: ItemNav[] = [
     { para: "/", rotulo: "Dashboard", icone: LayoutDashboard, fim: true },
@@ -75,12 +77,20 @@ export function Layout() {
         <div className="border-t border-borda p-4">
           <p className="truncate text-sm font-medium">{usuario?.nome}</p>
           <p className="text-xs capitalize text-mudo">{usuario?.papel}</p>
-          <button
-            onClick={sair}
-            className="mt-2 flex items-center gap-1.5 text-xs text-suave transition-colors hover:text-erro"
-          >
-            <LogOut className="h-3 w-3" /> Sair
-          </button>
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              onClick={() => setSenhaAberta(true)}
+              className="flex items-center gap-1.5 text-xs text-suave transition-colors hover:text-ouro"
+            >
+              <KeyRound className="h-3 w-3" /> Senha
+            </button>
+            <button
+              onClick={sair}
+              className="flex items-center gap-1.5 text-xs text-suave transition-colors hover:text-erro"
+            >
+              <LogOut className="h-3 w-3" /> Sair
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -109,6 +119,12 @@ export function Layout() {
               <Item key={item.para} item={item} />
             ))}
             <button
+              onClick={() => { setMenuAberto(false); setSenhaAberta(true); }}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-suave hover:bg-elevado"
+            >
+              <KeyRound className="h-4 w-4" /> Trocar senha
+            </button>
+            <button
               onClick={sair}
               className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-suave hover:bg-elevado"
             >
@@ -121,6 +137,8 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <ModalTrocarSenha aberto={senhaAberta} aoFechar={() => setSenhaAberta(false)} />
     </div>
   );
 }

@@ -7,6 +7,12 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const trocarSenhaSchema = z.object({
+  senha_atual: z.string().min(1, "Informe a senha atual"),
+  senha_nova: z.string().min(8, "A nova senha deve ter no mínimo 8 caracteres"),
+});
+export type TrocarSenhaInput = z.infer<typeof trocarSenhaSchema>;
+
 export const usuarioCriarSchema = z.object({
   nome: z.string().min(2, "Informe o nome"),
   email: z.string().email("E-mail inválido"),

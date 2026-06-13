@@ -33,12 +33,12 @@
 ### Segurança e confiabilidade
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| **Testes automatizados: zero** | Toda verificação foi manual via API real | Sprint 7 — começar pelos services de transição e financeiro |
-| **Backup automático do Postgres** | Volume persiste, mas sem rotina de dump | Sprint 7 — urgente com uso real |
-| Rate limiting e CORS de produção | API sem proteção de volume | Sprint 7 |
-| Bloqueio progressivo de login após falhas (doc 05 §1) | Falhas já vão para a timeline | Sprint 7 |
-| Tela de troca de senha do próprio usuário | Hoje só o admin define senhas | Sprint 7 |
-| Auditoria de negações de acesso (doc 05 §4.3) | 403 não gera evento | Sprint 7 |
+| ~~Testes automatizados~~ | ✅ Sprint 7 — suíte `node:test` (permissões, schemas, transições, formato) rodando no CI antes do deploy | — |
+| ~~Backup automático do Postgres~~ | ✅ Sprint 7 — sidecar `backup` com dump diário e retenção | — |
+| ~~Bloqueio progressivo de login~~ | ✅ Sprint 7 — 5 falhas/15 min bloqueiam (429) | — |
+| ~~Troca de senha do próprio usuário~~ | ✅ Sprint 7 — endpoint + modal; encerra outras sessões | — |
+| Rate limiting global e CORS de produção | Login já tem bloqueio; falta limite geral de requisições | Sprint 8 |
+| Auditoria de negações de acesso (doc 05 §4.3) | 403 não gera evento | Sprint 8 |
 
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |
@@ -57,7 +57,12 @@ Módulo de Manutenções completo (máquina de estados, custo, hodômetro) e Age
 extraídos para módulo comum. Falta apenas o refino de Operações (edição com
 recálculo, índice parcial) — movido para o Sprint 7.
 
-### Sprint 7 — Confiança (segurança, testes, notificações)
+### Sprint 7 — Confiança ✅ ENTREGUE (segurança, testes, backup)
+Backup automático do Postgres, suíte de testes com porta de qualidade no CI,
+bloqueio progressivo de login e troca de senha própria. **Notificações** foram
+movidas para o Sprint 8 (com tags/favoritos e rate limiting global).
+
+### Sprint 8 — Notificações, tags e rate limiting
 Antes de intensificar o uso real:
 1. **Testes automatizados** dos services críticos (transições de operação,
    geração/estorno financeiro, permissões) rodando no CI antes do deploy.

@@ -1,5 +1,40 @@
 # Changelog
 
+## Sprint 7 — Confiança: backup, testes e endurecimento (2026-06-13)
+
+Antes de intensificar o uso real, blindar o que já está em produção.
+
+### Backup automático do Postgres
+- Serviço sidecar (`backup`) no `docker-compose.prod.yml` que roda `pg_dump`
+  comprimido em intervalo configurável (`BACKUP_INTERVALO_SEG`, padrão 24h) com
+  retenção dos N últimos (`BACKUP_RETENCAO`, padrão 7), em volume próprio.
+
+### Testes automatizados + porta de qualidade no CI
+- Suíte com o runner nativo do Node (`node:test`, zero dependências novas):
+  matriz de permissões, schemas Zod, transições de operações/manutenções e o
+  sniffing de formato de upload. 18 testes.
+- Workflow de deploy ganhou o job **`verificar`** (typecheck + build + testes)
+  do qual o `deploy` depende — **código quebrado não chega mais ao VPS**.
+
+### Endurecimento de acesso (doc 05)
+- **Bloqueio progressivo de login**: a partir de 5 falhas em 15 min a conta é
+  temporariamente bloqueada (429), usando a timeline que já registrava as
+  falhas — freia força bruta.
+- **Troca da própria senha**: endpoint + modal na interface; confere a senha
+  atual e **encerra as outras sessões** ao trocar.
+
+### Correções (anexos e ativo)
+- **Upload definitivo**: além de MIME e extensão, o formato é identificado
+  pelos **magic bytes** do conteúdo — resolve celulares que enviam o arquivo
+  como `application/octet-stream` e sem extensão no nome. Erros de disco viram
+  mensagem clara e há checagem de gravabilidade no arranque.
+- Quadro **"Expectativa de lucro de venda"** reformatado num card próprio.
+
+### Verificado em execução
+Bloqueio na 6ª tentativa (429); troca de senha invalidando a antiga; backup
+gerando dump de 26 tabelas; 18/18 testes verdes; typecheck e build limpos;
+upload de JPEG/PDF/HEIC como octet-stream sem extensão → 201.
+
 ## Sprint 6 — Operação do dia a dia: Manutenções e Agenda (2026-06-12)
 
 A equipe passa a viver dentro do sistema: agendar manutenções e enxergar tudo

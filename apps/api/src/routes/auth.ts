@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { loginSchema, permissoesDe } from "@hallaxos/shared";
-import { login, logout } from "../services/auth";
+import { loginSchema, trocarSenhaSchema, permissoesDe } from "@hallaxos/shared";
+import { login, logout, trocarSenhaPropria } from "../services/auth";
 import { COOKIE_SESSAO, exigirLogin } from "../plugins/auth";
 import { config } from "../config";
 
@@ -33,5 +33,12 @@ export default async function rotasAuth(app: FastifyInstance) {
   app.get("/auth/sessao", async (req) => {
     const usuario = exigirLogin(req);
     return { dados: { usuario, permissoes: permissoesDe(usuario.papel) } };
+  });
+
+  app.post("/auth/trocar-senha", async (req) => {
+    const usuario = exigirLogin(req);
+    const { senha_atual, senha_nova } = trocarSenhaSchema.parse(req.body);
+    await trocarSenhaPropria(usuario.id, senha_atual, senha_nova, req.sessaoId!);
+    return { dados: { ok: true } };
   });
 }
