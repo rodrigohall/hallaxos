@@ -22,12 +22,29 @@ import { AppError } from "./lib/erros";
 import { config } from "./config";
 
 export function criarApp() {
-  const app = Fastify({ logger: { level: "info" } });
+  // trustProxy: em produção o Caddy faz reverse-proxy de /api/* para a API, então
+  // sem isto req.ip seria o IP interno do Caddy para TODOS os clientes — o que
+  // colapsaria o rate limit por IP num único balde e registraria o IP errado na
+  // timeline. Com trustProxy, req.ip vem do X-Forwarded-For (o cliente real).
+  const app = Fastify({ logger: { level: "info" }, trustProxy: true });
 
   app.register(cookie);
   app.register(multipart, { limits: { fileSize: config.uploadMaxBytes, files: 20 } });
   // Rate limiting global: máximo 200 req/min por IP. Login tem seu próprio limite no Sprint 7.
-  app.register(rateLimit, { max: 200, timeWindow: "1 minute", keyGenerator: (req) => req.ip });
+  // errorResponseBuilder mantém o 429 no mesmo envelope {erro:{codigo,mensagem}} da API —
+  // sem isto o frontend não acha a mensagem e mostra "Erro inesperado.".
+  app.register(rateLimit, {
+    max: 200,
+    timeWindow: "1 minute",
+    keyGenerator: (req) => req.ip,
+    errorResponseBuilder: (_req, ctx) => ({
+      erro: {
+        codigo: "MUITAS_REQUISICOES",
+        mensagem: `Muitas requisições. Tente novamente em ${Math.ceil(ctx.ttl / 1000)} segundos.`,
+        detalhes: null,
+      },
+    }),
+  });
   app.register(authPlugin);
 
   app.setErrorHandler((err, _req, reply) => {
