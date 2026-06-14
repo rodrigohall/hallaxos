@@ -54,7 +54,7 @@ function useDocumentos({ entidadeTipo, entidadeId }: PropsEntidade, tipo: "foto"
 function AreaUpload({
   aoEnviar, aceita, children,
 }: {
-  aoEnviar: (arquivos: FileList | File[]) => void;
+  aoEnviar: (arquivos: FileList | File[]) => Promise<unknown>;
   aceita: string;
   children: ReactNode;
 }) {
@@ -75,7 +75,7 @@ function AreaUpload({
         onDrop={(e) => {
           e.preventDefault();
           setArrastando(false);
-          if (e.dataTransfer.files.length) aoEnviar(e.dataTransfer.files);
+          if (e.dataTransfer.files.length) void aoEnviar(e.dataTransfer.files);
         }}
         className={`flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed p-5 text-sm transition-colors ${
           arrastando ? "border-ouro bg-ouro/5 text-ouro" : "border-borda-forte text-suave hover:border-ouro/50 hover:text-texto"
@@ -92,9 +92,17 @@ function AreaUpload({
         multiple
         accept={aceita}
         className="sr-only"
-        onChange={(e) => {
-          if (e.target.files?.length) aoEnviar(e.target.files);
-          e.target.value = "";
+        onChange={async (e) => {
+          // iOS Safari: limpar input.value invalida o File selecionado. Só
+          // resetamos DEPOIS do envio concluir, senão o fetch perde o arquivo
+          // antes de ler o corpo e a requisição nem chega ao servidor.
+          const input = e.currentTarget;
+          if (!input.files?.length) return;
+          try {
+            await aoEnviar(input.files);
+          } finally {
+            input.value = "";
+          }
         }}
       />
     </>
@@ -195,7 +203,7 @@ export function Galeria(props: PropsEntidade) {
             <EstadoVazio icone={Images} titulo="Sem fotos" />
           )}
           {pode("documentos", "criar") && (
-            <AreaUpload aoEnviar={(a) => envio.mutate(a)} aceita="image/*,.heic,.heif">
+            <AreaUpload aoEnviar={(a) => envio.mutateAsync(a)} aceita="image/*,.heic,.heif">
               {envio.isPending ? "Enviando…" : "Arraste fotos aqui ou clique para escolher (JPG, PNG, WEBP, HEIC)"}
             </AreaUpload>
           )}
@@ -321,9 +329,17 @@ export function Documentos(props: PropsEntidade) {
                           type="file"
                           accept="application/pdf,image/*,.pdf,.heic,.heif"
                           className="sr-only"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) substituirDoc(d.id, e.target.files[0]);
-                            e.target.value = "";
+                          onChange={async (e) => {
+                            // iOS Safari: só limpa o input após o envio concluir
+                            // (limpar antes invalida o File e o upload nem sai).
+                            const input = e.currentTarget;
+                            const arquivo = input.files?.[0];
+                            if (!arquivo) return;
+                            try {
+                              await substituirDoc(d.id, arquivo);
+                            } finally {
+                              input.value = "";
+                            }
                           }}
                         />
                       </>
@@ -343,7 +359,7 @@ export function Documentos(props: PropsEntidade) {
           )}
           {pode("documentos", "criar") && (
             <AreaUpload
-              aoEnviar={(a) => envio.mutate(a)}
+              aoEnviar={(a) => envio.mutateAsync(a)}
               aceita="application/pdf,image/*,.pdf,.heic,.heif"
             >
               {envio.isPending ? "Enviando…" : "Arraste documentos aqui ou clique (PDF, JPG, PNG, WEBP, HEIC)"}

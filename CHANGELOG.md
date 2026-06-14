@@ -21,6 +21,14 @@ configurar a chave.
 
 Hotfixes após o Sprint 8 entrar em produção — login estava inacessível.
 
+- **Upload pelo iPhone (iOS Safari)**: o campo de arquivo era limpo
+  (`input.value = ""`) logo após a escolha, ainda de forma síncrona — no iOS
+  isso **invalida o arquivo selecionado** antes do `fetch` ler o corpo, então a
+  requisição falhava no aparelho e nem chegava ao servidor (no desktop o
+  arquivo seguia válido, por isso funcionava lá). Agora o input só é limpo
+  **depois** que o envio conclui, nos dois pontos (galeria/documentos e
+  substituição). Vale para fotos e PDFs.
+
 - **API não subia (`FST_ERR_PLUGIN_VERSION_MISMATCH`)**: `@fastify/rate-limit`
   estava em `^9.x` (só Fastify 4), enquanto rodamos Fastify 5. O registro do
   plugin derrubava a API em loop de reinício e todo login retornava "erro
