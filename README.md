@@ -140,6 +140,19 @@ lançamento** (necessário porque em produção não há seed) e **CEP com
 autocomplete** no cadastro de cliente (ViaCEP). Detalhes no
 [`CHANGELOG.md`](CHANGELOG.md).
 
+**Correções do uso real II (15/jun/2026 — em produção):** a **aba de Manutenções**
+voltou a abrir (bug latente desde o Sprint 6: `WHERE` cru referenciando o nome
+real da tabela depois do alias `m`, `42P01`); **exclusão permanente de foto**
+(`DELETE /documentos/:id?permanente=true` faz hard delete real do arquivo + linha,
+com modal e evento na timeline); e **anulação de lançamento** (`POST
+/lancamentos/:id/anular`, só admin) que tira o valor de todos os indicadores sem
+contrapartida, **preservando a linha e o vínculo origem→lançamento** — diferente
+do estorno e do hard delete. Porta de qualidade: a CI ganhou um **Postgres real**
+no job `verificar` + **testes de integração** (lista de manutenções e anulação),
+porque erro de SQL cru passa pelo typecheck/build e só estoura em runtime. **33
+testes verdes; deploy automático no VPS concluído** (run verde, sem timeout SSH).
+Detalhes no [`CHANGELOG.md`](CHANGELOG.md) e em [`docs/decisoes.md`](docs/decisoes.md) (#41).
+
 ### Continuar o desenvolvimento (para uma nova sessão)
 
 - **Branch único e fonte da verdade:** `claude/stoic-shannon-d3fxpi`. É onde o
