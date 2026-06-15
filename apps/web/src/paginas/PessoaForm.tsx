@@ -19,6 +19,7 @@ export function PessoaForm() {
   const filaQueries = useQueryClient();
   const notificar = useToast();
   const [form, setForm] = useState<Formulario>(VAZIO);
+  const [ehOficina, setEhOficina] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -41,6 +42,7 @@ export function PessoaForm() {
         if (v != null) (f as Record<string, string>)[campo] = String(v);
       }
       setForm(f);
+      setEhOficina(Array.isArray(dados.papeis) && (dados.papeis as string[]).includes("oficina"));
     });
   }, [id]);
 
@@ -90,6 +92,7 @@ export function PessoaForm() {
       corpo.tipo = form.tipo;
       corpo.nome = form.nome;
       corpo.cpf_cnpj = form.cpf_cnpj;
+      corpo.eh_oficina = ehOficina;
       const { dados } = id
         ? await api.patch<{ dados: { id: string } }>(`/pessoas/${id}`, corpo)
         : await api.post<{ dados: { id: string } }>("/pessoas", corpo);
@@ -149,6 +152,15 @@ export function PessoaForm() {
               </Campo>
             )}
           </div>
+          <label className="mt-4 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={ehOficina}
+              onChange={(e) => setEhOficina(e.target.checked)}
+              className="h-4 w-4 rounded border-borda accent-ouro"
+            />
+            <span>É oficina <span className="text-mudo">— aparece na busca de oficinas das manutenções</span></span>
+          </label>
         </Card>
       )}
 

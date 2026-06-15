@@ -1,5 +1,45 @@
 # Changelog
 
+## Sprint 9 — Atritos do uso real (2026-06-15)
+
+Ajustes pedidos após o uso real do sistema, antes de seguir com a UI do
+copiloto. Tudo reusa o núcleo — nenhuma tabela ou dado duplicado.
+
+### Edição financeira antes de finalizar a operação
+- Na transição que gera financeiro (locação `finalizada`, guincho `concluido`,
+  compra/venda `fechada`), o modal de finalização passa a permitir **revisar e
+  editar os lançamentos antes de confirmar**: conta de destino/origem, forma de
+  pagamento, nº de parcelas, data do lançamento e o **vencimento de cada
+  parcela**. Só persiste no "Confirmar".
+- Contrato: bloco opcional `financeiro` em `POST /operacoes/:id/transicao`
+  (retrocompatível — omitir mantém o padrão: parcelas mensais, conta padrão).
+  Se `valor` for informado por parcela, a soma precisa bater com o total
+  (422 `REGRA_NEGOCIO`); só datas → total rateado igualmente.
+- Novo `GET /operacoes/:id/previa-financeira` (read-only): valor previsto,
+  conta padrão e categoria — a UI monta as parcelas sem reimplementar a regra
+  (na locação o valor é diárias × dias). Sem mudança de schema; rastreabilidade
+  origem → lançamento preservada (doc 03 regra 5).
+
+### "Usar endereço do cliente" no guincho
+- Atalho nos campos de origem/destino que **preenche** o endereço cadastrado do
+  cliente (núcleo `pessoas`). Origem/destino seguem sendo texto livre (o local
+  do guincho é um evento) — o atalho é um snapshot de conveniência, sem tabela
+  paralela. Aparece quando o cliente tem endereço cadastrado.
+
+### Cadastro e busca de oficinas
+- Oficina é **papel de `pessoas`** (não tabela nova — confirmado no doc 02 §5):
+  novo papel `oficina`, marcado pelo campo **"É oficina"** no cadastro (PJ).
+- O campo de oficina na manutenção virou **autocomplete filtrado a oficinas**
+  (`GET /pessoas?papel=oficina`), com **cadastro rápido inline** de oficina
+  (nome + CNPJ) — mesma ideia do "+ nova categoria/conta" do lançamento.
+- Filtro `?papel=` corrigido para filtrar no SQL (antes filtrava só a página
+  paginada, perdendo resultados).
+
+### Qualidade
+- Testes (`node:test`): rateio/validação de parcelas do `financeiro`,
+  retrocompatibilidade da transição, papel `oficina` e `eh_oficina` no schema.
+  Typecheck, build do web e suíte verdes.
+
 ## Sprint 9 — Copiloto de IA (em andamento) (2026-06-13)
 
 Início do copiloto de IA (doc 01 §6) — **scaffold desligado**, sem custo até

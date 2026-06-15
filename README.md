@@ -127,6 +127,12 @@ ferramenta, sem dados próprios e respeitando o papel do usuário. **Desligado p
 padrão** (sem custo) até configurar o secret `IA_API_KEY`. Falta a UI e a
 estabilização do deploy. Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
 
+**Atritos do uso real resolvidos (jun/2026):** edição dos lançamentos
+financeiros **antes de finalizar** a operação (conta, forma, parcelas e
+vencimentos, persistindo só ao confirmar), atalho **"Usar endereço do cliente"**
+no guincho e **cadastro/busca de oficinas** (papel `oficina` em Pessoas, sem
+tabela nova). Detalhes no [`CHANGELOG.md`](CHANGELOG.md).
+
 **Ajustes recentes em produção (jun/2026):** correção do login (rate-limit
 incompatível com Fastify 5), **upload pelo iPhone** (iOS Safari invalidava o
 arquivo ao limpar o input cedo demais), **criar categoria/conta direto no

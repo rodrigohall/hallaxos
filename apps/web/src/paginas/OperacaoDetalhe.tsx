@@ -1,15 +1,16 @@
 // A página da operação: estado atual, transições nomeadas, ativos, financeiro
 // e história completa. O front solicita transições; o back decide (doc 03).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   History, Workflow, CircleDollarSign, User, Package, MapPin, ArrowRight,
 } from "lucide-react";
+import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
-  Botao, Card, Selo, Modal, Campo, Entrada, AreaTexto, Timeline, useToast,
+  Botao, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto, Timeline, useToast,
   dinheiro, dataCurta, dataHora, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   type EventoTimeline,
 } from "../componentes/ui";
@@ -31,6 +32,30 @@ interface OperacaoDetalhe {
 const GERA_LANCAMENTO = new Set(["finalizada", "concluido", "fechada"]);
 const PEDE_KM = new Set(["ativa", "finalizada", "concluido"]);
 
+const ROTULO_FORMA: Record<string, string> = {
+  dinheiro: "Dinheiro", pix: "Pix", cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito", boleto: "Boleto", transferencia: "Transferência",
+};
+
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+
+/** Vencimentos mensais a partir de uma data base (mesma lógica do back). */
+function datasMensais(base: string, n: number): string[] {
+  const [y, m, d] = base.split("-").map(Number);
+  return Array.from({ length: n }, (_, i) =>
+    new Date(Date.UTC(y!, m! - 1 + i, d!)).toISOString().slice(0, 10)
+  );
+}
+
+interface PreviaFinanceira {
+  tipo: string;
+  categoria: string;
+  tipo_lancamento: "receita" | "despesa";
+  valor_previsto: string;
+  conta_padrao: { id: string; nome: string } | null;
+}
+interface ContaLista { id: string; nome: string }
+
 export function OperacaoDetalhe() {
   const { id } = useParams();
   const { usuario } = useAuth();
@@ -38,9 +63,40 @@ export function OperacaoDetalhe() {
   const notificar = useToast();
   const [transicao, setTransicao] = useState<string | null>(null);
   const [km, setKm] = useState("");
-  const [parcelas, setParcelas] = useState("1");
   const [justificativa, setJustificativa] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Edição dos lançamentos antes de finalizar (doc 03 §1, regra 5)
+  const [contaId, setContaId] = useState("");
+  const [forma, setForma] = useState("");
+  const [dataBase, setDataBase] = useState(hojeISO());
+  const [vencimentos, setVencimentos] = useState<string[]>([hojeISO()]);
+
+  const geraLancamento = !!transicao && GERA_LANCAMENTO.has(transicao);
+
+  const { data: previa } = useQuery({
+    queryKey: ["operacao-previa", id, transicao],
+    enabled: geraLancamento,
+    queryFn: () => api.get<{ dados: PreviaFinanceira }>(`/operacoes/${id}/previa-financeira`).then((r) => r.dados),
+  });
+  const { data: contas } = useQuery({
+    queryKey: ["contas"],
+    enabled: geraLancamento,
+    queryFn: () => api.get<{ dados: ContaLista[] }>(`/contas`).then((r) => r.dados),
+  });
+
+  // Ao abrir uma transição que gera financeiro, semeia a conta padrão.
+  useEffect(() => {
+    if (previa?.conta_padrao && !contaId) setContaId(previa.conta_padrao.id);
+  }, [previa, contaId]);
+
+  // Nº de parcelas / data base recalculam os vencimentos (editáveis em seguida).
+  const definirParcelas = (n: number) => setVencimentos(datasMensais(dataBase, Math.max(1, Math.min(60, n))));
+  const definirDataBase = (d: string) => {
+    setDataBase(d);
+    setVencimentos((v) => datasMensais(d, v.length));
+  };
+  const valorPrevisto = previa ? Number(previa.valor_previsto) : 0;
+  const valorParcela = vencimentos.length ? valorPrevisto / vencimentos.length : 0;
 
   const { data: op } = useQuery({
     queryKey: ["operacao", id],
@@ -68,7 +124,14 @@ export function OperacaoDetalhe() {
       await api.post(`/operacoes/${id}/transicao`, {
         status: transicao,
         km: PEDE_KM.has(transicao) && km ? Number(km) : undefined,
-        parcelas: GERA_LANCAMENTO.has(transicao) ? Number(parcelas || 1) : undefined,
+        // Lançamentos editados pelo usuário (conta, forma, vencimento de cada parcela).
+        financeiro: geraLancamento
+          ? {
+              conta_id: contaId || undefined,
+              forma_pagamento: forma || null,
+              parcelas: vencimentos.map((data_vencimento) => ({ data_vencimento })),
+            }
+          : undefined,
         justificativa: justificativa || undefined,
       });
       invalidar();
@@ -83,8 +146,11 @@ export function OperacaoDetalhe() {
   const fecharModal = () => {
     setTransicao(null);
     setKm("");
-    setParcelas("1");
     setJustificativa("");
+    setContaId("");
+    setForma("");
+    setDataBase(hojeISO());
+    setVencimentos([hojeISO()]);
   };
 
   const ext = op.extensao ?? {};
@@ -223,10 +289,57 @@ export function OperacaoDetalhe() {
                 <Entrada type="number" value={km} onChange={(e) => setKm(e.target.value)} placeholder="Km atual do veículo" />
               </Campo>
             )}
-            {GERA_LANCAMENTO.has(transicao) && (
-              <Campo rotulo="Parcelas" dica="Gera lançamentos previstos com vencimentos mensais.">
-                <Entrada type="number" min={1} max={60} value={parcelas} onChange={(e) => setParcelas(e.target.value)} />
-              </Campo>
+            {geraLancamento && (
+              <div className="space-y-3 rounded-md border border-borda bg-elevado/40 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-medium text-suave">Lançamentos a gerar</span>
+                  {previa && (
+                    <span className={`text-sm font-medium ${previa.tipo_lancamento === "receita" ? "text-ok" : "text-erro"}`}>
+                      {previa.tipo_lancamento === "receita" ? "+" : "−"} {dinheiro(previa.valor_previsto)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-mudo">
+                  {previa?.categoria ? `Categoria ${previa.categoria}. ` : ""}
+                  Revise antes de confirmar — só persiste ao finalizar.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Campo rotulo="Conta de destino/origem">
+                    <Selecao value={contaId} onChange={(e) => setContaId(e.target.value)}>
+                      <option value="">{previa?.conta_padrao ? `Padrão (${previa.conta_padrao.nome})` : "Conta padrão"}</option>
+                      {(contas ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </Selecao>
+                  </Campo>
+                  <Campo rotulo="Forma de pagamento">
+                    <Selecao value={forma} onChange={(e) => setForma(e.target.value)}>
+                      <option value="">Não definida</option>
+                      {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{ROTULO_FORMA[f] ?? f}</option>)}
+                    </Selecao>
+                  </Campo>
+                  <Campo rotulo="Nº de parcelas">
+                    <Entrada
+                      type="number" min={1} max={60} value={vencimentos.length}
+                      onChange={(e) => definirParcelas(Number(e.target.value || 1))}
+                    />
+                  </Campo>
+                  <Campo rotulo="Data do lançamento">
+                    <Entrada type="date" value={dataBase} onChange={(e) => definirDataBase(e.target.value)} />
+                  </Campo>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-mudo">Vencimento de cada parcela</span>
+                  {vencimentos.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-12 shrink-0 text-xs text-suave">{vencimentos.length > 1 ? `${i + 1}/${vencimentos.length}` : "Única"}</span>
+                      <Entrada
+                        type="date" value={v}
+                        onChange={(e) => setVencimentos((arr) => arr.map((x, j) => (j === i ? e.target.value : x)))}
+                      />
+                      <span className="w-24 shrink-0 text-right text-xs text-mudo">{dinheiro(valorParcela.toFixed(2))}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
             {transicao === "ativa" && (
               <Campo rotulo="Justificativa (apenas se a CNH do condutor estiver vencida)">

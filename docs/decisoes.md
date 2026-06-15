@@ -53,6 +53,18 @@
 | 29 | Um caminhão só serve a um guincho aberto por vez — guarda na criação, além do estado do ativo | Entre `solicitado` e `a_caminho` o ativo ainda está `disponivel`; sem a guarda, dois chamados pegariam o mesmo caminhão (integridade do doc 03 regra 1) |
 | 30 | Km percorrido informado na conclusão soma ao hodômetro do caminhão | O número existe uma vez e o ativo reflete a realidade sem digitação dupla |
 
+## Sprint 9 — Atritos do uso real
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 31 | Edição financeira na finalização via bloco `financeiro` na **mesma** transição, não em duas fases | A confirmação do modal já é o ponto de persistência — nada é gravado antes do "Confirmar". Evita estado intermediário "rascunho de lançamento" e mantém a transição atômica (doc 01 §4) |
+| 32 | Reusar colunas de `lancamentos` (conta, forma, vencimento, parcelas) em vez de criar campos novos | Os 5 dados pedidos já existem no modelo; faltava só deixar o usuário escolhê-los na origem. Zero migração de dados; rastreabilidade origem→lançamento intacta (regra máxima) |
+| 33 | `previa-financeira` read-only para a UI montar as parcelas | Na locação o valor é diárias × dias, calculado no fim — a tela precisa do total para ratear sem reimplementar a regra no front (nenhuma regra de negócio no front, doc 01 §4) |
+| 34 | "Usar endereço do cliente" preenche o texto livre da origem/destino do guincho; **não** vira FK nem tabela de endereços | Local de guincho é um evento (onde o carro está), não o endereço cadastrado; o snapshot preserva o histórico mesmo se o cliente mudar de endereço. Mantém "um endereço por pessoa" (doc 02 §1) |
+| 35 | Oficina = papel `oficina` em `pessoas` (marcado no cadastro), não entidade nova | A oficina já era `fornecedor_id` (pessoa) nas manutenções (doc 02 §5). O papel a torna pesquisável/filtrável sem duplicar cadastro — confirmado contra o doc 02 antes de criar qualquer tabela |
+| 36 | Papel `oficina` é o único atribuído **manualmente** (toggle "É oficina") | Diferente de `cliente`/`fornecedor` (derivados de participação), "ser oficina" é uma classificação do negócio que o usuário declara — escolha do dono do produto |
+| 37 | Filtro `?papel=` movido para SQL (EXISTS) em vez de pós-paginação | A filtragem após o `LIMIT` perdia resultados além da 1ª página; o autocomplete de oficina precisa ser correto |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica

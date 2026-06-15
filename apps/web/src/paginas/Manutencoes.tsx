@@ -92,6 +92,7 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
   const fila = useQueryClient();
   const [ativo, setAtivo] = useState<ItemSeletor | null>(null);
   const [fornecedor, setFornecedor] = useState<ItemSeletor | null>(null);
+  const [criandoOficina, setCriandoOficina] = useState(false);
   const [campos, setCampos] = useState<Record<string, string>>({ tipo: "preventiva" });
   const [enviando, setEnviando] = useState(false);
   const set = (k: string) => (e: { target: { value: string } }) =>
@@ -136,7 +137,26 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
         <Campo rotulo="Descrição">
           <Entrada value={campos.descricao ?? ""} onChange={set("descricao")} placeholder="Ex.: Revisão dos 30 mil km" />
         </Campo>
-        <Seletor rotulo="Fornecedor (opcional)" recurso="pessoas" selecionado={fornecedor} aoSelecionar={setFornecedor} />
+        <div>
+          <Seletor
+            rotulo="Oficina (opcional)"
+            recurso="pessoas"
+            selecionado={fornecedor}
+            aoSelecionar={setFornecedor}
+            filtro="papel=oficina"
+          />
+          {!fornecedor && !criandoOficina && (
+            <button type="button" onClick={() => setCriandoOficina(true)} className="mt-1 text-xs text-ouro hover:underline">
+              + cadastrar oficina
+            </button>
+          )}
+          {criandoOficina && (
+            <NovaOficinaInline
+              aoCriar={(item) => { setFornecedor(item); setCriandoOficina(false); }}
+              aoCancelar={() => setCriandoOficina(false)}
+            />
+          )}
+        </div>
         <Campo rotulo="Observações (opcional)">
           <AreaTexto value={campos.observacoes ?? ""} onChange={set("observacoes")} />
         </Campo>
@@ -148,5 +168,49 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+// Cadastro rápido de oficina (PJ marcada como oficina) sem sair da manutenção —
+// mesma ideia do "+ nova categoria/conta" no lançamento. Sem tabela paralela:
+// é uma `pessoa` com o papel `oficina` (doc 02 §1).
+function NovaOficinaInline({
+  aoCriar, aoCancelar,
+}: { aoCriar: (item: ItemSeletor) => void; aoCancelar: () => void }) {
+  const notificar = useToast();
+  const [nome, setNome] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const salvar = async () => {
+    setSalvando(true);
+    try {
+      const { dados } = await api.post<{ dados: { id: string; nome: string } }>("/pessoas", {
+        tipo: "pj", nome, cpf_cnpj: cnpj, eh_oficina: true,
+      });
+      notificar({ tipo: "ok", titulo: "Oficina cadastrada" });
+      aoCriar({ id: dados.id, titulo: dados.nome, subtitulo: "Oficina" });
+    } catch (e) {
+      notificar({ tipo: "erro", titulo: "Não foi possível cadastrar", descricao: e instanceof ApiError ? e.message : undefined });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-borda bg-elevado/40 p-3">
+      <Campo rotulo="Nome da oficina">
+        <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Auto Center Silva" />
+      </Campo>
+      <Campo rotulo="CNPJ">
+        <Entrada value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="Só números" />
+      </Campo>
+      <div className="flex justify-end gap-2">
+        <Botao variante="fantasma" tamanho="sm" onClick={aoCancelar}>Cancelar</Botao>
+        <Botao tamanho="sm" onClick={salvar} carregando={salvando} disabled={nome.length < 2 || cnpj.length < 11 || salvando}>
+          Cadastrar
+        </Botao>
+      </div>
+    </div>
   );
 }

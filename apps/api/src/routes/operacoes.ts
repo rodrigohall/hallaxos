@@ -6,7 +6,7 @@ import {
 } from "@hallaxos/shared";
 import {
   listarOperacoes, obterOperacao, criarGuincho, criarLocacao, criarVenda,
-  criarCompra, transicionar,
+  criarCompra, transicionar, previaFinanceira,
 } from "../services/operacoes";
 import { listarTimeline } from "../services/timeline";
 import { db } from "../db/client";
@@ -59,6 +59,13 @@ export default async function rotasOperacoes(app: FastifyInstance) {
     const input = compraCriarSchema.parse(req.body);
     reply.code(201);
     return { dados: await criarCompra(input, exigirLogin(req).id) };
+  });
+
+  // Prévia dos lançamentos a gerar na finalização (read-only) — a UI usa para
+  // montar as parcelas editáveis antes de confirmar (doc 03 §1, regra 5).
+  app.get("/operacoes/:id/previa-financeira", { preHandler: exigirPermissao("operacoes", "ler") }, async (req) => {
+    const { id } = params.parse(req.params);
+    return { dados: await previaFinanceira(id) };
   });
 
   // Transição de estado nomeada (o front solicita; o back decide — doc 03)

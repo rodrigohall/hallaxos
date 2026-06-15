@@ -52,6 +52,12 @@ export async function listarPessoas(opts: {
 }) {
   const filtros = [];
   if (!opts.incluirArquivados) filtros.push(isNull(pessoas.deletedAt));
+  // Filtro por papel direto no SQL (antes era pós-paginação, perdia resultados).
+  if (opts.papel) {
+    filtros.push(
+      sql`EXISTS (SELECT 1 FROM pessoa_papeis pp WHERE pp.pessoa_id = ${pessoas.id} AND pp.papel = ${opts.papel})`
+    );
+  }
   if (opts.busca) {
     const b = `%${opts.busca}%`;
     const digitos = opts.busca.replace(/\D/g, "");
@@ -80,8 +86,7 @@ export async function listarPessoas(opts: {
     .offset((opts.pagina - 1) * opts.porPagina);
 
   const papeisPorPessoa = await papeisDe(linhas.map((p) => p.id));
-  let dados = linhas.map((p) => ({ ...p, papeis: papeisPorPessoa.get(p.id) ?? [] }));
-  if (opts.papel) dados = dados.filter((p) => p.papeis.includes(opts.papel as PapelPessoa));
+  const dados = linhas.map((p) => ({ ...p, papeis: papeisPorPessoa.get(p.id) ?? [] }));
   return { dados, total };
 }
 
@@ -135,8 +140,14 @@ export async function criarPessoa(input: PessoaCriarInput, usuarioId: string) {
       descricao: `Cadastro de ${input.nome} criado`,
       usuarioId,
     });
-    await reindexarPessoa(tx, criada!, []);
-    return { ...criada!, papeis: [] as PapelPessoa[] };
+    // Oficina é papel de pessoa (doc 02 §1), não tabela — marcado no cadastro.
+    const papeis: PapelPessoa[] = [];
+    if (input.eh_oficina) {
+      await garantirPapel(tx, id, "oficina");
+      papeis.push("oficina");
+    }
+    await reindexarPessoa(tx, criada!, papeis);
+    return { ...criada!, papeis };
   });
 }
 
@@ -165,6 +176,14 @@ export async function editarPessoa(id: string, input: PessoaEditarInput, usuario
     const [editada] = await tx.update(pessoas).set(mudancas).where(eq(pessoas.id, id)).returning();
     const mudou = diff(atual as Record<string, unknown>, editada as Record<string, unknown>);
     delete mudou.updatedAt;
+    // Papel oficina: marcar/desmarcar no cadastro (doc 02 §1).
+    if (input.eh_oficina !== undefined) {
+      if (input.eh_oficina) {
+        await garantirPapel(tx, id, "oficina");
+      } else {
+        await tx.delete(pessoaPapeis).where(and(eq(pessoaPapeis.pessoaId, id), eq(pessoaPapeis.papel, "oficina")));
+      }
+    }
     if (Object.keys(mudou).length > 0) {
       await registrarEvento(tx, {
         entidadeTipo: "pessoa",

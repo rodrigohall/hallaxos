@@ -7,7 +7,7 @@ export type PapelUsuario = (typeof PAPEIS_USUARIO)[number];
 export const TIPOS_PESSOA = ["pf", "pj"] as const;
 export type TipoPessoa = (typeof TIPOS_PESSOA)[number];
 
-export const PAPEIS_PESSOA = ["cliente", "fornecedor", "motorista", "parceiro"] as const;
+export const PAPEIS_PESSOA = ["cliente", "fornecedor", "motorista", "parceiro", "oficina"] as const;
 export type PapelPessoa = (typeof PAPEIS_PESSOA)[number];
 
 export const REFERENCIA_ENTIDADES = [

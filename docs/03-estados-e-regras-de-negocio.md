@@ -110,7 +110,12 @@ agendada ──→ em_andamento ──→ concluida
    valor que o sistema já conhece (regra máxima aplicada a processo).
 5. **Lançamento gerado por operação não é editável livremente** — ajustes
    passam pela operação (desconto, dias extras), que recalcula. Lançamentos
-   avulsos são livres.
+   avulsos são livres. **Antes de finalizar**, porém, o usuário revisa e ajusta
+   o que será gerado na própria página da operação — conta, forma de pagamento,
+   nº de parcelas e o vencimento de cada parcela (`financeiro` na transição,
+   doc 06). A finalização só persiste após essa confirmação; depois de
+   finalizada, vale o fluxo acima (edição pelo Financeiro, com auditoria). A
+   geração não muda a máquina de estados — só os parâmetros do lançamento.
 6. **Cancelar operação cancela os lançamentos `previsto` vinculados.**
    Lançamentos já pagos não somem: geram contrapartida (estorno) — dinheiro
    que entrou no caixa nunca desaparece do histórico.

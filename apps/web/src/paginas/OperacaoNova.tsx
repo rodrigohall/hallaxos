@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Truck, KeyRound, TrendingUp, ShoppingCart } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Truck, KeyRound, TrendingUp, ShoppingCart, MapPin } from "lucide-react";
 import { api, ApiError } from "../api";
 import {
   Botao, Card, Campo, Entrada, AreaTexto, useToast,
@@ -9,6 +10,17 @@ import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
 import { ROTULO_TIPO } from "../operacoes/rotulos";
 
 type Tipo = "guincho" | "locacao" | "venda" | "compra";
+
+/** Endereço cadastrado do cliente, formatado em uma linha (núcleo Pessoas — sem
+ * tabela paralela; o guincho apenas referencia/preenche a partir dele). */
+function enderecoDe(p: Record<string, unknown> | undefined): string | null {
+  if (!p) return null;
+  const linha1 = [p.logradouro, p.numero].filter(Boolean).join(", ");
+  const cidadeUf = [p.cidade, p.uf].filter(Boolean).join("/");
+  const linha2 = [p.bairro, cidadeUf].filter(Boolean).join(" - ");
+  const full = [linha1, p.complemento, linha2].filter(Boolean).join(" - ");
+  return full.trim() ? full : null;
+}
 
 const TIPOS: Array<{ tipo: Tipo; icone: typeof Truck; descricao: string }> = [
   { tipo: "guincho", icone: Truck, descricao: "Acionamento de guincho da origem ao destino." },
@@ -28,6 +40,17 @@ export function OperacaoNova() {
 
   const set = (k: string) => (e: { target: { value: string } }) =>
     setCampos((c) => ({ ...c, [k]: e.target.value }));
+
+  // Endereço cadastrado do cliente, para o atalho "Usar endereço do cliente"
+  // nos campos de origem/destino do guincho (referencia o núcleo Pessoas).
+  const { data: clientePessoa } = useQuery({
+    queryKey: ["pessoa-endereco", cliente?.id],
+    enabled: tipo === "guincho" && !!cliente,
+    queryFn: () => api.get<{ dados: Record<string, unknown> }>(`/pessoas/${cliente!.id}`).then((r) => r.dados),
+  });
+  const enderecoCliente = enderecoDe(clientePessoa);
+  const usarEndereco = (campo: "origem_endereco" | "destino_endereco") =>
+    enderecoCliente && setCampos((c) => ({ ...c, [campo]: enderecoCliente }));
 
   const enviar = async () => {
     if (!tipo || !cliente) return;
@@ -73,6 +96,13 @@ export function OperacaoNova() {
       setEnviando(false);
     }
   };
+
+  const BotaoEndereco = ({ visivel, ao }: { visivel: boolean; ao: () => void }) =>
+    visivel ? (
+      <button type="button" onClick={ao} className="mt-1 inline-flex items-center gap-1 text-xs text-ouro hover:underline">
+        <MapPin className="h-3 w-3" /> Usar endereço do cliente
+      </button>
+    ) : null;
 
   const precisaAtivo = tipo === "locacao" || tipo === "venda" || tipo === "compra";
   const podeEnviar =
@@ -122,9 +152,11 @@ export function OperacaoNova() {
                 />
                 <Campo rotulo="Endereço de origem">
                   <Entrada value={campos.origem_endereco ?? ""} onChange={set("origem_endereco")} placeholder="De onde retirar" />
+                  <BotaoEndereco visivel={!!enderecoCliente} ao={() => usarEndereco("origem_endereco")} />
                 </Campo>
                 <Campo rotulo="Endereço de destino">
                   <Entrada value={campos.destino_endereco ?? ""} onChange={set("destino_endereco")} placeholder="Para onde levar" />
+                  <BotaoEndereco visivel={!!enderecoCliente} ao={() => usarEndereco("destino_endereco")} />
                 </Campo>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo rotulo="Veículo do cliente">

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TIPOS_OPERACAO, STATUS_OPERACAO } from "../enums";
+import { TIPOS_OPERACAO, STATUS_OPERACAO, FORMAS_PAGAMENTO } from "../enums";
 
 // ── Filtros de listagem ──
 export const operacaoFiltrosSchema = z.object({
@@ -56,12 +56,34 @@ export const compraCriarSchema = z.object({
 });
 export type CompraCriarInput = z.infer<typeof compraCriarSchema>;
 
+// ── Edição dos lançamentos antes de finalizar (doc 03 §1, regra 5) ──
+// Na transição que gera financeiro (finalizada/concluido/fechada), o usuário
+// pode revisar os lançamentos que serão criados antes de confirmar: conta,
+// forma de pagamento e o vencimento de cada parcela. Não duplica dado nem cria
+// tabela — apenas escolhe os valores que o sistema preencheria por padrão.
+// Se omitido, mantém o comportamento atual (conta padrão, mensal a partir de hoje).
+export const parcelaPrevistaSchema = z.object({
+  data_vencimento: z.string().date("Informe o vencimento da parcela"),
+  // Valor opcional por parcela; quando ausente, o total é rateado igualmente.
+  valor: z.coerce.number().positive().optional(),
+});
+export type ParcelaPrevista = z.infer<typeof parcelaPrevistaSchema>;
+
+export const financeiroTransicaoSchema = z.object({
+  conta_id: z.string().uuid().optional(),
+  forma_pagamento: z.enum(FORMAS_PAGAMENTO).nullish(),
+  parcelas: z.array(parcelaPrevistaSchema).min(1).max(60),
+});
+export type FinanceiroTransicaoInput = z.infer<typeof financeiroTransicaoSchema>;
+
 // ── Transição de estado (campos opcionais conforme a transição) ──
 export const transicaoSchema = z.object({
   status: z.enum(STATUS_OPERACAO),
   km: z.coerce.number().int().nonnegative().nullish(),
   data: z.string().datetime({ offset: true }).or(z.string().date()).nullish(),
   parcelas: z.coerce.number().int().min(1).max(60).default(1),
+  // Edição dos lançamentos a gerar (opcional; tem precedência sobre `parcelas`).
+  financeiro: financeiroTransicaoSchema.optional(),
   // Sobreposição de bloqueio (ex.: CNH vencida) — exige justificativa (admin)
   justificativa: z.string().trim().min(3).nullish(),
 });

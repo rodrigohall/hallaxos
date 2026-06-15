@@ -72,15 +72,21 @@ continua sendo o mesmo registro, com a história inteira preservada.
 
 ### `pessoa_papeis`
 
-| Campo     | Tipo | Notas                                                        |
-| --------- | ---- | ------------------------------------------------------------ |
-| pessoa_id | FK   | PK composto com `papel`                                      |
-| papel     | enum | `cliente` \| `fornecedor` \| `motorista` \| `parceiro`       |
+| Campo     | Tipo | Notas                                                                 |
+| --------- | ---- | --------------------------------------------------------------------- |
+| pessoa_id | FK   | PK composto com `papel`                                              |
+| papel     | enum | `cliente` \| `fornecedor` \| `motorista` \| `parceiro` \| `oficina` |
 
 > Papéis são atribuídos automaticamente pelo sistema quando a pessoa participa
 > de algo (virou cliente ao fechar a primeira operação) — o usuário não
 > precisa "decidir o tipo" no cadastro. Busca antes de cadastro: o fluxo de
 > criar operação sempre busca a pessoa primeiro e só então oferece criar.
+>
+> **Oficina** é o único papel marcado manualmente (campo "É oficina" no
+> cadastro, normalmente PJ): a oficina/prestador de manutenção **é uma pessoa**
+> (doc 02 §5, `manutencoes.fornecedor_id`), não uma tabela nova. Marcar como
+> oficina a torna pesquisável e filtrável (`GET /pessoas?papel=oficina`),
+> alimentando o autocomplete de oficina nas manutenções.
 
 ---
 
@@ -161,6 +167,13 @@ Quais ativos participam da operação e em qual papel.
 
 > No guincho, o veículo **do cliente** não é um ativo nosso — seus dados vivem
 > na extensão `operacoes_guincho` como texto, sem poluir o patrimônio.
+>
+> `origem_endereco` / `destino_endereco` são **texto livre por natureza**: o
+> local de um guincho é um evento (onde o carro está), raramente o endereço
+> cadastrado do cliente. A UI oferece o atalho "Usar endereço do cliente", que
+> **preenche** o campo a partir do endereço da `pessoa` (núcleo) — um snapshot
+> de conveniência, não uma tabela paralela. A fonte de verdade do endereço
+> continua sendo `pessoas`; hoje é um endereço por pessoa (§1).
 
 ### `operacoes_guincho` (extensão 1:1)
 

@@ -29,6 +29,9 @@
 | ~~Manutenções sem API/UI~~ | ✅ Entregue no Sprint 6 (módulo completo com máquina de estados) | — |
 | ~~Agenda (tela calendário)~~ | ✅ Entregue no Sprint 6 (calendário mensal derivado + compromissos manuais) | — |
 | Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 7 |
+| ~~Edição dos lançamentos antes de finalizar (conta, forma, parcelas, vencimentos)~~ | ✅ Sprint 9 — bloco `financeiro` na transição + `previa-financeira`; persiste só ao confirmar | — |
+| ~~"Usar endereço do cliente" no guincho~~ | ✅ Sprint 9 — atalho preenche origem/destino a partir do endereço da pessoa (texto, sem duplicar) | — |
+| ~~Cadastro e busca de oficinas por nome~~ | ✅ Sprint 9 — papel `oficina` em `pessoas`, autocomplete `?papel=oficina` + cadastro inline | — |
 | ~~Notificações: tabela existe, gatilhos não disparam, sem sino na UI~~ | ✅ Sprint 8 — service + job de prazos (devolução, vencimentos, CNH/documento, manutenção) + sino na UI | — |
 | ~~Tags e favoritos: tabelas sem API/UI~~ | ✅ Sprint 8 — services, rotas e UI (estrela + chips de tags) na tela de ativo | — |
 | Compra vincula ativo existente em vez de criá-lo na conclusão | Decisão registrada no Sprint 5 | Se houver demanda |

@@ -23,6 +23,9 @@ export const pessoaCriarSchema = z.object({
   cnh_categoria: z.string().nullish(),
   cnh_validade: z.coerce.date().nullish(),
   observacoes: z.string().nullish(),
+  // Marca a pessoa como oficina (atribui/remove o papel `oficina`). Oficina não
+  // é tabela nova: é um papel de `pessoas` (doc 02 §1). Geralmente PJ.
+  eh_oficina: z.boolean().optional(),
 });
 export type PessoaCriarInput = z.infer<typeof pessoaCriarSchema>;
 

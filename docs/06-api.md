@@ -58,10 +58,10 @@ GET    /auth/sessao               → usuário atual + permissões (a UI monta-s
 ### Pessoas
 
 ```
-GET    /pessoas                   ?busca ?papel ?cnh_vencendo
-POST   /pessoas
+GET    /pessoas                   ?busca ?papel (ex.: papel=oficina) ?cnh_vencendo
+POST   /pessoas                   { ..., eh_oficina? }  → marca/atribui o papel `oficina`
 GET    /pessoas/:id               → inclui papéis, tags, contadores (operações, pendências)
-PATCH  /pessoas/:id
+PATCH  /pessoas/:id               { ..., eh_oficina? }  → marca/desmarca o papel `oficina`
 DELETE /pessoas/:id               → arquiva (soft delete; 409 se houver vínculos ativos)
 GET    /pessoas/:id/timeline      cursor
 GET    /pessoas/:id/operacoes
@@ -97,12 +97,49 @@ GET    /operacoes/:id/timeline    cursor
 Transições (validadas pela máquina de estados do doc 03):
 
 ```
-Locação:   POST /operacoes/:id/reservar | /ativar {km_saida} | /finalizar {km_retorno, data} | /cancelar {motivo}
-Guincho:   POST /operacoes/:id/despachar {motorista_id} | /iniciar | /concluir {km_percorrido} | /cancelar {motivo}
-Compra/Venda: POST /operacoes/:id/fechar {parcelas?} | /concluir | /cancelar {motivo}
+GET    /operacoes/:id/previa-financeira  → { tipo, categoria, tipo_lancamento,
+         valor_previsto, conta_padrao } — read-only; a UI usa para montar as
+         parcelas editáveis antes de confirmar a finalização (regra 5 do doc 03).
+
+POST   /operacoes/:id/transicao  { status, km?, data?, parcelas?, justificativa?,
+         financeiro? }
 ```
 
-> Override (ex.: CNH vencida): mesmas rotas com `{ override: { justificativa } }` — só `admin` (doc 05).
+> **Nota de implementação:** as transições são hoje um endpoint único nomeado
+> por `status` no corpo (`POST /operacoes/:id/transicao`), e não rotas
+> separadas por verbo. Os contratos abaixo descrevem a intenção de cada
+> transição (o que cada `status` requer):
+>
+> ```
+> Locação:   reservada | ativa {km} | finalizada {km, financeiro} | cancelada
+> Guincho:   a_caminho | em_execucao | concluido {km, financeiro} | cancelada
+> Compra/Venda: fechada {financeiro} | concluida | cancelada
+> ```
+
+**Edição financeira antes de finalizar (`financeiro`).** Nas transições que
+geram lançamentos (`finalizada`, `concluido`, `fechada`), o cliente pode revisar
+o que será criado antes de confirmar — sem duplicar dado nem criar tabela, só
+escolhendo os valores que o sistema preencheria por padrão:
+
+```jsonc
+"financeiro": {
+  "conta_id": "uuid",                 // conta de destino/origem (default: conta padrão)
+  "forma_pagamento": "pix",           // aplicada a todas as parcelas (ou null)
+  "parcelas": [                        // 1..60; vencimento (e valor opcional) por parcela
+    { "data_vencimento": "2026-07-10" },
+    { "data_vencimento": "2026-08-10", "valor": 250.00 }
+  ]
+}
+```
+
+Regras: se `valor` for informado em uma parcela, deve ser em **todas** e a soma
+tem de bater com o total (422 `REGRA_NEGOCIO` caso contrário); se só houver
+datas, o total é rateado igualmente. Omitir `financeiro` mantém o comportamento
+atual (parcelas mensais a partir de hoje, na conta padrão). Após finalizada, os
+lançamentos seguem o fluxo normal do Financeiro (edição com auditoria), com a
+origem `operacao → lançamento` preservada.
+
+> Override (ex.: CNH vencida): mesma rota com `{ justificativa }` — só `admin` (doc 05).
 
 ### Manutenções
 

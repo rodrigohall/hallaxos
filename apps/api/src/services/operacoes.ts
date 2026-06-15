@@ -5,7 +5,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type {
   GuinchoCriarInput, LocacaoCriarInput, VendaCriarInput, CompraCriarInput,
-  TransicaoInput, StatusOperacao, TipoOperacao, StatusAtivo,
+  TransicaoInput, FinanceiroTransicaoInput, StatusOperacao, TipoOperacao, StatusAtivo,
 } from "@hallaxos/shared";
 import { db, type DbConn } from "../db/client";
 import {
@@ -35,11 +35,14 @@ const ROTULOS_STATUS: Record<string, string> = {
 };
 
 // Gera lançamentos previstos vinculados à operação (helper comum em
-// origemFinanceira.ts — partilhado com manutenções).
+// origemFinanceira.ts — partilhado com manutenções). O bloco `financeiro`
+// (opcional) carrega a edição feita pelo usuário antes de finalizar: conta,
+// forma de pagamento e o vencimento de cada parcela (doc 03 §1, regra 5).
 async function gerarLancamentos(
   tx: DbConn,
   o: { operacaoId: string; clienteId: string; tipo: "receita" | "despesa";
-       categoriaNome: string; descricao: string; valor: number; parcelas: number },
+       categoriaNome: string; descricao: string; valor: number; parcelas: number;
+       financeiro?: FinanceiroTransicaoInput },
   usuarioId: string
 ) {
   await gerarLancamentosOrigem(
@@ -53,6 +56,9 @@ async function gerarLancamentos(
       descricao: o.descricao,
       valor: o.valor,
       parcelas: o.parcelas,
+      contaId: o.financeiro?.conta_id,
+      formaPagamento: o.financeiro?.forma_pagamento ?? null,
+      plano: o.financeiro?.parcelas.map((p) => ({ dataVencimento: p.data_vencimento, valor: p.valor })),
     },
     usuarioId
   );
@@ -191,6 +197,37 @@ export async function obterOperacao(id: string) {
 
   const proximos = proximasTransicoes(o.tipo, o.status);
   return { ...o, cliente: linha.cliente, extensao, ativos: ativosVinc, lancamentos: lancs, proximasTransicoes: proximos };
+}
+
+// Categoria/sinal do lançamento que cada tipo de operação gera ao finalizar.
+const FINANCEIRO_POR_TIPO: Record<TipoOperacao, { categoria: string; tipo: "receita" | "despesa" }> = {
+  locacao: { categoria: "Locação", tipo: "receita" },
+  guincho: { categoria: "Guincho", tipo: "receita" },
+  venda: { categoria: "Venda de Ativos", tipo: "receita" },
+  compra: { categoria: "Compra de Ativos", tipo: "despesa" },
+};
+
+/**
+ * Prévia do financeiro a gerar na finalização (doc 06): valor previsto, conta
+ * padrão e categoria — para a UI montar as parcelas editáveis antes de confirmar.
+ * Para locação o valor é diárias × dias (calculado como na finalização).
+ */
+export async function previaFinanceira(id: string) {
+  const [op] = await db.select().from(operacoes).where(and(eq(operacoes.id, id), isNull(operacoes.deletedAt)));
+  if (!op) throw naoEncontrado("Operação");
+  let valor = Number(op.valorTotal);
+  if (op.tipo === "locacao") valor = await totalLocacao(db, op.id, valor);
+  const cat = FINANCEIRO_POR_TIPO[op.tipo];
+  const conta = (
+    await db.execute(sql`SELECT id, nome FROM contas ORDER BY created_at LIMIT 1`)
+  ).rows[0] as { id: string; nome: string } | undefined;
+  return {
+    tipo: op.tipo,
+    categoria: cat.categoria,
+    tipo_lancamento: cat.tipo,
+    valor_previsto: valor.toFixed(2),
+    conta_padrao: conta ? { id: conta.id, nome: conta.nome } : null,
+  };
 }
 
 /** Transições oferecidas pela UI a partir do estado atual (próximo + cancelar). */
@@ -386,7 +423,7 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
       const total = await totalLocacao(tx, c.op.id, valor);
       await gerarLancamentos(tx, {
         operacaoId: c.op.id, clienteId: c.op.clienteId, tipo: "receita",
-        categoriaNome: "Locação", descricao: `Locação ${c.op.codigo}`, valor: total, parcelas: c.input.parcelas,
+        categoriaNome: "Locação", descricao: `Locação ${c.op.codigo}`, valor: total, parcelas: c.input.parcelas, financeiro: c.input.financeiro,
       }, c.usuario.id);
       await tx.update(operacoes).set({ valorTotal: total.toFixed(2) }).where(eq(operacoes.id, c.op.id));
     }
@@ -401,14 +438,14 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
         .where(eq(operacoesGuincho.operacaoId, c.op.id));
       await gerarLancamentos(tx, {
         operacaoId: c.op.id, clienteId: c.op.clienteId, tipo: "receita",
-        categoriaNome: "Guincho", descricao: `Guincho ${c.op.codigo}`, valor, parcelas: c.input.parcelas,
+        categoriaNome: "Guincho", descricao: `Guincho ${c.op.codigo}`, valor, parcelas: c.input.parcelas, financeiro: c.input.financeiro,
       }, c.usuario.id);
     }
   } else if (tipo === "venda") {
     if (destino === "fechada") {
       await gerarLancamentos(tx, {
         operacaoId: c.op.id, clienteId: c.op.clienteId, tipo: "receita",
-        categoriaNome: "Venda de Ativos", descricao: `Venda ${c.op.codigo}`, valor, parcelas: c.input.parcelas,
+        categoriaNome: "Venda de Ativos", descricao: `Venda ${c.op.codigo}`, valor, parcelas: c.input.parcelas, financeiro: c.input.financeiro,
       }, c.usuario.id);
     }
     if (destino === "concluida" && c.objeto) {
@@ -421,7 +458,7 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
     if (destino === "fechada") {
       await gerarLancamentos(tx, {
         operacaoId: c.op.id, clienteId: c.op.clienteId, tipo: "despesa",
-        categoriaNome: "Compra de Ativos", descricao: `Compra ${c.op.codigo}`, valor, parcelas: c.input.parcelas,
+        categoriaNome: "Compra de Ativos", descricao: `Compra ${c.op.codigo}`, valor, parcelas: c.input.parcelas, financeiro: c.input.financeiro,
       }, c.usuario.id);
     }
     if (destino === "concluida" && c.objeto) {
