@@ -17,6 +17,14 @@ configurar a chave.
 - Próximos passos: UI (campo de pergunta no ⌘K / painel) e estabilização do
   deploy.
 
+## Melhorias de usabilidade (2026-06-15)
+
+- **CEP com autocomplete no cadastro de cliente**: ao digitar o CEP (8 dígitos),
+  o navegador consulta o ViaCEP e preenche logradouro, bairro, cidade e UF
+  automaticamente (dispara ao completar 8 dígitos e no blur; em falha, deixa
+  preencher manualmente). Adicionado também o campo Bairro na tela (já existia
+  no modelo). Sem mudança de backend.
+
 ## Correções pós-Sprint 8 (2026-06-13)
 
 Hotfixes após o Sprint 8 entrar em produção — login estava inacessível.

@@ -67,6 +67,30 @@ banco + API + site. Ao final, imprime o endereço e o login inicial.
 - Logs: `docker compose -f docker-compose.prod.yml logs -f`
 - Sem dados de demonstração em produção — o admin inicial vem do `.env`.
 
+### Como os deploys realmente acontecem hoje (VPS Hostinger)
+
+O ambiente de produção roda num **VPS da Hostinger** (Ubuntu), com **acesso ao
+terminal** por SSH e pelo **Console web** do painel da Hostinger. O fluxo:
+
+1. **Deploy automático (CI):** push no branch `claude/stoic-shannon-d3fxpi`
+   dispara o GitHub Actions (`.github/workflows/deploy.yml`), que valida
+   (typecheck/build/testes) e, se passar, envia o código por SSH/rsync ao VPS e
+   roda `./deploy/instalar.sh`. Segredos em GitHub → Settings → Secrets:
+   `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
+2. **A conexão SSH ao VPS é intermitente.** Às vezes o job de deploy falha com
+   `connect to host port 22: Connection timed out` — o sistema continua no ar,
+   só a atualização não aplica. Já corrigimos o `sshd` para subir no boot
+   (`systemctl enable ssh`); a estabilização completa é pendência do Sprint 9.
+3. **Quando o CI falha, atualizamos manualmente pelo terminal do VPS** (o repo é
+   público, então dá para baixar os arquivos alterados via `curl` e reconstruir
+   só o container afetado com `docker compose ... up -d --build`).
+
+⚠️ **Já passamos por:** perda do `.env` em produção (virou o `.env.example`) e
+recuperação da senha do banco a partir dos containers em execução; cache do
+Docker não pegando mudanças; senha do admin no `.env`. **Todo o passo a passo
+desses cenários está em [`docs/operacao-vps.md`](docs/operacao-vps.md)** — leia
+esse runbook antes de mexer em deploy/servidor.
+
 ## Documentação
 
 A arquitetura é definida **antes** do código. Leia em ordem:
@@ -103,6 +127,13 @@ ferramenta, sem dados próprios e respeitando o papel do usuário. **Desligado p
 padrão** (sem custo) até configurar o secret `IA_API_KEY`. Falta a UI e a
 estabilização do deploy. Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
 
+**Ajustes recentes em produção (jun/2026):** correção do login (rate-limit
+incompatível com Fastify 5), **upload pelo iPhone** (iOS Safari invalidava o
+arquivo ao limpar o input cedo demais), **criar categoria/conta direto no
+lançamento** (necessário porque em produção não há seed) e **CEP com
+autocomplete** no cadastro de cliente (ViaCEP). Detalhes no
+[`CHANGELOG.md`](CHANGELOG.md).
+
 ### Continuar o desenvolvimento (para uma nova sessão)
 
 - **Branch único e fonte da verdade:** `claude/stoic-shannon-d3fxpi`. É onde o
@@ -112,6 +143,18 @@ estabilização do deploy. Roadmap completo em [`docs/pendencias.md`](docs/pende
   deste).
 - **Estado e próximos passos:** consolidados em [`CHANGELOG.md`](CHANGELOG.md) e
   [`docs/pendencias.md`](docs/pendencias.md) (seção Roadmap → Sprint 9).
+- **Operação/deploy do servidor:** leia o runbook
+  [`docs/operacao-vps.md`](docs/operacao-vps.md) — VPS Hostinger, fluxo de
+  deploy, o problema intermitente de SSH e como contornar (re-run ou aplicação
+  manual pelo terminal), e a recuperação do `.env`. Importante porque o deploy
+  automático ainda falha às vezes e exige passos manuais no VPS.
 - **Próximas tarefas conhecidas:** UI do copiloto (campo no ⌘K/painel),
-  estabilizar o deploy (timeout SSH intermitente do VPS — investigar fail2ban/
-  firewall), e ligar a IA quando houver chave (`IA_API_KEY`).
+  **estabilizar o deploy** (timeout SSH intermitente do VPS — investigar
+  fail2ban/firewall da Hostinger), e ligar a IA quando houver chave
+  (`IA_API_KEY`). O usuário tem mais funcionalidades a pedir na próxima sessão.
+
+> **Fluxo de trabalho desta linha de desenvolvimento:** o dono do produto tem
+> acesso ao terminal do VPS (Hostinger) e topa rodar comandos colados quando o
+> deploy automático falha. Ao entregar algo, **dê push no branch acima** e
+> confirme o deploy; se o CI não conseguir publicar, forneça o comando manual
+> pronto para colar no terminal do VPS (ver runbook).
