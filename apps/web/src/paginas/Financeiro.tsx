@@ -36,6 +36,11 @@ export function Financeiro() {
   const [erro, setErro] = useState("");
   const [acao, setAcao] = useState<{ tipo: "pagar" | "estornar" | "cancelar"; l: Lancamento } | null>(null);
   const [campoAcao, setCampoAcao] = useState("");
+  // Criação inline de categoria/conta direto no formulário de lançamento —
+  // necessário no primeiro uso, quando ainda não há nenhuma cadastrada.
+  const [novaCat, setNovaCat] = useState("");
+  const [novaConta, setNovaConta] = useState("");
+  const [salvandoAux, setSalvandoAux] = useState(false);
 
   const { data: contas } = useQuery({
     queryKey: ["contas"],
@@ -75,6 +80,47 @@ export function Financeiro() {
       notificar({ tipo: "ok", titulo: "Lançamento criado" });
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Erro inesperado.");
+    }
+  };
+
+  // Cria a categoria (no tipo atual do lançamento) e já a seleciona no form.
+  const adicionarCategoria = async () => {
+    const nome = novaCat.trim();
+    if (nome.length < 2) return;
+    setSalvandoAux(true);
+    setErro("");
+    try {
+      const { dados } = await api.post<{ dados: Categoria }>("/categorias-financeiras", {
+        nome,
+        tipo: form.tipo,
+      });
+      await fila.invalidateQueries({ queryKey: ["categorias-financeiras"] });
+      setForm((f) => ({ ...f, categoria_id: dados.id }));
+      setNovaCat("");
+      notificar({ tipo: "ok", titulo: "Categoria criada" });
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro inesperado.");
+    } finally {
+      setSalvandoAux(false);
+    }
+  };
+
+  // Cria a conta (saldo inicial 0) e já a seleciona no form.
+  const adicionarConta = async () => {
+    const nome = novaConta.trim();
+    if (nome.length < 2) return;
+    setSalvandoAux(true);
+    setErro("");
+    try {
+      const { dados } = await api.post<{ dados: Conta }>("/contas", { nome, saldo_inicial: 0 });
+      await fila.invalidateQueries({ queryKey: ["contas"] });
+      setForm((f) => ({ ...f, conta_id: dados.id }));
+      setNovaConta("");
+      notificar({ tipo: "ok", titulo: "Conta criada" });
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro inesperado.");
+    } finally {
+      setSalvandoAux(false);
     }
   };
 
@@ -210,12 +256,44 @@ export function Financeiro() {
                   <option key={c.id} value={c.id}>{c.nome}</option>
                 ))}
               </Selecao>
+              {pode("categorias_financeiras", "criar") && (
+                <div className="mt-1.5 flex gap-1.5">
+                  <Entrada
+                    placeholder={`Nova categoria de ${form.tipo}`}
+                    value={novaCat}
+                    onChange={(e) => setNovaCat(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); adicionarCategoria(); }
+                    }}
+                  />
+                  <Botao type="button" variante="fantasma" onClick={adicionarCategoria}
+                    disabled={salvandoAux || novaCat.trim().length < 2}>
+                    <Plus className="h-4 w-4" />
+                  </Botao>
+                </div>
+              )}
             </Campo>
             <Campo rotulo="Conta">
               <Selecao required value={form.conta_id} onChange={(e) => setForm({ ...form, conta_id: e.target.value })}>
                 <option value="">Escolha…</option>
                 {contas?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </Selecao>
+              {pode("contas", "criar") && (
+                <div className="mt-1.5 flex gap-1.5">
+                  <Entrada
+                    placeholder="Nova conta (ex.: Caixa, Banco)"
+                    value={novaConta}
+                    onChange={(e) => setNovaConta(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); adicionarConta(); }
+                    }}
+                  />
+                  <Botao type="button" variante="fantasma" onClick={adicionarConta}
+                    disabled={salvandoAux || novaConta.trim().length < 2}>
+                    <Plus className="h-4 w-4" />
+                  </Botao>
+                </div>
+              )}
             </Campo>
             <Campo rotulo="Vencimento">
               <Entrada type="date" required value={form.data_vencimento}

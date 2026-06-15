@@ -21,6 +21,12 @@ configurar a chave.
 
 Hotfixes após o Sprint 8 entrar em produção — login estava inacessível.
 
+- **Criar categoria e conta no próprio lançamento**: em produção o seed não
+  roda, então `categorias_financeiras` e `contas` nascem vazias e era impossível
+  finalizar uma receita/despesa (ambos os campos são obrigatórios). O formulário
+  de lançamento agora tem um mini-campo "+ nova" para criar a categoria (no tipo
+  do lançamento) e a conta na hora, já selecionando a recém-criada. (API de
+  criação já existia desde o Sprint 3.) Gated por permissão.
 - **Upload pelo iPhone (iOS Safari)**: o campo de arquivo era limpo
   (`input.value = ""`) logo após a escolha, ainda de forma síncrona — no iOS
   isso **invalida o arquivo selecionado** antes do `fetch` ler o corpo, então a
