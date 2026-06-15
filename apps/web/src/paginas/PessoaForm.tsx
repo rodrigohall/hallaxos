@@ -23,6 +23,7 @@ export function PessoaForm() {
   const [erroGeral, setErroGeral] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [etapa, setEtapa] = useState(0);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -45,6 +46,36 @@ export function PessoaForm() {
 
   const definir = (campo: keyof Formulario) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [campo]: e.target.value }));
+
+  // Autocomplete de endereço pelo CEP (ViaCEP). A consulta é feita pelo
+  // navegador do usuário — não passa pelo nosso servidor. Preenche logradouro,
+  // bairro, cidade e UF; em falha, deixa preencher manualmente sem travar.
+  const buscarCep = async (valor: string) => {
+    const cep = valor.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    setBuscandoCep(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = (await r.json()) as {
+        erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string;
+      };
+      if (d.erro) {
+        notificar({ tipo: "erro", titulo: "CEP não encontrado", descricao: "Confira o número ou preencha manualmente." });
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        logradouro: d.logradouro || f.logradouro,
+        bairro: d.bairro || f.bairro,
+        cidade: d.localidade || f.cidade,
+        uf: d.uf || f.uf,
+      }));
+    } catch {
+      notificar({ tipo: "erro", titulo: "Não consegui consultar o CEP", descricao: "Preencha o endereço manualmente." });
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
 
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
@@ -130,14 +161,28 @@ export function PessoaForm() {
             <Campo rotulo="E-mail" erro={erros.email}>
               <Entrada type="email" value={form.email} onChange={definir("email")} />
             </Campo>
-            <Campo rotulo="CEP">
-              <Entrada value={form.cep} onChange={definir("cep")} />
+            <Campo rotulo="CEP" dica={buscandoCep ? "Buscando endereço…" : "Preenche o endereço automaticamente"}>
+              <Entrada
+                value={form.cep}
+                inputMode="numeric"
+                maxLength={9}
+                placeholder="00000-000"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm((f) => ({ ...f, cep: v }));
+                  if (v.replace(/\D/g, "").length === 8) void buscarCep(v);
+                }}
+                onBlur={(e) => void buscarCep(e.target.value)}
+              />
             </Campo>
             <Campo rotulo="Cidade">
               <Entrada value={form.cidade} onChange={definir("cidade")} />
             </Campo>
             <Campo rotulo="Logradouro">
               <Entrada value={form.logradouro} onChange={definir("logradouro")} />
+            </Campo>
+            <Campo rotulo="Bairro">
+              <Entrada value={form.bairro} onChange={definir("bairro")} />
             </Campo>
             <div className="grid grid-cols-2 gap-4">
               <Campo rotulo="Número">
