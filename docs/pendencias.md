@@ -1,7 +1,7 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: fim do Sprint 8 (2026-06-13),
+> assumida — não esquecimento. Última revisão: Sprint 9 em andamento (2026-06-15),
 > conferida contra o código (não contra a memória).
 
 ## Estado atual — o que está em produção
@@ -43,7 +43,7 @@
 | ~~Rate limiting global~~ | ✅ Sprint 8 — `@fastify/rate-limit`, 200 req/min por IP em toda a API | — |
 | ~~Auditoria de negações de acesso (doc 05 §4.3)~~ | ✅ Sprint 8 — todo 403 emite `req.log.warn` com usuário/papel/recurso/ação/URL | — |
 | CORS de produção restritivo | Falta restringir origens em produção | Próxima |
-| Deploy intermitente: SSH do VPS dá timeout na :22 às vezes | Funciona ora sim ora não; suspeita de fail2ban banindo IPs dos runners ou firewall do Hostinger. `sshd` já está com `enable` (sobe no boot) | Sprint 9 — investigar e estabilizar |
+| Deploy intermitente: SSH do VPS deu timeout na :22 em alguns momentos | Voltou a conectar após `systemctl enable ssh` (sobe no boot); últimos deploys passaram. Pode reincidir — suspeita de fail2ban/firewall do Hostinger | Sprint 9 — monitorar e estabilizar |
 
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |

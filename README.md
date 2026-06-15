@@ -97,5 +97,21 @@ transversais: **notificações** (sino na UI + job de prazos), **tags**,
 **favoritos**, **rate limiting** (200 req/min por IP) e auditoria de negações.
 Deploy contínuo no VPS a cada push.
 
-Próxima: **Sprint 9** (copiloto de IA sobre busca global, relatórios e
-timeline). Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
+**Sprint 9 em andamento — Copiloto de IA.** Backend já entregue (scaffold):
+`POST /copiloto/perguntar` orquestra o modelo Claude usando a busca global como
+ferramenta, sem dados próprios e respeitando o papel do usuário. **Desligado por
+padrão** (sem custo) até configurar o secret `IA_API_KEY`. Falta a UI e a
+estabilização do deploy. Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
+
+### Continuar o desenvolvimento (para uma nova sessão)
+
+- **Branch único e fonte da verdade:** `claude/stoic-shannon-d3fxpi`. É onde o
+  código vive **e** de onde o deploy automático sai (o workflow dispara em push
+  nesse branch). Desenvolva e dê push aqui. Os demais branches `claude/*` são
+  obsoletos — podem ser apagados na UI do GitHub (já estão contidos no histórico
+  deste).
+- **Estado e próximos passos:** consolidados em [`CHANGELOG.md`](CHANGELOG.md) e
+  [`docs/pendencias.md`](docs/pendencias.md) (seção Roadmap → Sprint 9).
+- **Próximas tarefas conhecidas:** UI do copiloto (campo no ⌘K/painel),
+  estabilizar o deploy (timeout SSH intermitente do VPS — investigar fail2ban/
+  firewall), e ligar a IA quando houver chave (`IA_API_KEY`).
