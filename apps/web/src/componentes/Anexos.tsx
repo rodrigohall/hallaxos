@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
-import { Botao, Card, EstadoVazio, SkeletonLinhas, useToast, dataCurta } from "./ui";
+import { Botao, Card, EstadoVazio, Modal, SkeletonLinhas, useToast, dataCurta } from "./ui";
 
 interface Documento {
   id: string;
@@ -136,6 +136,7 @@ export function Galeria(props: PropsEntidade) {
   const { pode } = useAuth();
   const notificar = useToast();
   const [ampliada, setAmpliada] = useState<number | null>(null);
+  const [excluir, setExcluir] = useState<Documento | null>(null);
 
   const principal = async (id: string) => {
     await api.post(`/documentos/${id}/principal`);
@@ -151,10 +152,19 @@ export function Galeria(props: PropsEntidade) {
     await api.post("/documentos/reordenar", { ids });
     invalidar();
   };
-  const remover = async (f: Documento) => {
-    await api.delete(`/documentos/${f.id}`);
-    invalidar();
-    notificar({ tipo: "ok", titulo: "Foto removida" });
+  // Foto no ativo errado: exclusão permanente (apaga arquivo + referência).
+  // Irreversível — confirma num modal explicando a consequência (decisão 25).
+  const confirmarExclusao = async () => {
+    if (!excluir) return;
+    try {
+      await api.delete(`/documentos/${excluir.id}?permanente=true`);
+      invalidar();
+      notificar({ tipo: "ok", titulo: "Foto excluída permanentemente" });
+    } catch (e) {
+      notificar({ tipo: "erro", titulo: "Falha ao excluir", descricao: e instanceof ApiError ? e.message : undefined });
+    } finally {
+      setExcluir(null);
+    }
   };
 
   return (
@@ -187,7 +197,7 @@ export function Galeria(props: PropsEntidade) {
                       <button title="Definir como principal" onClick={() => principal(f.id)} className="rounded p-1 text-suave hover:text-ouro">
                         <Star className="h-3.5 w-3.5" />
                       </button>
-                      <button title="Remover" onClick={() => remover(f)} className="rounded p-1 text-suave hover:text-erro">
+                      <button title="Excluir permanentemente" onClick={() => setExcluir(f)} className="rounded p-1 text-suave hover:text-erro">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                       <button title="Mover para frente" onClick={() => mover(i, 1)} className="rounded p-1 text-suave hover:text-texto">
@@ -250,6 +260,21 @@ export function Galeria(props: PropsEntidade) {
           )}
         </div>
       )}
+
+      <Modal aberto={!!excluir} aoFechar={() => setExcluir(null)} titulo="Excluir foto permanentemente">
+        {excluir && (
+          <div className="space-y-4">
+            <p className="text-sm text-suave">
+              A foto <span className="font-medium text-texto">"{excluir.nome}"</span> será apagada
+              do servidor (arquivo e referência). <span className="text-erro">Esta ação não pode ser desfeita.</span>
+            </p>
+            <div className="flex justify-end gap-2">
+              <Botao variante="fantasma" onClick={() => setExcluir(null)}>Voltar</Botao>
+              <Botao variante="perigo" onClick={confirmarExclusao}>Excluir permanentemente</Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 }

@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 9 em andamento (2026-06-15),
-> conferida contra o código (não contra a memória).
+> assumida — não esquecimento. Última revisão: Sprint 9 — correções do uso real
+> II (2026-06-15), conferida contra o código (não contra a memória).
 
 ## Estado atual — o que está em produção
 
@@ -26,6 +26,9 @@
 ### Funcional
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
+| ~~Aba de Manutenções quebrada em produção~~ | ✅ Corrigido — `WHERE` cru qualificado por `m` na lista (bug latente do Sprint 6, `42P01`). Teste de integração + Postgres na CI | — |
+| ~~Exclusão permanente de foto no lugar errado~~ | ✅ `DELETE /documentos/:id?permanente=true` (hard delete arquivo + linha) | — |
+| ~~Lançamento lançado errado ainda contava no dashboard~~ | ✅ `POST /lancamentos/:id/anular` (admin) — `cancelado` sem contrapartida, preserva vínculo de origem (decisão 41) | — |
 | ~~Manutenções sem API/UI~~ | ✅ Entregue no Sprint 6 (módulo completo com máquina de estados) | — |
 | ~~Agenda (tela calendário)~~ | ✅ Entregue no Sprint 6 (calendário mensal derivado + compromissos manuais) | — |
 | Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 7 |

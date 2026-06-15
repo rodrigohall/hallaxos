@@ -78,6 +78,17 @@ previsto ──→ pago
 
 `vencido` = `previsto` com vencimento no passado — sempre derivado.
 
+- **Cancelar** (`previsto → cancelado`): lançamento previsto que não vai acontecer.
+- **Estornar** (`pago → ` + contrapartida): dinheiro real entrou e voltou — gera
+  um lançamento oposto; ambos permanecem (regra 6).
+- **Anular** (`pago`/`previsto → cancelado`, **sem** contrapartida): lançamento
+  **lançado errado** (engano de digitação). Sai de todos os indicadores
+  (dashboard, DRE, ROI, saldo — todos somam só `pago`/`previsto`) preservando a
+  linha, a trilha na timeline e o **vínculo de origem** `operacao_id`/
+  `manutencao_id`. Reservado ao `admin` (doc 05). Ao anular, `data_pagamento` é
+  limpa junto (invariante `pago ⇔ data`, §3). Difere do estorno: aqui não houve
+  dinheiro real a reverter, então nada de contrapartida.
+
 ### Manutenção
 
 ```
@@ -118,7 +129,11 @@ agendada ──→ em_andamento ──→ concluida
    geração não muda a máquina de estados — só os parâmetros do lançamento.
 6. **Cancelar operação cancela os lançamentos `previsto` vinculados.**
    Lançamentos já pagos não somem: geram contrapartida (estorno) — dinheiro
-   que entrou no caixa nunca desaparece do histórico.
+   que entrou no caixa nunca desaparece do histórico. **Exceção: lançamento
+   lançado errado** (engano de digitação, não dinheiro real) pode ser **anulado**
+   pelo `admin` (`status=cancelado`, sem contrapartida): sai dos indicadores mas
+   a linha e o vínculo de origem permanecem — a trilha origem→lançamento fica
+   íntegra (a operação ainda mostra o que gerou e que foi anulado, e por quê).
 7. **Saldo de conta, custo de manutenção e total de parcelas são sempre
    derivados.** Nenhum agregado financeiro é armazenado.
 

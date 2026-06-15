@@ -65,6 +65,16 @@
 | 36 | Papel `oficina` é o único atribuído **manualmente** (toggle "É oficina") | Diferente de `cliente`/`fornecedor` (derivados de participação), "ser oficina" é uma classificação do negócio que o usuário declara — escolha do dono do produto |
 | 37 | Filtro `?papel=` movido para SQL (EXISTS) em vez de pós-paginação | A filtragem após o `LIMIT` perdia resultados além da 1ª página; o autocomplete de oficina precisa ser correto |
 
+## Sprint 9 — Correções do uso real (II)
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 38 | Lista de Manutenções: WHERE cru qualificado pelo alias `m`, não interpolando fragmento do Drizzle | A query principal aliasa `manutencoes` como `m`; um fragmento do Drizzle renderiza `"manutencoes"."deleted_at"`, que o Postgres rejeita depois do alias (`42P01`) — a aba quebrava 100% das vezes. Bug latente desde o Sprint 6, exposto quando a aba passou a ser usada de fato |
+| 39 | Porta de qualidade da CI ganha um Postgres real + teste de integração | Typecheck e build não veem erro de SQL cru (só estoura em runtime, contra um banco). Mesma filosofia do `boot.test.ts` para plugins: o que só falha em produção precisa de um teste que rode de verdade |
+| 40 | Foto/anexo no lugar errado → **hard delete** real (arquivo + linha), distinto do soft delete | Anexo é serviço transversal e **não é origem** de nada (não há vínculo a preservar); para "posto na entidade errada" a remoção total é o que o usuário quer. Soft delete (`?permanente=false`) segue como padrão |
+| 41 | Lançamento errado → **anulação** (`status=cancelado`, sem contrapartida), não estorno nem hard delete | Estorno cria contrapartida (dois lançamentos seguem contando bruto no dashboard) — certo para reversão de dinheiro real, errado para engano de digitação. Anular tira de **todos** os indicadores (todos filtram `pago`/`previsto`) na hora, **preservando a linha + o vínculo origem→lançamento** (a operação ainda mostra que gerou e que foi anulado). Hard delete atingiria o mesmo no dashboard, mas destruiria a trilha e deixaria a origem órfã. Reservado ao `admin` (anular um pago reescreve números) |
+| 42 | Anular limpa `data_pagamento` junto com o status | Invariante `chk_lancamento_pago_com_data` (`status='pago' ⇔ data_pagamento NOT NULL`): um lançamento anulado não é um pagamento real, então a data sai com o status |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica

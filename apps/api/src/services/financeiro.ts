@@ -198,6 +198,38 @@ export async function cancelarLancamento(id: string, motivo: string, usuarioId: 
   });
 }
 
+/**
+ * Anulação: para lançamento **lançado errado** (ex.: receita digitada por
+ * engano). Diferente do estorno — não houve dinheiro real para reverter, então
+ * NÃO gera contrapartida; apenas marca `cancelado`. Como dashboard, DRE,
+ * resultado por ativo e saldo de conta só somam `pago`/`previsto`, o valor
+ * deixa de impactar todos os indicadores na hora, sem recálculo.
+ *
+ * A linha permanece (não é hard delete) e o vínculo de origem
+ * (`operacao_id`/`manutencao_id`) é preservado: a rastreabilidade origem →
+ * lançamento continua íntegra (vê-se que a operação gerou, que foi anulado e
+ * por quê). Reservado ao `admin` (doc 05) — anular um pago reescreve indicadores.
+ */
+export async function anularLancamento(id: string, motivo: string, usuarioId: string) {
+  const atual = await obter(id);
+  if (atual.status === "cancelado") throw conflito("Este lançamento já está anulado.");
+  return db.transaction(async (tx) => {
+    const [anulado] = await tx
+      .update(lancamentos)
+      // Limpa data_pagamento: o invariante chk_lancamento_pago_com_data exige
+      // data ⇔ pago. Um lançamento anulado (erro) não é um pagamento real.
+      .set({ status: "cancelado", dataPagamento: null })
+      .where(eq(lancamentos.id, id))
+      .returning();
+    await registrarEvento(tx, {
+      entidadeTipo: "lancamento", entidadeId: id, evento: "status_alterado",
+      descricao: `Lançamento anulado (lançado errado): ${motivo}`, usuarioId,
+    });
+    await indexarLancamento(tx as never, anulado!);
+    return anulado!;
+  });
+}
+
 /** Estorno: dinheiro pago nunca some — gera contrapartida (doc 03 regra 6). */
 export async function estornarLancamento(id: string, motivo: string, usuarioId: string) {
   const atual = await obter(id);

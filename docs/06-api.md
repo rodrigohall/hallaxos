@@ -160,6 +160,9 @@ GET    /lancamentos/:id           → com cadeia de origem completa (operação 
 PATCH  /lancamentos/:id           (livre se avulso; restrito se gerado — doc 03 regra 5)
 POST   /lancamentos/:id/pagar     { data_pagamento, conta_id, forma_pagamento }
 POST   /lancamentos/:id/estornar  { motivo }   | POST /lancamentos/:id/cancelar { motivo }
+POST   /lancamentos/:id/anular    { motivo }   → só admin; lançado errado:
+         status=cancelado sem contrapartida, sai dos indicadores, preserva
+         linha + vínculo de origem (doc 03 regra 6). Limpa data_pagamento.
 GET    /contas                    → com saldo derivado        | POST | PATCH /contas/:id
 GET    /categorias-financeiras    | POST | PATCH /categorias-financeiras/:id
 GET    /financeiro/fluxo-caixa    ?periodo ?conta_id → realizado + previsto, por dia
@@ -172,6 +175,7 @@ GET    /financeiro/fluxo-caixa    ?periodo ?conta_id → realizado + previsto, p
 ```
 Documentos:    GET /documentos?entidade=:tipo/:id ?vencendo
                POST /documentos (multipart) | GET /documentos/:id/arquivo | PATCH | DELETE /documentos/:id
+               DELETE /documentos/:id?permanente=true → hard delete real (arquivo + linha), p/ anexo no lugar errado
 Comentários:   GET /comentarios?entidade=:tipo/:id · POST /comentarios · PATCH | DELETE /comentarios/:id (só autor)
 Tags:          GET /tags · POST /tags · PATCH | DELETE /tags/:id
                POST | DELETE /tags/:id/vinculos { entidade_tipo, entidade_id }

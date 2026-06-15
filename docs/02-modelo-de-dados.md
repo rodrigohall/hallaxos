@@ -234,7 +234,7 @@ Sem origem = lançamento avulso (aluguel do galpão, conta de luz).
 | valor            | numeric(12,2)    | Sempre positivo; o sinal vem de `tipo`             |
 | data_vencimento  | date             |                                                    |
 | data_pagamento   | date NULL        | Preenchida = pago                                  |
-| status           | enum             | `previsto` \| `pago` \| `cancelado` — `vencido` é **derivado** (previsto + vencimento no passado), nunca gravado |
+| status           | enum             | `previsto` \| `pago` \| `cancelado` — `vencido` é **derivado** (previsto + vencimento no passado), nunca gravado. **Anular** um lançamento lançado errado reusa `cancelado` (sem contrapartida) e preserva o vínculo de origem (doc 03 regra 6) |
 | forma_pagamento  | enum NULL        | `dinheiro` \| `pix` \| `cartao_credito` \| `cartao_debito` \| `boleto` \| `transferencia` |
 | parcela_numero / parcela_total | int NULL | Parcelamento                            |
 | grupo_parcelas_id | uuid NULL       | Agrupa parcelas da mesma origem                    |
@@ -304,7 +304,7 @@ soft delete nos alvos, job detector de órfãos).
 | tamanho_bytes | int         |                                                         |
 | data_validade | date NULL   | CRLV, CNH, seguro → alimenta alertas da agenda          |
 | usuario_id    | FK usuarios | Quem anexou                                             |
-| timestamps + deleted_at |   |                                                         |
+| timestamps + deleted_at |   | Soft delete por padrão. Anexo no lugar errado (foto em ativo errado) admite **exclusão permanente**: hard delete real do arquivo + linha — anexo não é origem de nada, não há vínculo a preservar (doc 06: `DELETE /documentos/:id?permanente=true`) |
 
 ---
 

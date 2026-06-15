@@ -264,6 +264,37 @@ export async function excluirDocumento(id: string, usuarioId: string) {
   });
 }
 
+/**
+ * Exclusão permanente: hard delete real (arquivo no disco + linha no banco),
+ * para foto/documento anexado à entidade errada. Diferente do soft delete
+ * (`excluirDocumento`), aqui não há recuperação — o anexo deixa de existir.
+ * O evento fica na timeline da entidade (auditoria do que foi removido e por
+ * quem). Anexo é serviço transversal e não é origem de nada (não há vínculo a
+ * preservar), então a remoção total é segura.
+ */
+export async function excluirDocumentoPermanente(id: string, usuarioId: string) {
+  // Inclui já arquivados: permite expurgar um anexo mesmo após o soft delete.
+  const [d] = await db.select().from(documentos).where(eq(documentos.id, id));
+  if (!d) throw naoEncontrado("Documento");
+
+  await db.transaction(async (tx) => {
+    await tx.delete(documentos).where(eq(documentos.id, id));
+    await registrarEvento(tx, {
+      entidadeTipo: d.entidadeTipo,
+      entidadeId: d.entidadeId,
+      evento: "atualizado",
+      descricao:
+        d.tipo === "foto"
+          ? `Foto "${d.nome}" excluída permanentemente`
+          : `Documento "${d.nome}" excluído permanentemente`,
+      usuarioId,
+    });
+    await removerDoIndice(tx, "documento", id);
+  });
+  // Apaga o arquivo só depois do commit — se a transação falhar, o arquivo fica.
+  await unlink(d.arquivoPath).catch(() => {});
+}
+
 export async function definirFotoPrincipal(id: string, usuarioId: string) {
   const [d] = await db
     .select()

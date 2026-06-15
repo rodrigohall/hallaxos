@@ -2,8 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { idSchema, REFERENCIA_ENTIDADES, TIPOS_DOCUMENTO } from "@hallaxos/shared";
 import {
-  criarDocumento, definirFotoPrincipal, excluirDocumento, listarDocumentos,
-  obterArquivo, reordenarDocumentos, substituirArquivo,
+  criarDocumento, definirFotoPrincipal, excluirDocumento, excluirDocumentoPermanente,
+  listarDocumentos, obterArquivo, reordenarDocumentos, substituirArquivo,
 } from "../services/documentos";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
 import { regraNegocio } from "../lib/erros";
@@ -131,12 +131,17 @@ export default async function rotasDocumentos(app: FastifyInstance) {
     }
   );
 
+  // Soft delete por padrão; `?permanente=true` faz hard delete real (arquivo +
+  // linha), para anexo posto na entidade errada. Mesma permissão de remoção.
   app.delete(
     "/documentos/:id",
     { preHandler: exigirPermissao("documentos", "arquivar") },
     async (req) => {
       const { id } = z.object({ id: idSchema }).parse(req.params);
-      await excluirDocumento(id, exigirLogin(req).id);
+      const { permanente } = z.object({ permanente: z.coerce.boolean().default(false) }).parse(req.query);
+      const usuarioId = exigirLogin(req).id;
+      if (permanente) await excluirDocumentoPermanente(id, usuarioId);
+      else await excluirDocumento(id, usuarioId);
       return { dados: { ok: true } };
     }
   );

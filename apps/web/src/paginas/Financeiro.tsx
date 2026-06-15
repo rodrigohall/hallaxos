@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown,
+  Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -26,7 +26,8 @@ const VAZIO = {
 };
 
 export function Financeiro() {
-  const { pode } = useAuth();
+  const { pode, usuario } = useAuth();
+  const ehAdmin = usuario?.papel === "admin";
   const fila = useQueryClient();
   const notificar = useToast();
   const [status, setStatus] = useState<string | null>("previsto");
@@ -34,7 +35,7 @@ export function Financeiro() {
   const [novo, setNovo] = useState(false);
   const [form, setForm] = useState({ ...VAZIO });
   const [erro, setErro] = useState("");
-  const [acao, setAcao] = useState<{ tipo: "pagar" | "estornar" | "cancelar"; l: Lancamento } | null>(null);
+  const [acao, setAcao] = useState<{ tipo: "pagar" | "estornar" | "cancelar" | "anular"; l: Lancamento } | null>(null);
   const [campoAcao, setCampoAcao] = useState("");
   // Criação inline de categoria/conta direto no formulário de lançamento —
   // necessário no primeiro uso, quando ainda não há nenhuma cadastrada.
@@ -136,7 +137,7 @@ export function Financeiro() {
         await api.post(`/lancamentos/${acao.l.id}/${acao.tipo}`, { motivo: campoAcao });
       }
       invalidar();
-      notificar({ tipo: "ok", titulo: { pagar: "Pago", estornar: "Estornado", cancelar: "Cancelado" }[acao.tipo] });
+      notificar({ tipo: "ok", titulo: { pagar: "Pago", estornar: "Estornado", cancelar: "Cancelado", anular: "Anulado" }[acao.tipo] });
       setAcao(null);
       setCampoAcao("");
     } catch (err) {
@@ -217,6 +218,11 @@ export function Financeiro() {
                       {pode("lancamentos", "transicionar") && l.status === "pago" && !l.descricao.startsWith("Estorno:") && (
                         <button title="Estornar" onClick={() => setAcao({ tipo: "estornar", l })}
                           className="rounded p-1.5 text-suave hover:text-alerta"><Undo2 className="h-4 w-4" /></button>
+                      )}
+                      {/* Anular: lançado errado — some dos indicadores, sem contrapartida. Só admin. */}
+                      {ehAdmin && l.status !== "cancelado" && !l.descricao.startsWith("Estorno:") && (
+                        <button title="Anular (lançado errado)" onClick={() => setAcao({ tipo: "anular", l })}
+                          className="rounded p-1.5 text-suave hover:text-erro"><Ban className="h-4 w-4" /></button>
                       )}
                     </>
                   }
@@ -327,12 +333,18 @@ export function Financeiro() {
       </Modal>
 
       <Modal aberto={!!acao} aoFechar={() => setAcao(null)}
-        titulo={acao?.tipo === "pagar" ? "Confirmar pagamento" : acao?.tipo === "estornar" ? "Estornar lançamento" : "Cancelar lançamento"}>
+        titulo={
+          acao?.tipo === "pagar" ? "Confirmar pagamento"
+          : acao?.tipo === "estornar" ? "Estornar lançamento"
+          : acao?.tipo === "anular" ? "Anular lançamento (lançado errado)"
+          : "Cancelar lançamento"
+        }>
         {acao && (
           <div className="space-y-4">
             <p className="text-sm text-suave">
               <span className="font-medium text-texto">{acao.l.descricao}</span> · {dinheiro(acao.l.valor)}
               {acao.tipo === "estornar" && " — será criada uma contrapartida; o pagamento original permanece no histórico."}
+              {acao.tipo === "anular" && " — sai de todos os indicadores (dashboard, DRE, ROI, saldo) sem gerar contrapartida. A trilha e a origem ficam no histórico. Use só para lançamentos digitados por engano."}
             </p>
             {acao.tipo === "pagar" ? (
               <Campo rotulo="Forma de pagamento">

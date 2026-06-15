@@ -1,5 +1,44 @@
 # Changelog
 
+## Sprint 9 — Correções do uso real II (2026-06-15)
+
+Dois problemas vistos em produção, sem duplicar dado nem criar tabela.
+
+### Aba de Manutenções quebrada (regressão) — corrigido
+- **Causa raiz:** a lista (`listarManutencoes`) montava o `WHERE` interpolando um
+  fragmento do Drizzle (`isNull(manutencoes.deletedAt)` → `"manutencoes"."deleted_at"`)
+  numa query crua que **aliasa** a tabela como `m`. Depois do alias, o Postgres
+  rejeita a referência ao nome real (`42P01 invalid reference to FROM-clause
+  entry`) — a aba quebrava 100% das vezes. **Bug latente desde o Sprint 6**
+  (não foi a leva de oficinas: `/pessoas?papel=oficina` e a migração 0003 estão
+  ok); só apareceu quando a aba passou a ser usada de fato. Reproduzido contra um
+  PostgreSQL 16 real antes do patch.
+- **Correção:** o `WHERE` (e o `count`) passam a usar condições cruas
+  qualificadas por `m.`, consistentes com a query principal.
+- **Porta de qualidade:** a CI ganhou um **Postgres real** no job `verificar` e um
+  **teste de integração** que roda migrations e exercita a lista de manutenções
+  (e o filtro `papel=oficina`). Typecheck/build não veem erro de SQL cru — só
+  estoura em runtime; agora há quem pegue. Mesma ideia do `boot.test.ts`.
+
+### Exclusão permanente, por tipo de dado
+- **Fotos no lugar errado:** `DELETE /documentos/:id?permanente=true` faz **hard
+  delete real** (apaga o arquivo do disco e a linha), com confirmação em modal e
+  evento na timeline. Soft delete segue como padrão. Anexo não é origem de nada —
+  não há vínculo a preservar.
+- **Lançamento lançado errado:** novo `POST /lancamentos/:id/anular { motivo }`
+  (**só admin**). Marca `status=cancelado` **sem** contrapartida — sai de **todos**
+  os indicadores (dashboard, DRE, ROI, saldo, que já somam só `pago`/`previsto`)
+  na hora, **preservando a linha + o vínculo de origem** `operacao_id`/
+  `manutencao_id` (rastreabilidade origem→lançamento intacta). Difere do estorno
+  (reversão de dinheiro real, com contrapartida) e do hard delete (que destruiria
+  a trilha e deixaria a origem órfã). Decisão registrada em `docs/decisoes.md`
+  (#41). Sem migração — reusa o status `cancelado`.
+
+### Qualidade
+- Suíte: testes de integração novos (lista de manutenções; anulação tirando o
+  valor do saldo e do dashboard sem contrapartida; vínculo origem→lançamento
+  preservado). 33 testes, typecheck e build do web verdes.
+
 ## Sprint 9 — Atritos do uso real (2026-06-15)
 
 Ajustes pedidos após o uso real do sistema, antes de seguir com a UI do

@@ -6,12 +6,13 @@ import {
   categoriaFinanceiraCriarSchema,
 } from "@hallaxos/shared";
 import {
-  cancelarLancamento, criarCategoriaFinanceira, criarConta, criarLancamento,
-  editarLancamento, estornarLancamento, fluxoCaixa, listarCategoriasFinanceiras,
-  listarContas, listarLancamentos, pagarLancamento,
+  anularLancamento, cancelarLancamento, criarCategoriaFinanceira, criarConta,
+  criarLancamento, editarLancamento, estornarLancamento, fluxoCaixa,
+  listarCategoriasFinanceiras, listarContas, listarLancamentos, pagarLancamento,
 } from "../services/financeiro";
 import { dre, resultadoPorAtivo } from "../services/relatorios";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
+import { semPermissao } from "../lib/erros";
 
 const params = z.object({ id: idSchema });
 const motivo = z.object({ motivo: z.string().trim().min(3, "Informe o motivo") });
@@ -51,6 +52,15 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
   app.post("/lancamentos/:id/estornar", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {
     const { id } = params.parse(req.params);
     return { dados: await estornarLancamento(id, motivo.parse(req.body).motivo, exigirLogin(req).id) };
+  });
+
+  // Anular um lançamento lançado errado: tira-o dos indicadores preservando a
+  // trilha e o vínculo de origem. Só admin (anular um pago reescreve números).
+  app.post("/lancamentos/:id/anular", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {
+    const usuario = exigirLogin(req);
+    if (usuario.papel !== "admin") throw semPermissao();
+    const { id } = params.parse(req.params);
+    return { dados: await anularLancamento(id, motivo.parse(req.body).motivo, usuario.id) };
   });
 
   app.get("/contas", { preHandler: exigirPermissao("contas", "ler") }, async () => ({

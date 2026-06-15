@@ -39,17 +39,19 @@ export async function listarManutencoes(opts: {
   status?: StatusManutencao; tipo?: string; ativoId?: string; busca?: string;
   pagina: number; porPagina: number;
 }) {
-  const filtros = [isNull(manutencoes.deletedAt)];
-  if (opts.status) filtros.push(eq(manutencoes.status, opts.status));
-  if (opts.tipo) filtros.push(eq(manutencoes.tipo, opts.tipo as never));
-  if (opts.ativoId) filtros.push(eq(manutencoes.ativoId, opts.ativoId));
-  if (opts.busca) filtros.push(sql`unaccent(${manutencoes.descricao}) ILIKE unaccent(${"%" + opts.busca + "%"})`);
-  const where = and(...filtros);
+  // A query principal aliasa a tabela como `m`; por isso as condições do WHERE
+  // são cruas e qualificadas por `m.` — interpolar fragmentos do Drizzle aqui
+  // renderiza `"manutencoes"."deleted_at"`, que o Postgres rejeita depois do
+  // alias ("invalid reference to FROM-clause entry"). O count usa o mesmo WHERE.
+  const cond = [sql`m.deleted_at IS NULL`];
+  if (opts.status) cond.push(sql`m.status = ${opts.status}`);
+  if (opts.tipo) cond.push(sql`m.tipo = ${opts.tipo}`);
+  if (opts.ativoId) cond.push(sql`m.ativo_id = ${opts.ativoId}`);
+  if (opts.busca) cond.push(sql`unaccent(m.descricao) ILIKE unaccent(${"%" + opts.busca + "%"})`);
+  const where = sql.join(cond, sql` AND `);
 
-  const [{ total }] = (await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(manutencoes)
-    .where(where)) as [{ total: number }];
+  const [{ total }] = (await db.execute(sql`
+    SELECT count(*)::int AS total FROM manutencoes m WHERE ${where}`)).rows as [{ total: number }];
 
   const linhas = (await db.execute(sql`
     SELECT m.id, m.tipo, m.status, m.descricao, m.data_agendada AS "dataAgendada",

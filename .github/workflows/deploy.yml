@@ -19,6 +19,23 @@ jobs:
   # Porta de qualidade: nada quebrado chega ao VPS. Typecheck, build e testes.
   verificar:
     runs-on: ubuntu-latest
+    # Postgres real para a suíte: typecheck/build não pegam erro de SQL cru
+    # (ex.: referência inválida ao FROM quando a tabela está aliasada), que só
+    # estoura em runtime — foi assim que a lista de Manutenções quebrou.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hallax
+          POSTGRES_PASSWORD: hallax
+          POSTGRES_DB: hallaxos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hallax -d hallaxos"
+          --health-interval 2s --health-timeout 2s --health-retries 30
+    env:
+      DATABASE_URL: postgres://hallax:hallax@localhost:5432/hallaxos
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -31,6 +48,8 @@ jobs:
         run: |
           pnpm --filter @hallaxos/api typecheck
           pnpm --filter @hallaxos/web build
+      - name: Aplicar migrations (schema para os testes de integração)
+        run: pnpm db:migrate
       - name: Testes
         run: pnpm --filter @hallaxos/api test
 
