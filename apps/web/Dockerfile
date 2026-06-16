@@ -8,6 +8,11 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile --filter @hallaxos/web...
 
+# SHA do commit publicado: muda a cada deploy e invalida o cache das camadas
+# de código abaixo, garantindo que o bundle reflita o código atual.
+ARG GIT_SHA=dev
+ENV HALLAX_VERSAO=$GIT_SHA
+
 COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN pnpm --filter @hallaxos/web build

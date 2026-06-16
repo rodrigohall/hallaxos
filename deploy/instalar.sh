@@ -30,7 +30,13 @@ FIM
 fi
 
 # 3. Sobe tudo
-docker compose -f docker-compose.prod.yml up -d --build
+# HALLAX_SHA carimba o commit na imagem (vira build arg → /api/v1/versao) e,
+# por mudar a cada deploy, invalida o cache das camadas de código no Dockerfile.
+# --force-recreate garante que os containers sejam substituídos mesmo quando o
+# compose acha que "nada mudou" — era o sintoma do deploy verde com código antigo.
+# Respeita HALLAX_SHA vindo do CI (o VPS não tem o .git); senão, deriva do git local.
+export HALLAX_SHA="${HALLAX_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo dev)}"
+docker compose -f docker-compose.prod.yml up -d --build --force-recreate
 
 echo ""
 echo "── HallaxOS no ar ──"
@@ -43,3 +49,4 @@ else
 fi
 echo "Login inicial: $ADMIN_EMAIL"
 echo "Senha inicial: $ADMIN_SENHA   (guarde — está salva no arquivo .env)"
+echo "Versão publicada: ${HALLAX_SHA:-dev}  (confira em /api/v1/versao)"

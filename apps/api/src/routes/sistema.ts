@@ -34,4 +34,10 @@ export default async function rotasSistema(app: FastifyInstance) {
   });
 
   app.get("/saude", async () => ({ dados: { ok: true } }));
+
+  // Versão em execução: o SHA do commit é carimbado na imagem no build (ver
+  // Dockerfile + instalar.sh). Serve para confirmar, do lado de fora, que o
+  // deploy realmente trocou os containers — quando o "deploy verde" e o bug
+  // persistem, é porque o container ficou no código antigo (cache do Docker).
+  app.get("/versao", async () => ({ dados: { versao: process.env.HALLAX_VERSAO ?? "dev" } }));
 }

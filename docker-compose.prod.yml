@@ -20,6 +20,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      args:
+        GIT_SHA: ${HALLAX_SHA:-dev}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://hallax:${DB_SENHA}@db:5432/hallaxos
@@ -55,6 +57,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        GIT_SHA: ${HALLAX_SHA:-dev}
     restart: unless-stopped
     environment:
       # Sem domínio (acesso por IP), cai em :80 — o Caddy não aceita endereço vazio.

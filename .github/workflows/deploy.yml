@@ -99,7 +99,10 @@ jobs:
       - name: Executar instalador
         run: |
           PORTA="${{ steps.ssh.outputs.porta }}"
+          # O rsync exclui o .git, então o VPS não tem o SHA — passamos o do
+          # runner para carimbar a imagem (vira /api/v1/versao) e bustar o cache.
+          SHA_CURTO="$(echo '${{ github.sha }}' | cut -c1-7)"
           ssh -i ~/.ssh/id_deploy -p "$PORTA" \
             -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd ~/hallaxos && DOMINIO='${{ vars.DOMINIO }}' ./deploy/instalar.sh"
+            "cd ~/hallaxos && HALLAX_SHA='$SHA_CURTO' DOMINIO='${{ vars.DOMINIO }}' ./deploy/instalar.sh"
