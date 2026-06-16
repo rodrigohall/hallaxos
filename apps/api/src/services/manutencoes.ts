@@ -117,13 +117,19 @@ export async function criarManutencao(input: ManutencaoCriarInput, usuarioId: st
 export async function editarManutencao(id: string, input: ManutencaoEditarInput, usuarioId: string) {
   const [m] = await db.select().from(manutencoes).where(eq(manutencoes.id, id));
   if (!m || m.deletedAt) throw naoEncontrado("Manutenção");
-  if (m.status !== "agendada") throw regraNegocio("Só manutenções agendadas podem ser editadas.");
+  // Editável em qualquer status, exceto cancelada (encerrada). Edição corrige
+  // dados depois de lançada — datas (retroativo), descrição, fornecedor, km —
+  // tudo com auditoria na timeline. Não cria transição nova (doc 03 §1).
+  if (m.status === "cancelada") throw regraNegocio("Uma manutenção cancelada não pode ser editada.");
 
   const mud: Record<string, unknown> = {};
   if (input.tipo) mud.tipo = input.tipo;
   if (input.descricao) mud.descricao = input.descricao;
   if (input.fornecedor_id !== undefined) mud.fornecedorId = input.fornecedor_id;
   if (input.data_agendada !== undefined) mud.dataAgendada = input.data_agendada;
+  if (input.data_inicio !== undefined) mud.dataInicio = input.data_inicio ? new Date(input.data_inicio + "T12:00:00Z") : null;
+  if (input.data_conclusao !== undefined) mud.dataConclusao = input.data_conclusao ? new Date(input.data_conclusao + "T12:00:00Z") : null;
+  if (input.km_no_momento !== undefined) mud.kmNoMomento = input.km_no_momento;
   if (input.observacoes !== undefined) mud.observacoes = input.observacoes;
 
   return db.transaction(async (tx) => {
@@ -147,7 +153,7 @@ async function mudarStatusAtivo(tx: DbConn, ativoId: string, novo: string, usuar
   });
 }
 
-export async function iniciarManutencao(id: string, usuarioId: string) {
+export async function iniciarManutencao(id: string, usuarioId: string, dataInicio?: string | null) {
   const [m] = await db.select().from(manutencoes).where(eq(manutencoes.id, id));
   if (!m || m.deletedAt) throw naoEncontrado("Manutenção");
   if (m.status !== "agendada") throw conflito("Só uma manutenção agendada pode ser iniciada.");
@@ -155,15 +161,20 @@ export async function iniciarManutencao(id: string, usuarioId: string) {
   if (ativo && !["disponivel", "em_uso_interno"].includes(ativo.status)) {
     throw conflito(`O ativo ${ativo.nome} está ${ROTULOS_ATIVO[ativo.status]} e não pode entrar em manutenção agora.`);
   }
-  return db.transaction(async (tx) => {
-    await tx.update(manutencoes).set({ status: "em_andamento", dataInicio: new Date() }).where(eq(manutencoes.id, id));
+  // Data de início opcional (retroativo): default = agora.
+  const inicio = dataInicio ? new Date(dataInicio + "T12:00:00Z") : new Date();
+  await db.transaction(async (tx) => {
+    await tx.update(manutencoes).set({ status: "em_andamento", dataInicio: inicio }).where(eq(manutencoes.id, id));
     await mudarStatusAtivo(tx, m.ativoId, "em_manutencao", usuarioId, "manutenção iniciada");
     await registrarEvento(tx, {
       entidadeTipo: "manutencao", entidadeId: id, evento: "status_alterado",
       descricao: "Manutenção iniciada", usuarioId,
     });
-    return obterManutencao(id);
   });
+  // Lido APÓS o commit (como em concluir/cancelar): ler de dentro da transação,
+  // por uma 2ª conexão da pool enquanto ela segura locks de escrita, devolvia o
+  // estado pré-commit e podia falhar — era a causa do "erro interno" ao iniciar.
+  return obterManutencao(id);
 }
 
 export async function concluirManutencao(id: string, input: ManutencaoConcluirInput, usuarioId: string) {
@@ -171,9 +182,10 @@ export async function concluirManutencao(id: string, input: ManutencaoConcluirIn
   if (!m || m.deletedAt) throw naoEncontrado("Manutenção");
   if (m.status !== "em_andamento") throw conflito("Só uma manutenção em andamento pode ser concluída.");
 
+  const conclusao = input.data_conclusao ? new Date(input.data_conclusao + "T12:00:00Z") : new Date();
   await db.transaction(async (tx) => {
     await tx.update(manutencoes)
-      .set({ status: "concluida", dataConclusao: new Date(), kmNoMomento: input.km_no_momento ?? m.kmNoMomento })
+      .set({ status: "concluida", dataConclusao: conclusao, kmNoMomento: input.km_no_momento ?? m.kmNoMomento })
       .where(eq(manutencoes.id, id));
     // Ativo volta a disponível
     await mudarStatusAtivo(tx, m.ativoId, "disponivel", usuarioId, "manutenção concluída");

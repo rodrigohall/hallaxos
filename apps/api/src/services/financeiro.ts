@@ -6,7 +6,7 @@ import type {
 import { db } from "../db/client";
 import { lancamentos, contas, categoriasFinanceiras, pessoas } from "../db/schema";
 import { novoId } from "../lib/ids";
-import { conflito, naoEncontrado, regraNegocio } from "../lib/erros";
+import { conflito, naoEncontrado, regraNegocio, semPermissao } from "../lib/erros";
 import { diff, registrarEvento } from "./timeline";
 import { indexar } from "./busca";
 
@@ -99,7 +99,8 @@ export async function criarLancamento(input: LancamentoCriarInput, usuarioId: st
           pessoaId: input.pessoa_id ?? null,
           valor: ((base + (i === 0 ? resto : 0)) / 100).toFixed(2),
           dataVencimento: venc.toISOString().slice(0, 10),
-          dataPagamento: input.pago ? input.data_vencimento : null,
+          // Retroativo: quando pago, usa a data de pagamento informada (ou o vencimento).
+          dataPagamento: input.pago ? (input.data_pagamento ?? input.data_vencimento) : null,
           status: input.pago ? "pago" : "previsto",
           formaPagamento: input.pago ? (input.forma_pagamento ?? null) : null,
           parcelaNumero: n > 1 ? i + 1 : null,
@@ -130,13 +131,19 @@ async function obter(id: string) {
   return l;
 }
 
-export async function editarLancamento(id: string, input: LancamentoEditarInput, usuarioId: string) {
+export async function editarLancamento(
+  id: string, input: LancamentoEditarInput, usuario: { id: string; papel: string }
+) {
   const atual = await obter(id);
-  if (atual.status !== "previsto") throw regraNegocio("Só lançamentos previstos podem ser editados.");
-  // Gerado por operação/manutenção: valores e datas pertencem à origem (doc 03 regra 5)
-  if ((atual.operacaoId || atual.manutencaoId) && (input.valor !== undefined || input.data_vencimento)) {
-    throw regraNegocio("Este lançamento foi gerado por uma operação — ajuste valores pela origem.");
+  // Anulado/cancelado é estado terminal — não se edita (use os fluxos próprios).
+  if (atual.status === "cancelado") throw regraNegocio("Lançamento cancelado/anulado não pode ser editado.");
+  // Editar um lançamento JÁ PAGO reescreve indicadores: reservado ao admin (decisão #48).
+  if (atual.status === "pago" && usuario.papel !== "admin") {
+    throw semPermissao();
   }
+  // Lançamento gerado por operação/manutenção é editável aqui (decisão #48): o
+  // vínculo de origem (operacao_id/manutencao_id) é preservado e a mudança vai
+  // para a timeline. Relaxa a antiga trava da regra 5 do doc 03.
   const mudancas: Record<string, unknown> = {};
   if (input.descricao) mudancas.descricao = input.descricao;
   if (input.categoria_id) mudancas.categoriaId = input.categoria_id;
@@ -144,6 +151,15 @@ export async function editarLancamento(id: string, input: LancamentoEditarInput,
   if (input.pessoa_id !== undefined) mudancas.pessoaId = input.pessoa_id;
   if (input.valor !== undefined) mudancas.valor = input.valor.toFixed(2);
   if (input.data_vencimento) mudancas.dataVencimento = input.data_vencimento;
+  if (input.forma_pagamento !== undefined) mudancas.formaPagamento = input.forma_pagamento;
+  // Invariante chk_lancamento_pago_com_data (pago ⇔ data_pagamento): a data de
+  // pagamento só se aplica a um lançamento pago, e não pode ficar nula nele.
+  if (input.data_pagamento !== undefined) {
+    if (atual.status !== "pago") {
+      throw regraNegocio("Data de pagamento só vale para lançamento já pago.");
+    }
+    mudancas.dataPagamento = input.data_pagamento;
+  }
 
   return db.transaction(async (tx) => {
     const [editado] = await tx.update(lancamentos).set(mudancas).where(eq(lancamentos.id, id)).returning();
@@ -152,7 +168,7 @@ export async function editarLancamento(id: string, input: LancamentoEditarInput,
     if (Object.keys(mudou).length) {
       await registrarEvento(tx, {
         entidadeTipo: "lancamento", entidadeId: id, evento: "atualizado",
-        descricao: `Lançamento ${editado!.descricao} atualizado`, dados: mudou, usuarioId,
+        descricao: `Lançamento ${editado!.descricao} atualizado`, dados: mudou, usuarioId: usuario.id,
       });
     }
     await indexarLancamento(tx as never, editado!);

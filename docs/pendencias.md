@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 9 — copiloto de IA
-> (leitura + UI, 2026-06-16), conferida contra o código (não contra a memória).
+> assumida — não esquecimento. Última revisão: Sprint 9 — edição pós-lançamento,
+> datas retroativas e correções (2026-06-16), conferida contra o código.
 
 ## Estado atual — o que está em produção
 
@@ -31,7 +31,10 @@
 | ~~Lançamento lançado errado ainda contava no dashboard~~ | ✅ `POST /lancamentos/:id/anular` (admin) — `cancelado` sem contrapartida, preserva vínculo de origem (decisão 41) | — |
 | ~~Manutenções sem API/UI~~ | ✅ Entregue no Sprint 6 (módulo completo com máquina de estados) | — |
 | ~~Agenda (tela calendário)~~ | ✅ Entregue no Sprint 6 (calendário mensal derivado + compromissos manuais) | — |
-| Edição de operação (desconto, dias extras) recalculando lançamentos | Valor da locação fixado na finalização | Sprint 7 |
+| ~~Editar op/manutenção/financeiro depois de lançados~~ | ✅ Sprint 9 — lançamento gerado/pago editável com auditoria (pago só admin, decisão #48); `PATCH /operacoes/:id` (descritivos+datas, #49); manutenção editável fora de `agendada` (#50). Valor da operação ajusta-se pelo lançamento, sem recálculo automático | — |
+| ~~Datas retroativas (op/manutenção/financeiro com data antiga)~~ | ✅ Sprint 9 — `data_inicio`/`data`/`data_conclusao`/`data_pagamento` opcionais; honra a data informada (#51) | — |
+| ~~Manutenção "Iniciar" dava erro interno~~ | ✅ Sprint 9 — lia o registro dentro da transação aberta; agora lê após o commit (#52), com teste de integração | — |
+| ~~Excluir foto não funcionava (iPhone sem botão; PC não refletia)~~ | ✅ Sprint 9 — controles da foto sempre visíveis (não só hover) + exclusão aguarda o refetch | — |
 | ~~Edição dos lançamentos antes de finalizar (conta, forma, parcelas, vencimentos)~~ | ✅ Sprint 9 — bloco `financeiro` na transição + `previa-financeira`; persiste só ao confirmar | — |
 | ~~"Usar endereço do cliente" no guincho~~ | ✅ Sprint 9 — atalho preenche origem/destino a partir do endereço da pessoa (texto, sem duplicar) | — |
 | ~~Cadastro e busca de oficinas por nome~~ | ✅ Sprint 9 — papel `oficina` em `pessoas`, autocomplete `?papel=oficina` + cadastro inline | — |

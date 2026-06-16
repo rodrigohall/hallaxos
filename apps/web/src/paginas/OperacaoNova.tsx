@@ -56,7 +56,12 @@ export function OperacaoNova() {
     if (!tipo || !cliente) return;
     setEnviando(true);
     try {
-      let corpo: Record<string, unknown> = { cliente_id: cliente.id, observacoes: campos.observacoes || undefined };
+      let corpo: Record<string, unknown> = {
+        cliente_id: cliente.id,
+        observacoes: campos.observacoes || undefined,
+        // Retroativo: registra a operação com a data real de início (opcional).
+        data_inicio: campos.data_inicio || undefined,
+      };
       let url = "";
       if (tipo === "guincho") {
         url = "/operacoes/guincho";
@@ -207,6 +212,10 @@ export function OperacaoNova() {
                 </div>
               </>
             )}
+
+            <Campo rotulo="Data de início (opcional)" dica="Retroativo — para registrar uma operação antiga.">
+              <Entrada type="date" value={campos.data_inicio ?? ""} onChange={set("data_inicio")} />
+            </Campo>
 
             <Campo rotulo="Observações (opcional)">
               <AreaTexto value={campos.observacoes ?? ""} onChange={set("observacoes")} />

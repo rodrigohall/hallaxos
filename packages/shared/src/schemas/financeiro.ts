@@ -9,12 +9,19 @@ export const lancamentoCriarSchema = z.object({
   pessoa_id: z.string().uuid().nullish(),
   valor: z.coerce.number().positive("Valor deve ser maior que zero"),
   data_vencimento: z.string().date("Informe o vencimento"),
+  // Data de pagamento (retroativo): quando `pago`, permite registrar a data real
+  // do pagamento, diferente do vencimento. Omitida, usa o próprio vencimento.
+  data_pagamento: z.string().date().nullish(),
   parcelas: z.coerce.number().int().min(1).max(60).default(1),
   pago: z.boolean().default(false),
   forma_pagamento: z.enum(FORMAS_PAGAMENTO).nullish(),
 });
 export type LancamentoCriarInput = z.infer<typeof lancamentoCriarSchema>;
 
+// Edição depois de lançado: valor/vencimento/conta/forma e — para um lançamento
+// já pago — a data de pagamento, tudo com auditoria. Lançamento gerado por
+// operação/manutenção também é editável aqui (o vínculo de origem é preservado);
+// editar um pago é restrito ao admin (reescreve indicadores). Ver decisões.
 export const lancamentoEditarSchema = z.object({
   descricao: z.string().trim().min(2).optional(),
   categoria_id: z.string().uuid().optional(),
@@ -22,6 +29,8 @@ export const lancamentoEditarSchema = z.object({
   pessoa_id: z.string().uuid().nullish(),
   valor: z.coerce.number().positive().optional(),
   data_vencimento: z.string().date().optional(),
+  data_pagamento: z.string().date().optional(),
+  forma_pagamento: z.enum(FORMAS_PAGAMENTO).nullish(),
 });
 export type LancamentoEditarInput = z.infer<typeof lancamentoEditarSchema>;
 

@@ -36,7 +36,8 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
 
   app.patch("/lancamentos/:id", { preHandler: exigirPermissao("lancamentos", "editar") }, async (req) => {
     const { id } = params.parse(req.params);
-    return { dados: await editarLancamento(id, lancamentoEditarSchema.parse(req.body), exigirLogin(req).id) };
+    const u = exigirLogin(req);
+    return { dados: await editarLancamento(id, lancamentoEditarSchema.parse(req.body), { id: u.id, papel: u.papel }) };
   });
 
   app.post("/lancamentos/:id/pagar", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {

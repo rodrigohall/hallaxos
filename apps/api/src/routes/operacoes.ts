@@ -3,10 +3,11 @@ import { z } from "zod";
 import {
   idSchema, paginacaoSchema, operacaoFiltrosSchema, guinchoCriarSchema,
   locacaoCriarSchema, vendaCriarSchema, compraCriarSchema, transicaoSchema,
+  operacaoEditarSchema,
 } from "@hallaxos/shared";
 import {
   listarOperacoes, obterOperacao, criarGuincho, criarLocacao, criarVenda,
-  criarCompra, transicionar, previaFinanceira,
+  criarCompra, transicionar, previaFinanceira, editarOperacao,
 } from "../services/operacoes";
 import { listarTimeline } from "../services/timeline";
 import { db } from "../db/client";
@@ -34,6 +35,14 @@ export default async function rotasOperacoes(app: FastifyInstance) {
     const { id } = params.parse(req.params);
     const { antes_de } = z.object({ antes_de: idSchema.optional() }).parse(req.query);
     return { dados: await listarTimeline(db, "operacao", id, antes_de) };
+  });
+
+  // Edição depois de lançada: descritivos + datas (retroativo). O valor vai pelo
+  // lançamento vinculado (Financeiro), não aqui (decisão #49).
+  app.patch("/operacoes/:id", { preHandler: exigirPermissao("operacoes", "editar") }, async (req) => {
+    const { id } = params.parse(req.params);
+    const input = operacaoEditarSchema.parse(req.body);
+    return { dados: await editarOperacao(id, input, exigirLogin(req).id) };
   });
 
   // Criação por tipo — núcleo + extensão (doc 01 §2)

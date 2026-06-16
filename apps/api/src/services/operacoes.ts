@@ -5,7 +5,8 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type {
   GuinchoCriarInput, LocacaoCriarInput, VendaCriarInput, CompraCriarInput,
-  TransicaoInput, FinanceiroTransicaoInput, StatusOperacao, TipoOperacao, StatusAtivo,
+  TransicaoInput, FinanceiroTransicaoInput, OperacaoEditarInput,
+  StatusOperacao, TipoOperacao, StatusAtivo,
 } from "@hallaxos/shared";
 import { db, type DbConn } from "../db/client";
 import {
@@ -242,9 +243,15 @@ export function proximasTransicoes(tipo: TipoOperacao, status: StatusOperacao): 
 }
 
 // ─────────────────────────── Criação ───────────────────────────
+/** Converte uma data simples (YYYY-MM-DD) em timestamp ao meio-dia UTC, ou null. */
+function dataDe(d?: string | null): Date | null {
+  return d ? new Date(d + "T12:00:00Z") : null;
+}
+
 async function inserirNucleo(
   tx: DbConn, tipo: TipoOperacao, clienteId: string, responsavelId: string,
-  status: StatusOperacao, valorTotal: number, observacoes: string | undefined
+  status: StatusOperacao, valorTotal: number, observacoes: string | undefined,
+  dataInicio?: Date | null
 ) {
   const id = novoId();
   const [op] = await tx
@@ -252,6 +259,8 @@ async function inserirNucleo(
     .values({
       id, codigo: sql`DEFAULT` as never, tipo, clienteId, responsavelId,
       status, valorTotal: valorTotal.toFixed(2), observacoes: observacoes ?? null,
+      // Retroativo: data de início informada (default DEFAULT now() do banco).
+      ...(dataInicio ? { dataInicio } : {}),
     })
     .returning();
   await garantirPapel(tx, clienteId, "cliente");
@@ -274,7 +283,7 @@ async function exigirAtivoLivre(ativoId: string) {
 
 export async function criarGuincho(input: GuinchoCriarInput, usuarioId: string) {
   return db.transaction(async (tx) => {
-    const op = await inserirNucleo(tx, "guincho", input.cliente_id, usuarioId, "solicitado", input.valor_total, input.observacoes);
+    const op = await inserirNucleo(tx, "guincho", input.cliente_id, usuarioId, "solicitado", input.valor_total, input.observacoes, dataDe(input.data_inicio));
     await tx.insert(operacoesGuincho).values({
       operacaoId: op.id,
       motoristaId: input.motorista_id ?? null,
@@ -297,7 +306,7 @@ export async function criarLocacao(input: LocacaoCriarInput, usuarioId: string) 
     throw conflito(`O ativo ${ativo.nome} não está disponível (situação: ${ROTULOS_ATIVO[ativo.status] ?? ativo.status}).`);
   }
   return db.transaction(async (tx) => {
-    const op = await inserirNucleo(tx, "locacao", input.cliente_id, usuarioId, "orcamento", 0, input.observacoes);
+    const op = await inserirNucleo(tx, "locacao", input.cliente_id, usuarioId, "orcamento", 0, input.observacoes, dataDe(input.data_inicio));
     await tx.insert(operacoesLocacao).values({
       operacaoId: op.id,
       condutorId: input.condutor_id ?? null,
@@ -319,7 +328,7 @@ export async function criarVenda(input: VendaCriarInput, usuarioId: string) {
     throw conflito(`O ativo ${ativo.nome} já está ${ROTULOS_ATIVO[ativo.status]}.`);
   }
   return db.transaction(async (tx) => {
-    const op = await inserirNucleo(tx, "venda", input.cliente_id, usuarioId, "negociacao", input.valor_total, input.observacoes);
+    const op = await inserirNucleo(tx, "venda", input.cliente_id, usuarioId, "negociacao", input.valor_total, input.observacoes, dataDe(input.data_inicio));
     await tx.insert(operacoesCompraVenda).values({ operacaoId: op.id, kmNoAto: input.km_no_ato ?? null });
     await vincularAtivo(tx, op.id, input.ativo_id, "objeto");
     const [{ nome }] = (await tx.execute(sql`SELECT nome FROM pessoas WHERE id = ${input.cliente_id}`)).rows as [{ nome: string }];
@@ -331,7 +340,7 @@ export async function criarVenda(input: VendaCriarInput, usuarioId: string) {
 export async function criarCompra(input: CompraCriarInput, usuarioId: string) {
   const ativo = await exigirAtivoLivre(input.ativo_id);
   return db.transaction(async (tx) => {
-    const op = await inserirNucleo(tx, "compra", input.cliente_id, usuarioId, "negociacao", input.valor_total, input.observacoes);
+    const op = await inserirNucleo(tx, "compra", input.cliente_id, usuarioId, "negociacao", input.valor_total, input.observacoes, dataDe(input.data_inicio));
     await tx.insert(operacoesCompraVenda).values({ operacaoId: op.id, kmNoAto: input.km_no_ato ?? null });
     await vincularAtivo(tx, op.id, input.ativo_id, "objeto");
     await garantirPapel(tx, input.cliente_id, "fornecedor");
@@ -340,6 +349,53 @@ export async function criarCompra(input: CompraCriarInput, usuarioId: string) {
     void ativo;
     return op;
   });
+}
+
+// ─────────────────────────── Edição ───────────────────────────
+/**
+ * Edição depois de lançada (decisão #49): corrige observações, datas (início/fim,
+ * retroativo) e campos descritivos por tipo — com auditoria na timeline. O valor
+ * financeiro NÃO se edita aqui: ajusta-se pelo lançamento vinculado (Financeiro),
+ * evitando recalcular indicadores por dois caminhos.
+ */
+export async function editarOperacao(id: string, input: OperacaoEditarInput, usuarioId: string) {
+  const [op] = await db.select().from(operacoes).where(and(eq(operacoes.id, id), isNull(operacoes.deletedAt)));
+  if (!op) throw naoEncontrado("Operação");
+
+  const nucleo: Record<string, unknown> = {};
+  if (input.observacoes !== undefined) nucleo.observacoes = input.observacoes;
+  if (input.data_inicio !== undefined) nucleo.dataInicio = dataDe(input.data_inicio);
+  if (input.data_fim !== undefined) nucleo.dataFim = dataDe(input.data_fim);
+
+  const ext: Record<string, unknown> = {};
+  if (op.tipo === "guincho") {
+    if (input.origem_endereco !== undefined) ext.origemEndereco = input.origem_endereco;
+    if (input.destino_endereco !== undefined) ext.destinoEndereco = input.destino_endereco;
+    if (input.veiculo_cliente_descricao !== undefined) ext.veiculoClienteDescricao = input.veiculo_cliente_descricao;
+    if (input.veiculo_cliente_placa !== undefined) ext.veiculoClientePlaca = input.veiculo_cliente_placa;
+    if (input.motorista_id !== undefined) ext.motoristaId = input.motorista_id;
+  } else if (op.tipo === "locacao") {
+    if (input.condutor_id !== undefined) ext.condutorId = input.condutor_id;
+    if (input.data_devolucao_prevista !== undefined) ext.dataDevolucaoPrevista = dataDe(input.data_devolucao_prevista);
+  } else {
+    if (input.km_no_ato !== undefined) ext.kmNoAto = input.km_no_ato;
+  }
+
+  await db.transaction(async (tx) => {
+    if (Object.keys(nucleo).length) await tx.update(operacoes).set(nucleo).where(eq(operacoes.id, id));
+    if (Object.keys(ext).length) {
+      if (op.tipo === "guincho") await tx.update(operacoesGuincho).set(ext).where(eq(operacoesGuincho.operacaoId, id));
+      else if (op.tipo === "locacao") await tx.update(operacoesLocacao).set(ext).where(eq(operacoesLocacao.operacaoId, id));
+      else await tx.update(operacoesCompraVenda).set(ext).where(eq(operacoesCompraVenda.operacaoId, id));
+    }
+    if (input.motorista_id) await garantirPapel(tx, input.motorista_id, "motorista");
+    if (input.condutor_id) await garantirPapel(tx, input.condutor_id, "motorista");
+    await registrarEvento(tx, {
+      entidadeTipo: "operacao", entidadeId: id, evento: "atualizado",
+      descricao: `Operação ${op.codigo} atualizada`, usuarioId,
+    });
+  });
+  return obterOperacao(id);
 }
 
 // ─────────────────────────── Transição ───────────────────────────
@@ -363,7 +419,8 @@ export async function transicionar(
 
   await db.transaction(async (tx) => {
     const mudancasOp: Record<string, unknown> = { status: destino };
-    if (TERMINAIS.has(destino)) mudancasOp.dataFim = new Date();
+    // Retroativo: a data da transição (`input.data`) tem precedência sobre "agora".
+    if (TERMINAIS.has(destino)) mudancasOp.dataFim = input.data ? new Date(input.data) : new Date();
 
     if (destino === "cancelada") {
       await cancelarLancamentosPrevistos(tx, id, usuario.id);
@@ -400,6 +457,8 @@ interface CtxEfeito {
 /** Efeitos colaterais de cada transição não-cancelada (doc 03 §1). */
 async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOperacao, c: CtxEfeito) {
   const valor = Number(c.op.valorTotal);
+  // Retroativo: data do evento informada na transição (default = agora).
+  const quando = c.input.data ? new Date(c.input.data) : new Date();
   if (tipo === "locacao") {
     if (destino === "reservada" && c.objeto) {
       await mudarStatusAtivo(tx, c.objeto, "reservado", c.usuario.id, c.op.codigo);
@@ -408,13 +467,13 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
       await exigirCnhValida(c.op.id, c.usuario, c.input);
       await mudarStatusAtivo(tx, c.objeto, "alugado", c.usuario.id, c.op.codigo);
       await tx.update(operacoesLocacao)
-        .set({ dataRetirada: new Date(), kmSaida: c.input.km ?? null })
+        .set({ dataRetirada: quando, kmSaida: c.input.km ?? null })
         .where(eq(operacoesLocacao.operacaoId, c.op.id));
     }
     if (destino === "finalizada" && c.objeto) {
       await mudarStatusAtivo(tx, c.objeto, "disponivel", c.usuario.id, c.op.codigo);
       await tx.update(operacoesLocacao)
-        .set({ dataDevolucaoReal: new Date(), kmRetorno: c.input.km ?? null })
+        .set({ dataDevolucaoReal: quando, kmRetorno: c.input.km ?? null })
         .where(eq(operacoesLocacao.operacaoId, c.op.id));
       if (c.input.km != null) {
         await tx.update(ativosVeiculos).set({ kmAtual: c.input.km }).where(eq(ativosVeiculos.ativoId, c.objeto));
@@ -434,7 +493,7 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
     if (destino === "concluido") {
       if (c.recurso) await mudarStatusAtivo(tx, c.recurso, "disponivel", c.usuario.id, c.op.codigo);
       await tx.update(operacoesGuincho)
-        .set({ dataConclusao: new Date(), kmPercorrido: c.input.km ?? null })
+        .set({ dataConclusao: quando, kmPercorrido: c.input.km ?? null })
         .where(eq(operacoesGuincho.operacaoId, c.op.id));
       await gerarLancamentos(tx, {
         operacaoId: c.op.id, clienteId: c.op.clienteId, tipo: "receita",
@@ -451,7 +510,7 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
     if (destino === "concluida" && c.objeto) {
       await mudarStatusAtivo(tx, c.objeto, "vendido", c.usuario.id, c.op.codigo);
       await tx.update(operacoesCompraVenda)
-        .set({ dataTransferencia: new Date().toISOString().slice(0, 10), statusDocumentacao: "concluida" })
+        .set({ dataTransferencia: quando.toISOString().slice(0, 10), statusDocumentacao: "concluida" })
         .where(eq(operacoesCompraVenda.operacaoId, c.op.id));
     }
   } else if (tipo === "compra") {
@@ -465,7 +524,7 @@ async function aplicarEfeitos(tx: DbConn, tipo: TipoOperacao, destino: StatusOpe
       // Ativo adquirido entra/permanece no patrimônio disponível, vinculado à origem
       await mudarStatusAtivo(tx, c.objeto, "disponivel", c.usuario.id, c.op.codigo);
       await tx.update(operacoesCompraVenda)
-        .set({ dataTransferencia: new Date().toISOString().slice(0, 10), statusDocumentacao: "concluida" })
+        .set({ dataTransferencia: quando.toISOString().slice(0, 10), statusDocumentacao: "concluida" })
         .where(eq(operacoesCompraVenda.operacaoId, c.op.id));
     }
   }

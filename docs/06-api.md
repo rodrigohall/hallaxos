@@ -90,7 +90,10 @@ GET    /ativos/categorias         | POST | PATCH /ativos/categorias/:id
 GET    /operacoes                 ?tipo ?status ?cliente_id ?ativo_id ?responsavel_id ?periodo
 POST   /operacoes                 { tipo, cliente_id, extensão por tipo, ativos: [...] }
 GET    /operacoes/:id             → núcleo + extensão + ativos + lançamentos vinculados
-PATCH  /operacoes/:id             (campos editáveis conforme status)
+PATCH  /operacoes/:id             → editar depois de lançada: observações, datas
+         (início/fim, retroativo) e descritivos por tipo (origem/destino/veículo do
+         guincho, devolução prevista, km no ato). O valor vai pelo lançamento
+         vinculado, não aqui (decisão #49). Com auditoria na timeline.
 GET    /operacoes/:id/timeline    cursor
 ```
 
@@ -103,6 +106,9 @@ GET    /operacoes/:id/previa-financeira  → { tipo, categoria, tipo_lancamento,
 
 POST   /operacoes/:id/transicao  { status, km?, data?, parcelas?, justificativa?,
          financeiro? }
+         → `data` (opcional) é a data do evento (retirada/devolução/conclusão/
+           encerramento). Informada, registra a transição **retroativa**; omitida,
+           usa "agora" (decisão #51).
 ```
 
 > **Nota de implementação:** as transições são hoje um endpoint único nomeado
@@ -147,17 +153,25 @@ origem `operacao → lançamento` preservada.
 GET    /manutencoes               ?ativo_id ?status ?tipo ?periodo
 POST   /manutencoes
 GET    /manutencoes/:id           → inclui custo derivado dos lançamentos
-PATCH  /manutencoes/:id
-POST   /manutencoes/:id/iniciar | /concluir {km_no_momento?} | /cancelar {motivo}
+PATCH  /manutencoes/:id           → editável em qualquer status exceto cancelada;
+         corrige tipo/descrição/fornecedor/observações e datas (agendada/início/
+         conclusão, retroativo) e km (decisão #50)
+POST   /manutencoes/:id/iniciar {data_inicio?} | /concluir {km_no_momento?, custo?,
+         parcelas?, data_conclusao?} | /cancelar {motivo}
+         → `data_inicio`/`data_conclusao` opcionais permitem registrar datas
+           retroativas; omitidas, usam "agora".
 ```
 
 ### Financeiro
 
 ```
 GET    /lancamentos               ?tipo ?status ?categoria_id ?conta_id ?pessoa_id ?periodo ?origem
-POST   /lancamentos               (avulso; com `parcelas: n` gera o grupo de parcelas)
+POST   /lancamentos               (avulso; com `parcelas: n` gera o grupo de parcelas;
+         `data_pagamento?` quando `pago` registra pagamento retroativo — decisão #51)
 GET    /lancamentos/:id           → com cadeia de origem completa (operação → ativo → pessoa)
-PATCH  /lancamentos/:id           (livre se avulso; restrito se gerado — doc 03 regra 5)
+PATCH  /lancamentos/:id           → edita valor/vencimento/conta/categoria/forma;
+         lançamentos **gerados** também (vínculo de origem preservado, com auditoria).
+         Editar um **pago** é só `admin` e aceita `data_pagamento` (decisão #48).
 POST   /lancamentos/:id/pagar     { data_pagamento, conta_id, forma_pagamento }
 POST   /lancamentos/:id/estornar  { motivo }   | POST /lancamentos/:id/cancelar { motivo }
 POST   /lancamentos/:id/anular    { motivo }   → só admin; lançado errado:

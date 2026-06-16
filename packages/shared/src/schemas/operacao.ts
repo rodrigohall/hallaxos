@@ -16,6 +16,8 @@ export const operacaoFiltrosSchema = z.object({
 const base = {
   cliente_id: z.string().uuid("Escolha o cliente"),
   observacoes: z.string().trim().optional(),
+  // Data de início opcional (retroativo): registra a operação com a data real.
+  data_inicio: z.string().date().nullish(),
 };
 
 export const guinchoCriarSchema = z.object({
@@ -75,6 +77,29 @@ export const financeiroTransicaoSchema = z.object({
   parcelas: z.array(parcelaPrevistaSchema).min(1).max(60),
 });
 export type FinanceiroTransicaoInput = z.infer<typeof financeiroTransicaoSchema>;
+
+// ── Edição depois de lançada (doc 03 §1; decisão #49) ──
+// Após o lançamento/finalização, corrige observações, DATAS (início/fim,
+// retroativo) e campos descritivos por tipo — com auditoria na timeline. O valor
+// financeiro NÃO se edita aqui: ajusta-se pelo lançamento vinculado (Financeiro),
+// evitando recalcular indicadores por dois caminhos.
+export const operacaoEditarSchema = z.object({
+  observacoes: z.string().trim().nullish(),
+  data_inicio: z.string().date().optional(),
+  data_fim: z.string().date().nullish(),
+  // Guincho (texto livre — local é um evento, doc 02 §3)
+  origem_endereco: z.string().trim().min(3).optional(),
+  destino_endereco: z.string().trim().min(3).optional(),
+  veiculo_cliente_descricao: z.string().trim().min(2).optional(),
+  veiculo_cliente_placa: z.string().trim().nullish(),
+  motorista_id: z.string().uuid().nullish(),
+  // Locação
+  condutor_id: z.string().uuid().nullish(),
+  data_devolucao_prevista: z.string().date().optional(),
+  // Compra/Venda
+  km_no_ato: z.coerce.number().int().nonnegative().nullish(),
+});
+export type OperacaoEditarInput = z.infer<typeof operacaoEditarSchema>;
 
 // ── Transição de estado (campos opcionais conforme a transição) ──
 export const transicaoSchema = z.object({

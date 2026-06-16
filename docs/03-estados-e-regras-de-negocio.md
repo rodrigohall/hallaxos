@@ -119,14 +119,17 @@ agendada ──→ em_andamento ──→ concluida
 4. **Operações geram lançamentos; nunca o contrário.** Fechar uma locação gera
    as receitas previstas automaticamente. O usuário não digita de novo um
    valor que o sistema já conhece (regra máxima aplicada a processo).
-5. **Lançamento gerado por operação não é editável livremente** — ajustes
-   passam pela operação (desconto, dias extras), que recalcula. Lançamentos
-   avulsos são livres. **Antes de finalizar**, porém, o usuário revisa e ajusta
+5. **Lançamento gerado por operação/manutenção é editável pelo Financeiro, com
+   auditoria** (decisão #48). **Antes de finalizar**, o usuário revisa e ajusta
    o que será gerado na própria página da operação — conta, forma de pagamento,
    nº de parcelas e o vencimento de cada parcela (`financeiro` na transição,
-   doc 06). A finalização só persiste após essa confirmação; depois de
-   finalizada, vale o fluxo acima (edição pelo Financeiro, com auditoria). A
-   geração não muda a máquina de estados — só os parâmetros do lançamento.
+   doc 06); só persiste ao confirmar. **Depois de lançado**, o lançamento (mesmo
+   gerado) pode ter valor, vencimento, conta e forma corrigidos pelo Financeiro —
+   o **vínculo de origem é preservado** e a mudança vai para a timeline (de→para).
+   Editar um lançamento **pago** reescreve indicadores → restrito ao `admin`. O
+   **valor da operação** se ajusta por aqui (pelo lançamento vinculado), não
+   editando a operação — que guarda só descritivos e datas (decisão #49). A
+   edição não muda a máquina de estados — só os parâmetros do lançamento.
 6. **Cancelar operação cancela os lançamentos `previsto` vinculados.**
    Lançamentos já pagos não somem: geram contrapartida (estorno) — dinheiro
    que entrou no caixa nunca desaparece do histórico. **Exceção: lançamento

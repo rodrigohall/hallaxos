@@ -1,5 +1,47 @@
 # Changelog
 
+## Sprint 9 — Edição pós-lançamento, datas retroativas e correções (2026-06-16)
+
+Pedidos do uso real: poder corrigir o que já foi lançado e registrar datas
+antigas — mais dois bugs vistos em produção. Sem duplicar dado nem criar tabela.
+
+### Editar depois de lançado (com auditoria)
+- **Financeiro:** lançamento **gerado** por operação/manutenção agora é editável
+  (valor, vencimento, conta, categoria, forma) — o **vínculo de origem é
+  preservado** e a mudança vai para a timeline (de→para). Editar um **pago**
+  reescreve indicadores e é **restrito ao admin** (decisão #48). Relaxa a antiga
+  trava da regra 5 (doc 03). UI: botão *Editar* na lista do Financeiro.
+- **Operação:** novo `PATCH /operacoes/:id` — observações, **datas (início/fim)**
+  e descritivos por tipo (origem/destino/veículo do guincho, devolução prevista,
+  km no ato). O valor segue pelo lançamento vinculado, não pela operação
+  (decisão #49). UI: botão *Editar* na página da operação.
+- **Manutenção:** editável em **qualquer status exceto cancelada** (antes só
+  `agendada`), incluindo as datas (decisão #50). UI: botão *Editar* na página.
+
+### Datas retroativas (registrar histórico antigo)
+- A data informada tem precedência sobre "agora" (decisão #51), tudo **opcional**:
+  - Operação: `data_inicio` na criação; `data` na transição (retirada/devolução/
+    conclusão/encerramento) — já existia no contrato e era **ignorada**.
+  - Manutenção: `data_inicio` em iniciar, `data_conclusao` em concluir.
+  - Financeiro: `data_pagamento` ao criar/editar um lançamento pago.
+- Sem migração: as colunas de data já existiam no modelo.
+
+### Correções (uso real)
+- **Manutenção "Iniciar" dava erro interno (corrigido):** `iniciarManutencao`
+  lia o registro **dentro** da transação aberta (por uma 2ª conexão da pool,
+  enquanto ela segurava locks), devolvendo estado pré-commit e podendo falhar.
+  Agora lê **após o commit**, como concluir/cancelar (decisão #52). Teste de
+  integração cobre agendar → iniciar → concluir.
+- **Excluir foto no iPhone/PC (corrigido):** os controles da foto (incl. a
+  lixeira) só apareciam no **hover** (`group-hover`), inacessíveis no toque do
+  iPhone — agora ficam **sempre visíveis**. A exclusão aguarda o refetch concluir
+  e mostra carregando/erro, garantindo que a galeria reflita a remoção.
+
+### Qualidade
+- Testes (`node:test`): contratos de edição/datas (puro) + integração (Postgres
+  na CI) — a regressão do "iniciar", o gate admin para editar um lançamento pago,
+  e edição de operação/datas. Typecheck, build do web e suíte verdes.
+
 ## Sprint 9 — Copiloto de IA (leitura + UI) (2026-06-16)
 
 O copiloto sai do scaffold e ganha utilidade real — **Fase 1: só leitura**.

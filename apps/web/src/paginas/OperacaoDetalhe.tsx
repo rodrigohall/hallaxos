@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  History, Workflow, CircleDollarSign, User, Package, MapPin, ArrowRight,
+  History, Workflow, CircleDollarSign, User, Package, MapPin, ArrowRight, Pencil,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -64,7 +64,16 @@ export function OperacaoDetalhe() {
   const [transicao, setTransicao] = useState<string | null>(null);
   const [km, setKm] = useState("");
   const [justificativa, setJustificativa] = useState("");
+  const [dataEvento, setDataEvento] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Edição depois de lançada: descritivos + datas (decisão #49).
+  const [editando, setEditando] = useState(false);
+  const [ed, setEd] = useState({
+    observacoes: "", data_inicio: "", data_fim: "",
+    origem_endereco: "", destino_endereco: "", veiculo_cliente_descricao: "",
+    veiculo_cliente_placa: "", data_devolucao_prevista: "", km_no_ato: "",
+  });
+  const [salvandoEd, setSalvandoEd] = useState(false);
   // Edição dos lançamentos antes de finalizar (doc 03 §1, regra 5)
   const [contaId, setContaId] = useState("");
   const [forma, setForma] = useState("");
@@ -124,6 +133,8 @@ export function OperacaoDetalhe() {
       await api.post(`/operacoes/${id}/transicao`, {
         status: transicao,
         km: PEDE_KM.has(transicao) && km ? Number(km) : undefined,
+        // Retroativo: data do evento (retirada/devolução/conclusão/encerramento).
+        data: dataEvento || undefined,
         // Lançamentos editados pelo usuário (conta, forma, vencimento de cada parcela).
         financeiro: geraLancamento
           ? {
@@ -147,6 +158,7 @@ export function OperacaoDetalhe() {
     setTransicao(null);
     setKm("");
     setJustificativa("");
+    setDataEvento("");
     setContaId("");
     setForma("");
     setDataBase(hojeISO());
@@ -154,7 +166,47 @@ export function OperacaoDetalhe() {
   };
 
   const ext = op.extensao ?? {};
-  const podeTransicionar = usuario && ["admin", "gestor", "operador"].includes(usuario.papel);
+  const podeTransicionar = !!usuario && ["admin", "gestor", "operador"].includes(usuario.papel);
+
+  const abrirEdicao = () => {
+    setEd({
+      observacoes: op.observacoes ?? "",
+      data_inicio: op.dataInicio ? op.dataInicio.slice(0, 10) : "",
+      data_fim: op.dataFim ? op.dataFim.slice(0, 10) : "",
+      origem_endereco: String(ext.origemEndereco ?? ""),
+      destino_endereco: String(ext.destinoEndereco ?? ""),
+      veiculo_cliente_descricao: String(ext.veiculoClienteDescricao ?? ""),
+      veiculo_cliente_placa: String(ext.veiculoClientePlaca ?? ""),
+      data_devolucao_prevista: ext.dataDevolucaoPrevista ? String(ext.dataDevolucaoPrevista).slice(0, 10) : "",
+      km_no_ato: ext.kmNoAto != null ? String(ext.kmNoAto) : "",
+    });
+    setEditando(true);
+  };
+  const salvarEdicao = async () => {
+    setSalvandoEd(true);
+    try {
+      const payload: Record<string, unknown> = { observacoes: ed.observacoes || null, data_fim: ed.data_fim || null };
+      if (ed.data_inicio) payload.data_inicio = ed.data_inicio;
+      if (op.tipo === "guincho") {
+        payload.origem_endereco = ed.origem_endereco;
+        payload.destino_endereco = ed.destino_endereco;
+        payload.veiculo_cliente_descricao = ed.veiculo_cliente_descricao;
+        payload.veiculo_cliente_placa = ed.veiculo_cliente_placa || null;
+      } else if (op.tipo === "locacao") {
+        if (ed.data_devolucao_prevista) payload.data_devolucao_prevista = ed.data_devolucao_prevista;
+      } else {
+        payload.km_no_ato = ed.km_no_ato ? Number(ed.km_no_ato) : null;
+      }
+      await api.patch(`/operacoes/${id}`, payload);
+      invalidar();
+      notificar({ tipo: "ok", titulo: "Operação atualizada" });
+      setEditando(false);
+    } catch (e) {
+      notificar({ tipo: "erro", titulo: "Não foi possível salvar", descricao: e instanceof ApiError ? e.message : undefined });
+    } finally {
+      setSalvandoEd(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -165,6 +217,11 @@ export function OperacaoDetalhe() {
         <Link to={`/clientes/${op.cliente.id}`} className="text-sm text-suave hover:text-ouro">
           · {op.cliente.nome}
         </Link>
+        {podeTransicionar && (
+          <Botao tamanho="sm" variante="secundario" className="ml-auto" onClick={abrirEdicao}>
+            <Pencil className="h-3.5 w-3.5" /> Editar
+          </Botao>
+        )}
       </div>
 
       {/* Transições nomeadas */}
@@ -341,6 +398,11 @@ export function OperacaoDetalhe() {
                 </div>
               </div>
             )}
+            {transicao !== "cancelada" && (
+              <Campo rotulo="Data do evento" dica="Opcional — retroativo (padrão: agora)">
+                <Entrada type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} />
+              </Campo>
+            )}
             {transicao === "ativa" && (
               <Campo rotulo="Justificativa (apenas se a CNH do condutor estiver vencida)">
                 <AreaTexto value={justificativa} onChange={(e) => setJustificativa(e.target.value)} placeholder="Obrigatória para sobrepor CNH vencida (admin)." />
@@ -358,6 +420,41 @@ export function OperacaoDetalhe() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Edição depois de lançada: descritivos + datas. O valor vai pelo lançamento. */}
+      <Modal aberto={editando} aoFechar={() => setEditando(false)} titulo={`Editar ${ROTULO_TIPO[op.tipo] ?? op.tipo} ${op.codigo}`}>
+        <div className="space-y-4">
+          <p className="rounded-md border border-info/25 bg-info/10 px-3 py-2 text-xs text-suave">
+            Corrige descritivos e datas (início/fim, retroativo). O valor financeiro
+            ajusta-se pelo lançamento vinculado, no Financeiro.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Início" dica="Retroativo"><Entrada type="date" value={ed.data_inicio} onChange={(e) => setEd({ ...ed, data_inicio: e.target.value })} /></Campo>
+            <Campo rotulo="Encerramento" dica="Retroativo"><Entrada type="date" value={ed.data_fim} onChange={(e) => setEd({ ...ed, data_fim: e.target.value })} /></Campo>
+          </div>
+          {op.tipo === "guincho" && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Campo rotulo="Origem"><Entrada value={ed.origem_endereco} onChange={(e) => setEd({ ...ed, origem_endereco: e.target.value })} /></Campo>
+                <Campo rotulo="Destino"><Entrada value={ed.destino_endereco} onChange={(e) => setEd({ ...ed, destino_endereco: e.target.value })} /></Campo>
+                <Campo rotulo="Veículo do cliente"><Entrada value={ed.veiculo_cliente_descricao} onChange={(e) => setEd({ ...ed, veiculo_cliente_descricao: e.target.value })} /></Campo>
+                <Campo rotulo="Placa do veículo"><Entrada value={ed.veiculo_cliente_placa} onChange={(e) => setEd({ ...ed, veiculo_cliente_placa: e.target.value })} /></Campo>
+              </div>
+            </>
+          )}
+          {op.tipo === "locacao" && (
+            <Campo rotulo="Devolução prevista"><Entrada type="date" value={ed.data_devolucao_prevista} onChange={(e) => setEd({ ...ed, data_devolucao_prevista: e.target.value })} /></Campo>
+          )}
+          {(op.tipo === "venda" || op.tipo === "compra") && (
+            <Campo rotulo="Km no ato"><Entrada type="number" value={ed.km_no_ato} onChange={(e) => setEd({ ...ed, km_no_ato: e.target.value })} /></Campo>
+          )}
+          <Campo rotulo="Observações"><AreaTexto value={ed.observacoes} onChange={(e) => setEd({ ...ed, observacoes: e.target.value })} /></Campo>
+          <div className="flex justify-end gap-2">
+            <Botao variante="fantasma" onClick={() => setEditando(false)}>Cancelar</Botao>
+            <Botao onClick={salvarEdicao} carregando={salvandoEd}>Salvar</Botao>
+          </div>
+        </div>
       </Modal>
     </div>
   );

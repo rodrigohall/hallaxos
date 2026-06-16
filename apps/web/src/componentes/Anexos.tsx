@@ -135,6 +135,7 @@ export function Galeria(props: PropsEntidade) {
   const envio = useEnvio(props, "foto", invalidar);
   const { pode } = useAuth();
   const notificar = useToast();
+  const fila = useQueryClient();
   const [ampliada, setAmpliada] = useState<number | null>(null);
   const [excluir, setExcluir] = useState<Documento | null>(null);
 
@@ -154,16 +155,22 @@ export function Galeria(props: PropsEntidade) {
   };
   // Foto no ativo errado: exclusão permanente (apaga arquivo + referência).
   // Irreversível — confirma num modal explicando a consequência (decisão 25).
+  const [excluindo, setExcluindo] = useState(false);
   const confirmarExclusao = async () => {
     if (!excluir) return;
+    setExcluindo(true);
     try {
       await api.delete(`/documentos/${excluir.id}?permanente=true`);
+      // Aguarda o refetch concluir antes de fechar — garante que a galeria
+      // reflita a remoção (não some apenas "no papel").
+      await fila.invalidateQueries({ queryKey: ["documentos", props.entidadeTipo, props.entidadeId] });
       invalidar();
       notificar({ tipo: "ok", titulo: "Foto excluída permanentemente" });
+      setExcluir(null);
     } catch (e) {
       notificar({ tipo: "erro", titulo: "Falha ao excluir", descricao: e instanceof ApiError ? e.message : undefined });
     } finally {
-      setExcluir(null);
+      setExcluindo(false);
     }
   };
 
@@ -190,7 +197,9 @@ export function Galeria(props: PropsEntidade) {
                     <Star className="absolute left-1.5 top-1.5 h-4 w-4 fill-ouro text-ouro drop-shadow" />
                   )}
                   {pode("documentos", "editar") && (
-                    <figcaption className="absolute inset-x-0 bottom-0 hidden justify-center gap-1 rounded-b-md bg-fundo/80 p-1 backdrop-blur group-hover:flex">
+                    // Controles SEMPRE visíveis (não só no hover): no toque (iPhone)
+                    // não há hover, e o botão de excluir precisa estar acessível.
+                    <figcaption className="absolute inset-x-0 bottom-0 flex justify-center gap-1 rounded-b-md bg-fundo/70 p-1 backdrop-blur transition-opacity sm:opacity-80 sm:group-hover:opacity-100">
                       <button title="Mover para trás" onClick={() => mover(i, -1)} className="rounded p-1 text-suave hover:text-texto">
                         <ChevronLeft className="h-3.5 w-3.5" />
                       </button>
@@ -270,7 +279,7 @@ export function Galeria(props: PropsEntidade) {
             </p>
             <div className="flex justify-end gap-2">
               <Botao variante="fantasma" onClick={() => setExcluir(null)}>Voltar</Botao>
-              <Botao variante="perigo" onClick={confirmarExclusao}>Excluir permanentemente</Botao>
+              <Botao variante="perigo" onClick={confirmarExclusao} carregando={excluindo}>Excluir permanentemente</Botao>
             </div>
           </div>
         )}

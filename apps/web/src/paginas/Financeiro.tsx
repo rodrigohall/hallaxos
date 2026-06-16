@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban,
+  Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -15,6 +15,7 @@ interface Lancamento {
   id: string; tipo: string; descricao: string; valor: string; status: string;
   dataVencimento: string; dataPagamento: string | null; vencido: boolean;
   temOrigem: boolean; categoria: string; conta: string; pessoa: string | null;
+  categoriaId: string; contaId: string; formaPagamento: string | null;
 }
 interface Conta { id: string; nome: string; saldo: string }
 interface Categoria { id: string; nome: string; tipo: string }
@@ -22,7 +23,11 @@ interface Categoria { id: string; nome: string; tipo: string }
 const FILTROS = ["previsto", "vencido", "pago", "cancelado"] as const;
 const VAZIO = {
   tipo: "despesa", descricao: "", categoria_id: "", conta_id: "",
-  valor: "", data_vencimento: "", parcelas: "1", pago: false, forma_pagamento: "pix",
+  valor: "", data_vencimento: "", data_pagamento: "", parcelas: "1", pago: false, forma_pagamento: "pix",
+};
+const VAZIO_ED = {
+  descricao: "", valor: "", data_vencimento: "", categoria_id: "", conta_id: "",
+  forma_pagamento: "", data_pagamento: "",
 };
 
 export function Financeiro() {
@@ -37,6 +42,10 @@ export function Financeiro() {
   const [erro, setErro] = useState("");
   const [acao, setAcao] = useState<{ tipo: "pagar" | "estornar" | "cancelar" | "anular"; l: Lancamento } | null>(null);
   const [campoAcao, setCampoAcao] = useState("");
+  const [editar, setEditar] = useState<Lancamento | null>(null);
+  const [formEd, setFormEd] = useState({ ...VAZIO_ED });
+  const [erroEd, setErroEd] = useState("");
+  const [salvandoEd, setSalvandoEd] = useState(false);
   // Criação inline de categoria/conta direto no formulário de lançamento —
   // necessário no primeiro uso, quando ainda não há nenhuma cadastrada.
   const [novaCat, setNovaCat] = useState("");
@@ -74,6 +83,8 @@ export function Financeiro() {
         parcelas: Number(form.parcelas),
         valor: Number(form.valor),
         forma_pagamento: form.pago ? form.forma_pagamento : null,
+        // Retroativo: data de pagamento só quando pago e informada (senão usa o vencimento).
+        data_pagamento: form.pago && form.data_pagamento ? form.data_pagamento : null,
       });
       setNovo(false);
       setForm({ ...VAZIO });
@@ -145,6 +156,52 @@ export function Financeiro() {
     }
   };
 
+  // Edição depois de lançado: corrige valor/vencimento/conta/categoria/forma e,
+  // num pago (só admin), a data de pagamento — com auditoria no servidor.
+  const abrirEdicao = (l: Lancamento) => {
+    setEditar(l);
+    setErroEd("");
+    setFormEd({
+      descricao: l.descricao,
+      valor: l.valor,
+      data_vencimento: l.dataVencimento,
+      categoria_id: l.categoriaId,
+      conta_id: l.contaId,
+      forma_pagamento: l.formaPagamento ?? "",
+      data_pagamento: l.dataPagamento ?? "",
+    });
+  };
+  const salvarEdicao = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editar) return;
+    setErroEd("");
+    setSalvandoEd(true);
+    try {
+      const payload: Record<string, unknown> = {
+        descricao: formEd.descricao,
+        valor: Number(formEd.valor),
+        data_vencimento: formEd.data_vencimento,
+        categoria_id: formEd.categoria_id,
+        conta_id: formEd.conta_id,
+        forma_pagamento: formEd.forma_pagamento || null,
+      };
+      // Data de pagamento só vale para um lançamento já pago (invariante pago⇔data).
+      if (editar.status === "pago" && formEd.data_pagamento) payload.data_pagamento = formEd.data_pagamento;
+      await api.patch(`/lancamentos/${editar.id}`, payload);
+      invalidar();
+      notificar({ tipo: "ok", titulo: "Lançamento atualizado" });
+      setEditar(null);
+    } catch (err) {
+      setErroEd(err instanceof ApiError ? err.message : "Erro inesperado.");
+    } finally {
+      setSalvandoEd(false);
+    }
+  };
+  // Quem pode editar esta linha: tem permissão, não está anulada e — se paga —
+  // é admin (reescreve indicadores).
+  const podeEditar = (l: Lancamento) =>
+    pode("lancamentos", "editar") && l.status !== "cancelado" && (l.status !== "pago" || ehAdmin);
+
   const totalAberto = data?.dados
     .filter((l) => l.status === "previsto")
     .reduce((s, l) => s + Number(l.valor), 0);
@@ -207,6 +264,10 @@ export function Financeiro() {
                       <Selo tom={l.vencido ? "erro" : l.status === "pago" ? "ok" : l.status === "cancelado" ? "erro" : "alerta"}>
                         {l.vencido ? "vencido" : l.status}
                       </Selo>
+                      {podeEditar(l) && (
+                        <button title="Editar" onClick={() => abrirEdicao(l)}
+                          className="rounded p-1.5 text-suave hover:text-ouro"><Pencil className="h-4 w-4" /></button>
+                      )}
                       {pode("lancamentos", "transicionar") && l.status === "previsto" && (
                         <>
                           <button title="Pagar" onClick={() => setAcao({ tipo: "pagar", l })}
@@ -318,11 +379,17 @@ export function Financeiro() {
             </label>
           )}
           {form.pago && (
-            <Campo rotulo="Forma de pagamento">
-              <Selecao value={form.forma_pagamento} onChange={(e) => setForm({ ...form, forma_pagamento: e.target.value })}>
-                {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
-              </Selecao>
-            </Campo>
+            <div className="grid grid-cols-2 gap-4">
+              <Campo rotulo="Forma de pagamento">
+                <Selecao value={form.forma_pagamento} onChange={(e) => setForm({ ...form, forma_pagamento: e.target.value })}>
+                  {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
+                </Selecao>
+              </Campo>
+              <Campo rotulo="Data do pagamento" dica="Retroativo (padrão: vencimento)">
+                <Entrada type="date" value={form.data_pagamento}
+                  onChange={(e) => setForm({ ...form, data_pagamento: e.target.value })} />
+              </Campo>
+            </div>
           )}
           {erro && <p className="text-sm text-erro">{erro}</p>}
           <div className="flex justify-end gap-2">
@@ -330,6 +397,63 @@ export function Financeiro() {
             <Botao type="submit">Criar</Botao>
           </div>
         </form>
+      </Modal>
+
+      <Modal aberto={!!editar} aoFechar={() => setEditar(null)} titulo="Editar lançamento">
+        {editar && (
+          <form onSubmit={salvarEdicao} className="space-y-4">
+            {editar.temOrigem && (
+              <p className="rounded-md border border-info/25 bg-info/10 px-3 py-2 text-xs text-suave">
+                Lançamento gerado por uma operação/manutenção. Editar aqui corrige o valor
+                sem desfazer o vínculo de origem — a mudança fica na timeline.
+              </p>
+            )}
+            <Campo rotulo="Descrição">
+              <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />
+            </Campo>
+            <div className="grid grid-cols-2 gap-4">
+              <Campo rotulo="Valor (R$)">
+                <Entrada type="number" step="0.01" min="0.01" required value={formEd.valor}
+                  onChange={(e) => setFormEd({ ...formEd, valor: e.target.value })} />
+              </Campo>
+              <Campo rotulo="Vencimento">
+                <Entrada type="date" required value={formEd.data_vencimento}
+                  onChange={(e) => setFormEd({ ...formEd, data_vencimento: e.target.value })} />
+              </Campo>
+              <Campo rotulo="Categoria">
+                <Selecao required value={formEd.categoria_id} onChange={(e) => setFormEd({ ...formEd, categoria_id: e.target.value })}>
+                  <option value="">Escolha…</option>
+                  {categorias?.filter((c) => c.tipo === editar.tipo).map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </Selecao>
+              </Campo>
+              <Campo rotulo="Conta">
+                <Selecao required value={formEd.conta_id} onChange={(e) => setFormEd({ ...formEd, conta_id: e.target.value })}>
+                  <option value="">Escolha…</option>
+                  {contas?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </Selecao>
+              </Campo>
+              <Campo rotulo="Forma de pagamento">
+                <Selecao value={formEd.forma_pagamento} onChange={(e) => setFormEd({ ...formEd, forma_pagamento: e.target.value })}>
+                  <option value="">—</option>
+                  {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
+                </Selecao>
+              </Campo>
+              {editar.status === "pago" && (
+                <Campo rotulo="Data do pagamento" dica="Retroativo">
+                  <Entrada type="date" value={formEd.data_pagamento}
+                    onChange={(e) => setFormEd({ ...formEd, data_pagamento: e.target.value })} />
+                </Campo>
+              )}
+            </div>
+            {erroEd && <p className="text-sm text-erro">{erroEd}</p>}
+            <div className="flex justify-end gap-2">
+              <Botao type="button" variante="fantasma" onClick={() => setEditar(null)}>Cancelar</Botao>
+              <Botao type="submit" carregando={salvandoEd}>Salvar</Botao>
+            </div>
+          </form>
+        )}
       </Modal>
 
       <Modal aberto={!!acao} aoFechar={() => setAcao(null)}

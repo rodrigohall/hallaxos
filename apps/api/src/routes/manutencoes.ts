@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   idSchema, paginacaoSchema, manutencaoCriarSchema, manutencaoEditarSchema,
-  manutencaoConcluirSchema, manutencaoFiltrosSchema,
+  manutencaoConcluirSchema, manutencaoFiltrosSchema, manutencaoIniciarSchema,
 } from "@hallaxos/shared";
 import {
   listarManutencoes, obterManutencao, criarManutencao, editarManutencao,
@@ -50,7 +50,8 @@ export default async function rotasManutencoes(app: FastifyInstance) {
 
   app.post("/manutencoes/:id/iniciar", { preHandler: exigirPermissao("manutencoes", "transicionar") }, async (req) => {
     const { id } = params.parse(req.params);
-    return { dados: await iniciarManutencao(id, exigirLogin(req).id) };
+    const { data_inicio } = manutencaoIniciarSchema.parse(req.body ?? {});
+    return { dados: await iniciarManutencao(id, exigirLogin(req).id, data_inicio) };
   });
 
   app.post("/manutencoes/:id/concluir", { preHandler: exigirPermissao("manutencoes", "transicionar") }, async (req) => {
