@@ -11,10 +11,13 @@ export class ApiError extends Error {
 }
 
 async function requisicao<T>(caminho: string, init?: RequestInit): Promise<T> {
+  // Só declara JSON quando há corpo. Mandar Content-Type: application/json com
+  // corpo vazio (POST sem body, DELETE) fazia o Fastify rejeitar a requisição.
+  const headers = init?.body != null ? { "Content-Type": "application/json" } : undefined;
   const resposta = await fetch(`/api/v1${caminho}`, {
-    headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     ...init,
+    headers: { ...headers, ...init?.headers },
   });
   const corpo = await resposta.json().catch(() => null);
   if (!resposta.ok) {

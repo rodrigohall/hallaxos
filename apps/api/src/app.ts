@@ -29,6 +29,27 @@ export function criarApp() {
   // timeline. Com trustProxy, req.ip vem do X-Forwarded-For (o cliente real).
   const app = Fastify({ logger: { level: "info" }, trustProxy: true });
 
+  // O frontend manda `Content-Type: application/json` em toda requisição (ver
+  // api.ts), inclusive em POSTs sem corpo (ex.: iniciar manutenção) e DELETEs.
+  // O parser JSON padrão do Fastify rejeita corpo vazio com
+  // FST_ERR_CTP_EMPTY_JSON_BODY (400) — que o nosso error handler convertia em
+  // 500 "Erro interno". Tratamos corpo vazio como `undefined` (as rotas já
+  // fazem `req.body ?? {}`); corpo inválido continua sendo 400.
+  app.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (_req, corpo, done) => {
+      const texto = (corpo as string).trim();
+      if (texto.length === 0) return done(null, undefined);
+      try {
+        done(null, JSON.parse(texto));
+      } catch {
+        const erro = new AppError(400, "JSON_INVALIDO", "Corpo da requisição não é um JSON válido.");
+        done(erro);
+      }
+    }
+  );
+
   app.register(cookie);
   app.register(multipart, { limits: { fileSize: config.uploadMaxBytes, files: 20 } });
   // Rate limiting global: máximo 200 req/min por IP. Login tem seu próprio limite no Sprint 7.
@@ -61,6 +82,15 @@ export function criarApp() {
           mensagem: "Dados inválidos. Verifique os campos destacados.",
           detalhes: err.issues.map((i) => ({ campo: i.path.join("."), mensagem: i.message })),
         },
+      });
+    }
+    // Erros do próprio Fastify (parse de corpo, payload grande, etc.) trazem um
+    // statusCode 4xx. Não são falha do servidor: devolvemos o 4xx real com a
+    // mensagem, em vez de mascarar como 500 (era o que escondia o corpo vazio).
+    const status = (err as { statusCode?: number }).statusCode;
+    if (typeof status === "number" && status >= 400 && status < 500) {
+      return reply.code(status).send({
+        erro: { codigo: (err as { code?: string }).code ?? "REQUISICAO_INVALIDA", mensagem: (err as Error).message, detalhes: null },
       });
     }
     app.log.error(err);
