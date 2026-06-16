@@ -2,8 +2,10 @@
 // porta de entrada para qualquer registro, e futuramente para a IA.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, User, Car, FileText, Wrench, CircleDollarSign, Workflow, type LucideIcon } from "lucide-react";
+import { Search, User, Car, FileText, Wrench, CircleDollarSign, Workflow, Sparkles, type LucideIcon } from "lucide-react";
 import { api } from "../api";
+import { useAuth } from "../auth";
+import { useCopiloto } from "./Copiloto";
 import { Modal } from "./ui";
 
 interface Resultado {
@@ -29,6 +31,8 @@ export function BuscaGlobal() {
   const [selecionado, setSelecionado] = useState(0);
   const temporizador = useRef<ReturnType<typeof setTimeout>>(undefined);
   const navegar = useNavigate();
+  const { copilotoAtivo } = useAuth();
+  const { abrir: abrirCopiloto } = useCopiloto();
 
   // Atalho global ⌘K / Ctrl+K
   useEffect(() => {
@@ -74,7 +78,20 @@ export function BuscaGlobal() {
     [fechar, navegar]
   );
 
+  const perguntarCopiloto = useCallback(() => {
+    const q = consulta;
+    fechar();
+    abrirCopiloto(q);
+  }, [consulta, fechar, abrirCopiloto]);
+
   const navegarTeclado = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      if (copilotoAtivo) {
+        e.preventDefault();
+        perguntarCopiloto();
+      }
+      return;
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelecionado((s) => Math.min(s + 1, resultados.length - 1));
@@ -159,6 +176,22 @@ export function BuscaGlobal() {
               );
             })}
           </div>
+          {copilotoAtivo && consulta.trim().length >= 2 && (
+            <div className="border-t border-borda p-2">
+              <button
+                onClick={perguntarCopiloto}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-suave hover:bg-elevado"
+              >
+                <Sparkles className="h-4 w-4 shrink-0 text-ouro" />
+                <span className="min-w-0 truncate">
+                  Perguntar ao copiloto: <span className="text-texto">“{consulta}”</span>
+                </span>
+                <kbd className="ml-auto hidden rounded border border-borda bg-elevado px-1.5 py-0.5 text-[10px] sm:block">
+                  ⌘↵
+                </kbd>
+              </button>
+            </div>
+          )}
         </div>
       </Modal>
     </>

@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 9 — correções do uso real
-> II (2026-06-15), conferida contra o código (não contra a memória).
+> assumida — não esquecimento. Última revisão: Sprint 9 — copiloto de IA
+> (leitura + UI, 2026-06-16), conferida contra o código (não contra a memória).
 
 ## Estado atual — o que está em produção
 
@@ -86,13 +86,17 @@ e timeline — perguntas como "quanto lucro o Corolla deu em 2026?" respondidas
 sobre os mesmos endpoints que as telas já usam.
 
 Plano:
-1. ~~**Camada de copiloto (backend)**~~ ✅ scaffold entregue — `POST /copiloto/perguntar`
-   orquestra o Claude com a busca global como ferramenta (sem dados próprios; reusa
-   o núcleo). **Desligado** até `IA_API_KEY` ser configurada (responde 503; sem custo).
-   Permissões respeitadas: a busca já filtra pelo papel do usuário (doc 05).
-2. **UI**: campo de pergunta no ⌘K / painel lateral, respondendo com citações
-   das entidades de origem (link para a tela real). — próximo
-3. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
+1. ~~**Camada de copiloto (backend)**~~ ✅ entregue — `POST /copiloto/perguntar`
+   orquestra o Claude com ferramentas de **leitura** sobre os serviços existentes
+   (busca, dashboard, operações, relatórios), cada uma revalidando o papel
+   (decisão #45). Sem dados próprios; reusa o núcleo. **Desligado** até
+   `IA_API_KEY` (responde 503; sem custo). Degradação graciosa + rate limit próprio.
+2. ~~**UI**: pergunta no ⌘K / painel lateral~~ ✅ entregue — painel lateral
+   (Drawer) com fontes clicáveis (link para a tela real) + entrada no ⌘K (`⌘↵`).
+3. **Copiloto que escreve (Fase 2)**: *proposta de ação* confirmada pelo humano,
+   disparando os endpoints existentes (nunca escreve direto; máquina de estados e
+   autoria intactas — decisão #43). Ações destrutivas ficam de fora.
+4. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
    (fail2ban/firewall) para voltar a ter atualização automática confiável.
-4. **Ligar a IA**: gerar a chave da Anthropic e defini-la como secret `IA_API_KEY`
-   no servidor; ampliar ferramentas (relatórios, timeline) conforme a demanda.
+5. **Ligar a IA**: gerar a chave da Anthropic e defini-la como secret `IA_API_KEY`
+   no servidor; ampliar ferramentas (timeline, manutenções) conforme a demanda.

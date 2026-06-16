@@ -121,11 +121,16 @@ transversais: **notificações** (sino na UI + job de prazos), **tags**,
 **favoritos**, **rate limiting** (200 req/min por IP) e auditoria de negações.
 Deploy contínuo no VPS a cada push.
 
-**Sprint 9 em andamento — Copiloto de IA.** Backend já entregue (scaffold):
-`POST /copiloto/perguntar` orquestra o modelo Claude usando a busca global como
-ferramenta, sem dados próprios e respeitando o papel do usuário. **Desligado por
-padrão** (sem custo) até configurar o secret `IA_API_KEY`. Falta a UI e a
-estabilização do deploy. Roadmap completo em [`docs/pendencias.md`](docs/pendencias.md).
+**Sprint 9 em andamento — Copiloto de IA (leitura + UI, em produção).**
+`POST /copiloto/perguntar` orquestra o modelo Claude por *function calling* sobre
+os **serviços que as telas já usam** (busca, dashboard, operações, relatórios),
+sem dados próprios e revalidando o papel do usuário em cada ferramenta. **Fase 1
+é só leitura** ("quanto faturei em maio?", "quais guinchos estão abertos?"): cita
+as fontes e nunca inventa número. UI no **⌘K + painel lateral** com fontes
+clicáveis. **Desligado por padrão** (sem custo) até o secret `IA_API_KEY`; modelo
+`claude-haiku-4-5` (configurável por `IA_MODELO`). Escrita guardrailada fica para
+a Fase 2 e a estabilização do deploy segue pendente. Roadmap em
+[`docs/pendencias.md`](docs/pendencias.md).
 
 **Atritos do uso real resolvidos (jun/2026):** edição dos lançamentos
 financeiros **antes de finalizar** a operação (conta, forma, parcelas e
@@ -167,7 +172,8 @@ Detalhes no [`CHANGELOG.md`](CHANGELOG.md) e em [`docs/decisoes.md`](docs/deciso
   deploy, o problema intermitente de SSH e como contornar (re-run ou aplicação
   manual pelo terminal), e a recuperação do `.env`. Importante porque o deploy
   automático ainda falha às vezes e exige passos manuais no VPS.
-- **Próximas tarefas conhecidas:** UI do copiloto (campo no ⌘K/painel),
+- **Próximas tarefas conhecidas:** copiloto com escrita guardrailada (Fase 2 —
+  proposta de ação confirmada pelo humano, via endpoints existentes),
   **estabilizar o deploy** (timeout SSH intermitente do VPS — investigar
   fail2ban/firewall da Hostinger), e ligar a IA quando houver chave
   (`IA_API_KEY`). O usuário tem mais funcionalidades a pedir na próxima sessão.

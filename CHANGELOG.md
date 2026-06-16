@@ -1,5 +1,46 @@
 # Changelog
 
+## Sprint 9 — Copiloto de IA (leitura + UI) (2026-06-16)
+
+O copiloto sai do scaffold e ganha utilidade real — **Fase 1: só leitura**.
+Continua sem dados próprios (regra máxima): consome os mesmos serviços que as
+telas usam, por *function calling* no backend, escopado ao papel do usuário.
+
+### Backend — da busca a um conjunto de ferramentas de leitura
+- `POST /copiloto/perguntar` deixa de ter só `busca_global` e ganha
+  **`dashboard_resumo`** (payload do dashboard), **`operacoes_abertas`**
+  (operações em andamento/atrasadas) e **`relatorio_financeiro`** (DRE +
+  resultado/ROI por ativo). Todas chamam os **serviços existentes** — nenhuma
+  consulta nova, nenhuma tabela nova.
+- **Permissão por ferramenta** (decisão #45): a busca já filtrava por papel; as
+  novas revalidam `pode(papel, recurso, 'ler')` antes de qualquer query — um
+  `operador` não extrai o financeiro pelo copiloto. A negação não vaza o dado.
+- **Degradação graciosa** (decisão #47): falhas/limites do SDK da Anthropic viram
+  `503 IA_INDISPONIVEL` / `429 IA_LIMITE` no envelope pt-BR; o resto do sistema
+  (busca, telas) segue de pé. Sem `IA_API_KEY` segue `503 IA_NAO_CONFIGURADA`,
+  sem custo. Rate limit próprio de 20 req/min por IP no endpoint.
+- **Modelo padrão `claude-haiku-4-5`** (`IA_MODELO`, configurável). Requisição
+  **model-agnostic** (sem `thinking`/`effort`, que Haiku rejeita) para permitir
+  troca por Sonnet/Opus sem mexer no código (decisão #46).
+- `GET /auth/sessao` e o login passam a trazer `copiloto: { ativo }` — a UI
+  esconde o copiloto quando a IA está desligada (sem round-trip que volta 503).
+
+### UI — ⌘K + painel lateral
+- **Painel lateral** (Drawer) "Copiloto": pergunta em linguagem natural, resposta
+  com **fontes clicáveis** (chips que abrem a tela real da entidade — operação,
+  ativo, pessoa, lançamento). Botão de copiloto no header (só quando a IA está
+  ligada).
+- **Integração com o ⌘K**: a paleta de busca ganha "Perguntar ao copiloto:
+  '…'" (e atalho `⌘↵`) que leva a pergunta para o painel — coerente com a
+  decisão #23 ("⌘K é a porta da IA").
+
+### Qualidade
+- Testes (`node:test`): o invariante pedido — **o copiloto não tem ferramenta de
+  escrita** (a lista é a garantia, em código); um `operador` é **negado** no
+  `relatorio_financeiro` sem tocar o banco; sem `IA_API_KEY` responde 503 **sem
+  custo**. Testes de integração (Postgres real na CI) rodam o SQL das ferramentas
+  de leitura. Typecheck, build do web e suíte verdes.
+
 ## Sprint 9 — Correções do uso real II (2026-06-15)
 
 Dois problemas vistos em produção, sem duplicar dado nem criar tabela.

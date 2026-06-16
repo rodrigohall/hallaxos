@@ -221,9 +221,40 @@ GET    /relatorios/inadimplencia          → vencidos por pessoa, idade da dív
 ```
 
 > Cada relatório responde diretamente uma das perguntas da diretriz de IA
-> ("qual ativo tem pior ROI?", "qual cliente mais alugou?"). O futuro copiloto
-> consumirá **estes mesmos endpoints** — mais um motivo para não existir
+> ("qual ativo tem pior ROI?", "qual cliente mais alugou?"). O copiloto
+> consome **estes mesmos endpoints/serviços** — mais um motivo para não existir
 > nenhum número que não venha do núcleo.
+
+### Copiloto de IA
+
+```
+POST   /copiloto/perguntar        { pergunta }  → { resposta, fontes: [{ entidade_tipo, entidade_id, titulo }] }
+```
+
+Perguntas em linguagem natural sobre os dados reais (doc 01 §6). **Fase 1: só
+leitura.** O endpoint mora no backend (a chave da IA nunca vai ao front) e
+orquestra o modelo por *function calling* sobre os **serviços existentes** — sem
+dados próprios (regra máxima). As ferramentas expostas ao modelo são todas de
+leitura e **revalidam o papel** do usuário (doc 05, decisão #45):
+
+| Ferramenta | Consulta | Acesso |
+| ----------------------- | ------------------------------------------------ | ----------------------------- |
+| `busca_global`          | a mesma busca do ⌘K (`/busca`)                   | já filtrada por papel         |
+| `dashboard_resumo`      | o payload do `/dashboard`                        | bloco financeiro só com papel |
+| `operacoes_abertas`     | `/operacoes?situacao=abertas\|atrasadas`         | quem lê operações             |
+| `relatorio_financeiro`  | DRE + resultado/ROI por ativo (`/relatorios/*`)  | só papéis financeiros         |
+
+- **Desligado por padrão:** sem `IA_API_KEY` no servidor, responde
+  `503 IA_NAO_CONFIGURADA` e **nenhuma chamada paga** é feita. `GET /auth/sessao`
+  (e o login) trazem `copiloto: { ativo }` para a UI esconder o campo quando a IA
+  está desligada.
+- **Degradação graciosa:** falha/limite da IA vira `503 IA_INDISPONIVEL` /
+  `429 IA_LIMITE` no envelope `{erro:{...}}`; o resto do sistema não cai junto.
+- **Modelo** configurável por `IA_MODELO` (padrão `claude-haiku-4-5`). Rate limit
+  próprio de 20 req/min por IP no endpoint, além do global.
+- **Escrita é Fase 2** e, quando vier, será uma *proposta de ação* confirmada
+  pelo humano que dispara os endpoints já documentados acima — a IA não ganha
+  rota de escrita nova nem transição nova (decisão #43).
 
 ### Usuários (admin)
 

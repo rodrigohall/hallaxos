@@ -133,6 +133,17 @@ rastreável (`lancamento → operacao → ativo → pessoa`) e timeline completa
 qualquer pergunta de negócio vira uma consulta SQL determinística que um LLM
 consegue gerar com segurança sobre um schema bem documentado.
 
+O **copiloto de IA** (Sprint 9) materializa isso **sem virar um módulo com dados
+próprios**: um endpoint no backend (`POST /copiloto/perguntar`) orquestra o
+modelo Claude por *function calling* sobre os **mesmos serviços que as telas
+usam** — busca global, dashboard, operações e relatórios — sempre escopado ao
+papel do usuário (doc 05). Começa **só leitura** ("quanto faturei em maio?",
+"quais guinchos estão abertos?"): nunca inventa número e cita as entidades de
+origem (link para a tela real). Ação de escrita fica para a Fase 2 e, quando
+vier, passa pelos endpoints existentes **com confirmação humana** — a IA nunca
+altera dado nem indicador sozinha (decisões #43–#47). Desligado por padrão (sem
+custo) até configurar o secret `IA_API_KEY`.
+
 ## 7. O que fica explicitamente para depois (e por quê)
 
 - **Permissões finas por campo** — começamos com papéis simples (ver doc 03);
@@ -141,5 +152,6 @@ consegue gerar com segurança sobre um schema bem documentado.
   custo antes de existir a necessidade.
 - **App nativo** — a PWA mobile-first cobre o uso em campo (guincho) sem
   duplicar código.
-- **Camada de IA conversacional** — entra depois que o núcleo estiver estável;
-  o modelo já nasce pronto para ela.
+- **Copiloto que escreve** — o copiloto de leitura entrou no Sprint 9 (§6); dar
+  a ele ações de escrita (sempre com confirmação humana, via os endpoints
+  existentes) é a Fase 2, depois que a leitura amadurecer em uso real.

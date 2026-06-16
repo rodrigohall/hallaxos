@@ -75,6 +75,16 @@
 | 41 | Lançamento errado → **anulação** (`status=cancelado`, sem contrapartida), não estorno nem hard delete | Estorno cria contrapartida (dois lançamentos seguem contando bruto no dashboard) — certo para reversão de dinheiro real, errado para engano de digitação. Anular tira de **todos** os indicadores (todos filtram `pago`/`previsto`) na hora, **preservando a linha + o vínculo origem→lançamento** (a operação ainda mostra que gerou e que foi anulado). Hard delete atingiria o mesmo no dashboard, mas destruiria a trilha e deixaria a origem órfã. Reservado ao `admin` (anular um pago reescreve números) |
 | 42 | Anular limpa `data_pagamento` junto com o status | Invariante `chk_lancamento_pago_com_data` (`status='pago' ⇔ data_pagamento NOT NULL`): um lançamento anulado não é um pagamento real, então a data sai com o status |
 
+## Sprint 9 — Copiloto de IA
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 43 | Copiloto começa **só leitura** (Fase 1); escrita fica para a Fase 2 e **nunca escreve direto** | Leitura entrega valor com risco baixo (não fura auditoria, estado nem rastreabilidade). Escrita exige guardrails (permissão, autoria, confirmação) e, mesmo na Fase 2, a IA só **rascunha** uma proposta de ação — o humano autenticado confirma e o **endpoint existente** executa. Assim a máquina de estados (doc 03) e a autoria na timeline ficam intactas, e nunca se anula receita/apaga foto/finaliza operação pela IA |
+| 44 | Copiloto **sem dados próprios**: function calling sobre os serviços que as telas já usam (busca, dashboard, operações, relatórios) | Regra máxima — nenhuma tabela ou fonte de dado paralela. O número que o copiloto cita é, por construção, o mesmo das telas e do financeiro (doc 01 §6). Ferramenta nova = expor um serviço existente, não criar consulta nova |
+| 45 | Permissão **revalidada por ferramenta** (`pode(papel, recurso, 'ler')`) antes de qualquer query | A busca já filtrava por papel (doc 05), mas relatórios/operações/dashboard precisam checar a matriz — senão um `operador` extrairia o financeiro pelo copiloto. A negação responde "sem acesso" sem vazar o dado |
+| 46 | Modelo padrão **Haiku 4.5** (`IA_MODELO`, configurável); requisição **model-agnostic** (sem `thinking`/`effort`) | Haiku é mais barato/rápido — escolha de custo do dono do produto. Haiku 4.5 rejeita adaptive thinking e o parâmetro `effort` (400), e o prefixo (system+tools) é pequeno demais para o prompt caching engatar; manter a requisição neutra permite trocar `IA_MODELO` por Sonnet/Opus **sem mexer no código** |
+| 47 | **Degradação graciosa** + rate limit próprio do endpoint | Sem `IA_API_KEY` → 503 e zero chamada paga. Falha/limite da IA → erro tratado no envelope pt-BR (o SDK já retenta 429/5xx); o resto do sistema (busca, telas) **segue de pé** porque a IA vive num endpoint isolado. Rate limit de 20/min por IP no `/copiloto/perguntar`, além do global de 200/min, limita o gasto |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica

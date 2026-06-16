@@ -19,6 +19,7 @@ export default async function rotasAuth(app: FastifyInstance) {
       dados: {
         usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel },
         permissoes: permissoesDe(usuario.papel),
+        copiloto: { ativo: !!config.iaApiKey },
       },
     };
   });
@@ -32,7 +33,13 @@ export default async function rotasAuth(app: FastifyInstance) {
 
   app.get("/auth/sessao", async (req) => {
     const usuario = exigirLogin(req);
-    return { dados: { usuario, permissoes: permissoesDe(usuario.papel) } };
+    return {
+      dados: {
+        usuario,
+        permissoes: permissoesDe(usuario.papel),
+        copiloto: { ativo: !!config.iaApiKey },
+      },
+    };
   });
 
   app.post("/auth/trocar-senha", async (req) => {

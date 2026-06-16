@@ -7,6 +7,7 @@ import {
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
 import { Notificacoes } from "./Notificacoes";
+import { ProvedorCopiloto, BotaoCopiloto } from "./Copiloto";
 import { LogoCompleta, Monograma } from "../marca/Logo";
 import { ModalTrocarSenha } from "./TrocarSenha";
 
@@ -18,7 +19,7 @@ interface ItemNav {
 }
 
 export function Layout() {
-  const { usuario, sair, pode } = useAuth();
+  const { usuario, sair, pode, copilotoAtivo } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
   const [senhaAberta, setSenhaAberta] = useState(false);
 
@@ -64,6 +65,7 @@ export function Layout() {
   );
 
   return (
+    <ProvedorCopiloto>
     <div className="min-h-screen md:flex">
       {/* Sidebar desktop */}
       <aside className="hidden border-r border-borda bg-painel md:flex md:min-h-screen md:w-60 md:flex-col">
@@ -111,6 +113,7 @@ export function Layout() {
           <div className="flex-1">
             <BuscaGlobal />
           </div>
+          {copilotoAtivo && <BotaoCopiloto />}
           <Notificacoes />
         </header>
 
@@ -142,5 +145,6 @@ export function Layout() {
 
       <ModalTrocarSenha aberto={senhaAberta} aoFechar={() => setSenhaAberta(false)} />
     </div>
+    </ProvedorCopiloto>
   );
 }
