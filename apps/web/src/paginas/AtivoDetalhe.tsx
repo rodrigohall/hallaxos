@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PencilLine, Archive, ArchiveRestore, History, TrendingUp, TrendingDown,
-  Scale, Percent, CarFront, Workflow, Wrench, CircleDollarSign, Tag,
+  Scale, CarFront, Workflow, Wrench, CircleDollarSign, ChevronDown, Tag,
+  CalendarDays, Percent,
 } from "lucide-react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
@@ -23,6 +24,8 @@ interface AtivoDetalheDados {
   status: string;
   valorAquisicao: string | null;
   valorFipe: string | null;
+  valorDiaria: string | null;
+  dataFipeAtualizacao: string | null;
   dataAquisicao: string | null;
   localizacao: string | null;
   observacoes: string | null;
@@ -34,8 +37,10 @@ interface AtivoDetalheDados {
     cor: string | null; combustivel: string | null; kmAtual: number;
   } | null;
   financeiro: {
-    receita: number; custos: number; lucro: number; roi: number | null;
-    precoVendaEstimado: number | null; lucroVendaEsperado: number | null;
+    receita: number; custos: number; lucro: number;
+    roi: number | null;           // só preenchido quando vendido
+    precoVendaEstimado: number | null;
+    lucroPresumido: number | null; // (FIPE×0.95 + receita) - custos, para não-vendidos
   };
   operacoes: Array<{ id: string; codigo: string; tipo: string; status: string; valor_total: string; data_inicio: string; cliente: string }>;
   manutencoes: Array<{ id: string; tipo: string; status: string; descricao: string; data_agendada: string | null; fornecedor: string | null; custo: string }>;
@@ -53,6 +58,16 @@ const ROTULOS: Record<string, string> = {
   vendido: "vendido", baixado: "baixado",
 };
 
+const LIMITE_HISTORICO = 5;
+
+function RotuloFipe({ data }: { data: string | null }) {
+  if (!data) return <>FIPE</>;
+  const d = new Date(data);
+  const mes = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+    .replace(". de ", "/").replace(".", "");
+  return <>FIPE {mes}</>;
+}
+
 export function AtivoDetalhe() {
   const { id } = useParams();
   const { pode } = useAuth();
@@ -60,6 +75,10 @@ export function AtivoDetalhe() {
   const fila = useQueryClient();
   const notificar = useToast();
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
+  const [verMaisOps, setVerMaisOps] = useState(false);
+  const [verMaisManut, setVerMaisManut] = useState(false);
+  const [verMaisLanc, setVerMaisLanc] = useState(false);
+  const [verMaisTimeline, setVerMaisTimeline] = useState(false);
 
   const { data: ativo } = useQuery({
     queryKey: ["ativo", id],
@@ -97,6 +116,12 @@ export function AtivoDetalhe() {
 
   const fin = ativo.financeiro;
   const v = ativo.veiculo;
+  const vendido = ativo.status === "vendido";
+
+  const eventosVisiveis = verMaisTimeline ? (eventos ?? []) : (eventos ?? []).slice(0, LIMITE_HISTORICO);
+  const opsVisiveis = verMaisOps ? ativo.operacoes : ativo.operacoes.slice(0, LIMITE_HISTORICO);
+  const manutsVisiveis = verMaisManut ? ativo.manutencoes : ativo.manutencoes.slice(0, LIMITE_HISTORICO);
+  const lancVisiveis = verMaisLanc ? ativo.lancamentos : ativo.lancamentos.slice(0, LIMITE_HISTORICO);
 
   return (
     <div className="space-y-4">
@@ -128,47 +153,47 @@ export function AtivoDetalhe() {
 
       <TagsFavoritos entidadeTipo="ativo" entidadeId={ativo.id} />
 
-      {/* Resultado financeiro do ativo — origem rastreável de cada número */}
+      {/* ── KPIs financeiros ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" />
         <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" />
-        <Kpi rotulo="Lucro líquido" valor={dinheiro(fin.lucro)} icone={Scale} tom={fin.lucro >= 0 ? "ouro" : "erro"} />
         <Kpi
-          rotulo="ROI"
-          valor={fin.roi !== null ? `${fin.roi}%` : "—"}
-          icone={Percent}
-          tom={fin.roi !== null && fin.roi >= 0 ? "ouro" : "neutro"}
-          detalhe={ativo.valorAquisicao ? `sobre ${dinheiro(ativo.valorAquisicao)}` : "sem valor de compra"}
+          rotulo="Lucro líquido"
+          valor={dinheiro(fin.lucro)}
+          icone={Scale}
+          tom={fin.lucro >= 0 ? "ouro" : "erro"}
         />
-      </div>
-
-      {/* Projeção: lucro se vendermos hoje a 95% da FIPE (separado dos números realizados) */}
-      <Card>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="flex items-center gap-2 text-mudo">
-            <Tag className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wider">Expectativa de lucro de venda</span>
+        {vendido ? (
+          /* Quando vendido: ROI real sobre o custo de compra */
+          <Kpi
+            rotulo="ROI"
+            valor={fin.roi !== null ? `${fin.roi}%` : "—"}
+            icone={Percent}
+            tom={fin.roi !== null && fin.roi >= 0 ? "ouro" : "neutro"}
+            detalhe={ativo.valorAquisicao ? `sobre ${dinheiro(ativo.valorAquisicao)}` : "sem valor de compra"}
+          />
+        ) : (
+          /* Antes da venda: Lucro Presumido = (95% FIPE + receita) − custos (decisão #59) */
+          <div className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel">
+            <div className="flex items-center gap-2 text-mudo">
+              <Tag className="h-4 w-4" />
+              <span className="text-xs font-medium uppercase tracking-wider">Lucro Presumido Venda</span>
+            </div>
+            {fin.lucroPresumido !== null ? (
+              <>
+                <p className={`mt-2 font-display text-2xl font-bold ${fin.lucroPresumido >= 0 ? "text-ouro" : "text-erro"}`}>
+                  {dinheiro(fin.lucroPresumido)}
+                </p>
+                <p className="mt-1 text-xs text-mudo">
+                  95% da FIPE ({dinheiro(fin.precoVendaEstimado ?? 0)}) + receita − custos
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-mudo">Informe o valor FIPE para calcular.</p>
+            )}
           </div>
-          {fin.lucroVendaEsperado !== null ? (
-            <>
-              <p
-                className={`font-display text-2xl font-bold ${
-                  fin.lucroVendaEsperado >= 0 ? "text-ouro" : "text-erro"
-                }`}
-              >
-                {dinheiro(fin.lucroVendaEsperado)}
-              </p>
-              <p className="text-xs text-mudo">
-                vendendo a 95% da FIPE ({dinheiro(fin.precoVendaEstimado ?? 0)})
-                {" − "}
-                custo de compra e custos acumulados
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-mudo">Informe o valor FIPE do ativo para calcular.</p>
-          )}
-        </div>
-      </Card>
+        )}
+      </div>
 
       <Galeria entidadeTipo="ativo" entidadeId={ativo.id} />
 
@@ -194,7 +219,18 @@ export function AtivoDetalhe() {
                 <div><dt className="inline text-suave">Valor de compra: </dt><dd className="inline">{dinheiro(ativo.valorAquisicao)}</dd></div>
               )}
               {ativo.valorFipe && (
-                <div><dt className="inline text-suave">Valor FIPE: </dt><dd className="inline">{dinheiro(ativo.valorFipe)}</dd></div>
+                <div>
+                  <dt className="inline text-suave">
+                    <RotuloFipe data={ativo.dataFipeAtualizacao} />:{" "}
+                  </dt>
+                  <dd className="inline">{dinheiro(ativo.valorFipe)}</dd>
+                </div>
+              )}
+              {ativo.valorDiaria && (
+                <div>
+                  <dt className="inline text-suave">Diária padrão: </dt>
+                  <dd className="inline font-medium text-ouro">{dinheiro(ativo.valorDiaria)}</dd>
+                </div>
               )}
               {ativo.dataAquisicao && (
                 <div><dt className="inline text-suave">Aquisição: </dt><dd className="inline">{dataCurta(ativo.dataAquisicao)}</dd></div>
@@ -211,98 +247,153 @@ export function AtivoDetalhe() {
         </div>
 
         <div className="space-y-4 lg:col-span-2">
+          {/* História completa */}
           <Card titulo="História completa" icone={History}>
-            {carregandoTimeline ? <SkeletonLinhas linhas={4} /> : <Timeline eventos={eventos ?? []} />}
+            {carregandoTimeline ? (
+              <SkeletonLinhas linhas={4} />
+            ) : (
+              <>
+                <Timeline eventos={eventosVisiveis} />
+                {(eventos ?? []).length > LIMITE_HISTORICO && (
+                  <button
+                    onClick={() => setVerMaisTimeline((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisTimeline ? "rotate-180" : ""}`} />
+                    {verMaisTimeline
+                      ? "Ver menos"
+                      : `Ver mais ${(eventos ?? []).length - LIMITE_HISTORICO} evento(s)`}
+                  </button>
+                )}
+              </>
+            )}
           </Card>
 
+          {/* Operações */}
           <Card titulo="Operações" icone={Workflow}>
             {ativo.operacoes.length === 0 ? (
               <EstadoVazio icone={Workflow} titulo="Nenhuma operação ainda" descricao="Locações, guinchos e vendas deste ativo aparecem aqui." />
             ) : (
-              <Lista>
-                {ativo.operacoes.map((o) => (
-                  <ListaLinha
-                    key={o.id}
-                    titulo={
-                      <>
-                        <span className="font-display font-bold text-ouro">{o.codigo}</span> · {o.tipo} · {o.cliente}
-                      </>
-                    }
-                    subtitulo={`${dataCurta(o.data_inicio)} · ${dinheiro(o.valor_total)}`}
-                    direita={<Selo tom={o.status}>{o.status.replace(/_/g, " ")}</Selo>}
-                  />
-                ))}
-              </Lista>
+              <>
+                <Lista>
+                  {opsVisiveis.map((o) => (
+                    <Link key={o.id} to={`/operacoes/${o.id}`}>
+                      <ListaLinha
+                        titulo={
+                          <>
+                            <span className="font-display font-bold text-ouro">{o.codigo}</span> · {o.tipo} · {o.cliente}
+                          </>
+                        }
+                        subtitulo={`${dataCurta(o.data_inicio)} · ${dinheiro(o.valor_total)}`}
+                        direita={<Selo tom={o.status}>{o.status.replace(/_/g, " ")}</Selo>}
+                      />
+                    </Link>
+                  ))}
+                </Lista>
+                {ativo.operacoes.length > LIMITE_HISTORICO && (
+                  <button
+                    onClick={() => setVerMaisOps((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisOps ? "rotate-180" : ""}`} />
+                    {verMaisOps ? "Ver menos" : `Ver mais ${ativo.operacoes.length - LIMITE_HISTORICO}`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
 
+          {/* Manutenções */}
           <Card titulo="Manutenções" icone={Wrench}>
             {ativo.manutencoes.length === 0 ? (
               <EstadoVazio icone={Wrench} titulo="Nenhuma manutenção registrada" />
             ) : (
-              <Lista>
-                {ativo.manutencoes.map((m) => (
-                  <ListaLinha
-                    key={m.id}
-                    titulo={m.descricao}
-                    subtitulo={
-                      `${m.tipo}` +
-                      (m.fornecedor ? ` · ${m.fornecedor}` : "") +
-                      (m.data_agendada ? ` · ${dataCurta(m.data_agendada)}` : "")
-                    }
-                    direita={
-                      <>
-                        <span className="text-xs text-suave">{dinheiro(m.custo)}</span>
-                        <Selo tom={m.status === "concluida" ? "ok" : m.status === "cancelada" ? "erro" : "alerta"}>
-                          {m.status.replace(/_/g, " ")}
-                        </Selo>
-                      </>
-                    }
-                  />
-                ))}
-              </Lista>
+              <>
+                <Lista>
+                  {manutsVisiveis.map((m) => (
+                    <Link key={m.id} to={`/manutencoes/${m.id}`}>
+                      <ListaLinha
+                        titulo={m.descricao}
+                        subtitulo={
+                          `${m.tipo}` +
+                          (m.fornecedor ? ` · ${m.fornecedor}` : "") +
+                          (m.data_agendada ? ` · ${dataCurta(m.data_agendada)}` : "")
+                        }
+                        direita={
+                          <>
+                            <span className="text-xs text-suave">{dinheiro(m.custo)}</span>
+                            <Selo tom={m.status === "concluida" ? "ok" : m.status === "cancelada" ? "erro" : "alerta"}>
+                              {m.status.replace(/_/g, " ")}
+                            </Selo>
+                          </>
+                        }
+                      />
+                    </Link>
+                  ))}
+                </Lista>
+                {ativo.manutencoes.length > LIMITE_HISTORICO && (
+                  <button
+                    onClick={() => setVerMaisManut((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisManut ? "rotate-180" : ""}`} />
+                    {verMaisManut ? "Ver menos" : `Ver mais ${ativo.manutencoes.length - LIMITE_HISTORICO}`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
 
+          {/* Histórico financeiro */}
           <Card titulo="Histórico financeiro" icone={CircleDollarSign}>
             {ativo.lancamentos.length === 0 ? (
               <EstadoVazio icone={CircleDollarSign} titulo="Nenhum lançamento vinculado" />
             ) : (
-              <Lista>
-                {ativo.lancamentos.map((l) => (
-                  <ListaLinha
-                    key={l.id}
-                    titulo={
-                      <span className="inline-flex items-center gap-1.5">
-                        {l.descricao}
-                        {/* Origem: custo direto do ativo, ou herdado — com link para a operação */}
-                        {l.origem === "direto" ? (
-                          <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">custo direto</span>
-                        ) : l.origem === "operacao" && l.operacaoId ? (
-                          <Link
-                            to={`/operacoes/${l.operacaoId}`}
-                            className="rounded-full border border-borda px-1.5 py-px text-[10px] text-suave hover:border-ouro/60 hover:text-ouro-claro"
-                          >
-                            {l.operacaoCodigo ?? "operação"}
-                          </Link>
-                        ) : l.origem === "manutencao" ? (
-                          <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">manutenção</span>
-                        ) : null}
-                      </span>
-                    }
-                    subtitulo={
-                      l.data_pagamento
-                        ? `pago em ${dataCurta(l.data_pagamento)}`
-                        : `vence ${dataCurta(l.data_vencimento)}`
-                    }
-                    direita={
-                      <span className={`text-sm font-medium ${l.tipo === "receita" ? "text-ok" : "text-erro"}`}>
-                        {l.tipo === "receita" ? "+" : "−"} {dinheiro(l.valor)}
-                      </span>
-                    }
-                  />
-                ))}
-              </Lista>
+              <>
+                <Lista>
+                  {lancVisiveis.map((l) => (
+                    <ListaLinha
+                      key={l.id}
+                      titulo={
+                        <span className="inline-flex items-center gap-1.5">
+                          {l.descricao}
+                          {l.origem === "direto" ? (
+                            <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">custo direto</span>
+                          ) : l.origem === "operacao" && l.operacaoId ? (
+                            <Link
+                              to={`/operacoes/${l.operacaoId}`}
+                              className="rounded-full border border-borda px-1.5 py-px text-[10px] text-suave hover:border-ouro/60 hover:text-ouro-claro"
+                            >
+                              {l.operacaoCodigo ?? "operação"}
+                            </Link>
+                          ) : l.origem === "manutencao" ? (
+                            <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">manutenção</span>
+                          ) : null}
+                        </span>
+                      }
+                      subtitulo={
+                        l.data_pagamento
+                          ? `pago em ${dataCurta(l.data_pagamento)}`
+                          : `vence ${dataCurta(l.data_vencimento)}`
+                      }
+                      direita={
+                        <span className={`text-sm font-medium ${l.tipo === "receita" ? "text-ok" : "text-erro"}`}>
+                          {l.tipo === "receita" ? "+" : "−"} {dinheiro(l.valor)}
+                        </span>
+                      }
+                    />
+                  ))}
+                </Lista>
+                {ativo.lancamentos.length > LIMITE_HISTORICO && (
+                  <button
+                    onClick={() => setVerMaisLanc((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
+                    {verMaisLanc ? "Ver menos" : `Ver mais ${ativo.lancamentos.length - LIMITE_HISTORICO}`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
         </div>

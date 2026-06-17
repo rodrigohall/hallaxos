@@ -92,6 +92,8 @@ export const ativos = pgTable("ativos", {
   status: statusAtivoEnum("status").notNull().default("disponivel"),
   valorAquisicao: numeric("valor_aquisicao", { precision: 12, scale: 2 }),
   valorFipe: numeric("valor_fipe", { precision: 12, scale: 2 }),
+  valorDiaria: numeric("valor_diaria", { precision: 12, scale: 2 }),
+  dataFipeAtualizacao: date("data_fipe_atualizacao"),
   dataAquisicao: date("data_aquisicao"),
   localizacao: text("localizacao"),
   observacoes: text("observacoes"),

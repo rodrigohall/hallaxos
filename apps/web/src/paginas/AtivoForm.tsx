@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, Link2 } from "lucide-react";
 import { COMBUSTIVEIS } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { Botao, Campo, Card, Entrada, Selecao, useToast } from "../componentes/ui";
@@ -14,16 +14,12 @@ interface Categoria {
 
 const VAZIO = {
   nome: "", categoria_id: "", valor_aquisicao: "", valor_fipe: "",
+  valor_diaria: "", data_fipe_atualizacao: "",
   data_aquisicao: "", localizacao: "", observacoes: "", status: "",
   placa: "", renavam: "", chassi: "", marca: "", modelo: "",
   ano_fabricacao: "", ano_modelo: "", cor: "", combustivel: "", km_atual: "",
 };
 type Form = typeof VAZIO;
-
-const CAMPOS_VEICULO = [
-  "placa", "renavam", "chassi", "marca", "modelo",
-  "ano_fabricacao", "ano_modelo", "cor", "combustivel", "km_atual",
-] as const;
 
 export function AtivoForm() {
   const { id } = useParams();
@@ -35,6 +31,7 @@ export function AtivoForm() {
   const [erroGeral, setErroGeral] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [novaCategoria, setNovaCategoria] = useState<string | null>(null);
+  const [gerarCompra, setGerarCompra] = useState(false);
 
   const { data: categorias } = useQuery({
     queryKey: ["ativo-categorias"],
@@ -51,6 +48,8 @@ export function AtivoForm() {
       f.categoria_id = String(dados.categoriaId ?? "");
       f.valor_aquisicao = dados.valorAquisicao ? String(dados.valorAquisicao) : "";
       f.valor_fipe = dados.valorFipe ? String(dados.valorFipe) : "";
+      f.valor_diaria = dados.valorDiaria ? String(dados.valorDiaria) : "";
+      f.data_fipe_atualizacao = dados.dataFipeAtualizacao ? String(dados.dataFipeAtualizacao) : "";
       f.data_aquisicao = dados.dataAquisicao ? String(dados.dataAquisicao) : "";
       f.localizacao = String(dados.localizacao ?? "");
       f.observacoes = String(dados.observacoes ?? "");
@@ -102,18 +101,24 @@ export function AtivoForm() {
         categoria_id: form.categoria_id,
         valor_aquisicao: ou(form.valor_aquisicao),
         valor_fipe: ou(form.valor_fipe),
+        valor_diaria: ou(form.valor_diaria),
+        data_fipe_atualizacao: ou(form.data_fipe_atualizacao),
         data_aquisicao: ou(form.data_aquisicao),
         localizacao: ou(form.localizacao),
         observacoes: ou(form.observacoes),
       };
+      if (!id) {
+        // Guard anti-duplicação (#58): só ao criar — flag de mão única
+        corpo.gerar_compra = gerarCompra;
+      }
       if (id && form.status) corpo.status = form.status;
-      if (veicular) {
+      if (veicular && (form.placa || form.marca || form.modelo)) {
         corpo.veiculo = {
-          placa: form.placa,
+          placa: ou(form.placa),
           renavam: ou(form.renavam),
           chassi: ou(form.chassi),
-          marca: form.marca,
-          modelo: form.modelo,
+          marca: ou(form.marca) ?? "",
+          modelo: ou(form.modelo) ?? "",
           ano_fabricacao: ou(form.ano_fabricacao),
           ano_modelo: ou(form.ano_modelo),
           cor: ou(form.cor),
@@ -183,16 +188,19 @@ export function AtivoForm() {
       </Card>
 
       {veicular && (
-        <Card titulo="Veículo">
+        <Card titulo="Veículo" className="border-info/20">
+          <p className="mb-3 text-xs text-mudo">
+            Placa obrigatória apenas quando o cadastro estiver completo — você pode salvar sem ela agora.
+          </p>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <Campo rotulo="Placa" erro={erros.placa}>
-              <Entrada value={form.placa} onChange={definir("placa")} required className="uppercase" maxLength={8} />
+              <Entrada value={form.placa} onChange={definir("placa")} className="uppercase" maxLength={8} />
             </Campo>
             <Campo rotulo="Marca" erro={erros.marca}>
-              <Entrada value={form.marca} onChange={definir("marca")} required />
+              <Entrada value={form.marca} onChange={definir("marca")} />
             </Campo>
             <Campo rotulo="Modelo" erro={erros.modelo}>
-              <Entrada value={form.modelo} onChange={definir("modelo")} required />
+              <Entrada value={form.modelo} onChange={definir("modelo")} />
             </Campo>
             <Campo rotulo="Ano fabricação" erro={erros.ano_fabricacao}>
               <Entrada type="number" value={form.ano_fabricacao} onChange={definir("ano_fabricacao")} />
@@ -229,8 +237,15 @@ export function AtivoForm() {
           <Campo rotulo="Valor de compra (R$)" erro={erros.valor_aquisicao}>
             <Entrada type="number" step="0.01" value={form.valor_aquisicao} onChange={definir("valor_aquisicao")} />
           </Campo>
+          <Campo rotulo="Diária padrão (R$)" erro={erros.valor_diaria}
+            dica="Sugerida na locação — editável no ato">
+            <Entrada type="number" step="0.01" value={form.valor_diaria} onChange={definir("valor_diaria")} />
+          </Campo>
           <Campo rotulo="Valor FIPE (R$)" erro={erros.valor_fipe}>
             <Entrada type="number" step="0.01" value={form.valor_fipe} onChange={definir("valor_fipe")} />
+          </Campo>
+          <Campo rotulo="Data atualização FIPE" dica='Rótulo exibido na tela do ativo (ex.: "FIPE jun/26")'>
+            <Entrada type="date" value={form.data_fipe_atualizacao} onChange={definir("data_fipe_atualizacao")} />
           </Campo>
           <Campo rotulo="Data de aquisição">
             <Entrada type="date" value={form.data_aquisicao} onChange={definir("data_aquisicao")} />
@@ -252,6 +267,31 @@ export function AtivoForm() {
           </Campo>
         </div>
       </Card>
+
+      {/* Interligação — guard #58: só no cadastro novo, de mão única */}
+      {!id && (
+        <Card titulo="Interligação" icone={Link2} className="border-ouro/20">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={gerarCompra}
+              onChange={(e) => setGerarCompra(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-borda-forte accent-ouro"
+            />
+            <div>
+              <p className="text-sm font-medium">Gerar operação de compra e lançamento financeiro</p>
+              <p className="text-xs text-mudo">
+                Cria uma operação do tipo "compra" vinculada a este ativo e um lançamento
+                de despesa com o valor de compra informado. Só disponível quando o valor de
+                compra está preenchido. A operação criada <strong>não</strong> recria este ativo (guard #58).
+              </p>
+            </div>
+          </label>
+          {gerarCompra && !form.valor_aquisicao && (
+            <p className="mt-2 text-xs text-alerta">Preencha o valor de compra para gerar o lançamento.</p>
+          )}
+        </Card>
+      )}
 
       {erroGeral && <p className="text-sm text-erro">{erroGeral}</p>}
 

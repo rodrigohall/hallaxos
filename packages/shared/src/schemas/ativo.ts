@@ -7,7 +7,7 @@ const placaSchema = z
   .pipe(z.string().min(7).max(7));
 
 export const ativoVeiculoSchema = z.object({
-  placa: placaSchema,
+  placa: placaSchema.optional(),
   renavam: z.string().nullish(),
   chassi: z.string().nullish(),
   marca: z.string().min(1, "Informe a marca"),
@@ -28,6 +28,9 @@ export const ativoCriarSchema = z.object({
   localizacao: z.string().nullish(),
   observacoes: z.string().nullish(),
   veiculo: ativoVeiculoSchema.nullish(),
+  valor_diaria: z.coerce.number().min(0).nullish(),
+  data_fipe_atualizacao: z.coerce.date().nullish(),
+  gerar_compra: z.boolean().default(false),
 });
 export type AtivoCriarInput = z.infer<typeof ativoCriarSchema>;
 
@@ -37,6 +40,8 @@ export const ativoEditarSchema = ativoCriarSchema
   .extend({
     status: z.enum(STATUS_ATIVO).optional(),
     veiculo: ativoVeiculoSchema.partial().nullish(),
+    valor_diaria: z.coerce.number().min(0).nullish(),
+    data_fipe_atualizacao: z.coerce.date().nullish(),
   });
 export type AtivoEditarInput = z.infer<typeof ativoEditarSchema>;
 

@@ -118,14 +118,17 @@ export async function obterAtivo(id: string) {
   const base = Number(linha.ativo.valorAquisicao ?? 0);
   const lucro = receita - custos;
 
-  // Expectativa de lucro de venda: se vendêssemos o ativo hoje a 95% da FIPE
-  // (preço de venda rápida), quanto sobraria depois do que já gastamos.
-  // lucro esperado = (FIPE × 0,95) − (custo de compra + custos extras já pagos).
   const fipe = Number(linha.ativo.valorFipe ?? 0);
   const precoVendaEstimado = fipe > 0 ? Number((fipe * 0.95).toFixed(2)) : null;
-  const lucroVendaEsperado =
+  // Lucro Presumido = (95% FIPE + receita já gerada) − custos acumulados (decisão #59)
+  const lucroPresumido =
     precoVendaEstimado !== null
-      ? Number((precoVendaEstimado - (base + custos)).toFixed(2))
+      ? Number((precoVendaEstimado + receita - custos).toFixed(2))
+      : null;
+  // ROI clássico: só exibido quando o ativo for vendido (decisão #59)
+  const roi =
+    linha.ativo.status === "vendido" && base > 0
+      ? Number(((lucro / base) * 100).toFixed(1))
       : null;
 
   const operacoes = (
@@ -159,13 +162,15 @@ export async function obterAtivo(id: string) {
     ...linha.ativo,
     veiculo: linha.veiculo,
     categoria: linha.categoria,
+    valorDiaria: linha.ativo.valorDiaria,
+    dataFipeAtualizacao: linha.ativo.dataFipeAtualizacao,
     financeiro: {
       receita,
       custos,
       lucro,
-      roi: base > 0 ? Number(((lucro / base) * 100).toFixed(1)) : null,
+      roi,               // só não-null quando vendido
       precoVendaEstimado,
-      lucroVendaEsperado,
+      lucroPresumido,    // substitui lucroVendaEsperado (decisão #59)
     },
     operacoes,
     manutencoes,
@@ -182,7 +187,7 @@ export async function criarAtivo(input: AtivoCriarInput, usuarioId: string) {
   if (categoria.ehVeicular && !input.veiculo) {
     throw regraNegocio(`A categoria ${categoria.nome} exige os dados do veículo (placa, marca, modelo).`);
   }
-  if (input.veiculo) {
+  if (input.veiculo?.placa) {
     const [placaExistente] = await db
       .select({ ativoId: ativosVeiculos.ativoId })
       .from(ativosVeiculos)
@@ -201,6 +206,10 @@ export async function criarAtivo(input: AtivoCriarInput, usuarioId: string) {
         nome: input.nome,
         valorAquisicao: input.valor_aquisicao?.toString() ?? null,
         valorFipe: input.valor_fipe?.toString() ?? null,
+        valorDiaria: input.valor_diaria?.toString() ?? null,
+        dataFipeAtualizacao: input.data_fipe_atualizacao
+          ? input.data_fipe_atualizacao.toISOString().slice(0, 10)
+          : null,
         dataAquisicao: input.data_aquisicao
           ? input.data_aquisicao.toISOString().slice(0, 10)
           : null,
@@ -216,7 +225,7 @@ export async function criarAtivo(input: AtivoCriarInput, usuarioId: string) {
         .insert(ativosVeiculos)
         .values({
           ativoId: id,
-          placa: v.placa,
+          placa: v.placa ?? "",
           renavam: v.renavam ?? null,
           chassi: v.chassi ?? null,
           marca: v.marca,
@@ -239,6 +248,51 @@ export async function criarAtivo(input: AtivoCriarInput, usuarioId: string) {
       usuarioId,
     });
     await reindexarAtivo(tx, criado!, veiculo);
+
+    // Guard anti-duplicação (#58): criação vinda por "novo ativo" pode gerar
+    // a operação de compra e o lançamento numa única transação, de mão única.
+    // A compra criada aqui NÃO recria o ativo (sem recursão).
+    if (input.gerar_compra && input.valor_aquisicao && input.valor_aquisicao > 0) {
+      const categoriaCompraRes = await tx.execute(sql`
+        SELECT id FROM categorias_financeiras
+        WHERE nome = 'Compra de Ativos' LIMIT 1`);
+      const categoriaCompra = (categoriaCompraRes.rows[0] as { id: string } | undefined)?.id;
+
+      const contaRes = await tx.execute(sql`
+        SELECT id FROM contas WHERE deleted_at IS NULL ORDER BY created_at LIMIT 1`);
+      const contaId = (contaRes.rows[0] as { id: string } | undefined)?.id;
+
+      // Cria operação de compra sem acionar criarAtivo (guard de mão única)
+      const opId = novoId();
+      const opCodigo = await tx.execute(sql`
+        SELECT nextval('operacoes_codigo_seq')::text AS codigo`).then(r => (r.rows[0] as {codigo:string}).codigo);
+      await tx.execute(sql`
+        INSERT INTO operacoes (id, codigo, tipo, cliente_id, responsavel_id, status, valor_total, observacoes, data_inicio)
+        VALUES (${opId}, ${'OP-' + opCodigo}, 'compra',
+                (SELECT id FROM pessoas WHERE deleted_at IS NULL ORDER BY created_at LIMIT 1),
+                ${usuarioId},
+                'concluida', ${input.valor_aquisicao.toString()},
+                ${'Compra de ' + input.nome}, now())`);
+      await tx.execute(sql`
+        INSERT INTO operacoes_compra_venda (operacao_id)
+        VALUES (${opId})
+        ON CONFLICT DO NOTHING`);
+      await tx.execute(sql`
+        INSERT INTO operacao_ativos (operacao_id, ativo_id, papel)
+        VALUES (${opId}, ${id}, 'objeto')`);
+
+      // Gera lançamento de despesa vinculado ao ativo e à operação
+      if (contaId && categoriaCompra) {
+        const lancId = novoId();
+        await tx.execute(sql`
+          INSERT INTO lancamentos (id, tipo, descricao, valor, status, data_vencimento, data_pagamento,
+                                   conta_id, categoria_id, operacao_id, ativo_id)
+          VALUES (${lancId}, 'despesa', ${'Compra: ' + input.nome},
+                  ${input.valor_aquisicao.toString()}, 'pago', current_date, current_date,
+                  ${contaId}, ${categoriaCompra}, ${opId}, ${id})`);
+      }
+    }
+
     return { ...criado!, veiculo, categoria: categoria.nome };
   });
 }
@@ -247,6 +301,8 @@ const CAMPO_COLUNA: Record<string, string> = {
   nome: "nome", categoria_id: "categoriaId", valor_aquisicao: "valorAquisicao",
   valor_fipe: "valorFipe", data_aquisicao: "dataAquisicao",
   localizacao: "localizacao", observacoes: "observacoes", status: "status",
+  valor_diaria: "valorDiaria",
+  data_fipe_atualizacao: "dataFipeAtualizacao",
 };
 const CAMPO_VEICULO: Record<string, string> = {
   placa: "placa", renavam: "renavam", chassi: "chassi", marca: "marca",
@@ -440,4 +496,69 @@ export async function criarCategoria(nome: string, ehVeicular: boolean) {
     .values({ id: novoId(), nome, ehVeicular })
     .returning();
   return criada!;
+}
+
+export async function listarRelatorioPatrimonio(opts: {
+  categoriaId?: string;
+  ordenar?: "fipe" | "receita" | "lucro" | "custo";
+}) {
+  const r = await db.execute(sql`
+    SELECT
+      a.id,
+      a.codigo,
+      a.nome,
+      a.status,
+      ac.nome AS categoria,
+      a.valor_aquisicao::numeric                                        AS preco_compra,
+      COALESCE(a.valor_fipe, 0)::numeric                                AS fipe,
+      a.data_fipe_atualizacao,
+      a.valor_diaria,
+      -- Custos acumulados: lançamentos diretos + via operação + via manutenção
+      COALESCE((
+        SELECT sum(l.valor)
+        FROM lancamentos l
+        WHERE l.deleted_at IS NULL AND l.status != 'cancelado'
+          AND l.tipo = 'despesa'
+          AND (l.ativo_id = a.id
+               OR l.operacao_id IN (SELECT operacao_id FROM operacao_ativos oa WHERE oa.ativo_id = a.id AND oa.papel = 'objeto')
+               OR l.manutencao_id IN (SELECT id FROM manutencoes m WHERE m.ativo_id = a.id))
+      ), 0)::numeric                                                    AS custos_acumulados,
+      -- Receita acumulada: só operações (aluguel, guincho, venda)
+      COALESCE((
+        SELECT sum(l.valor)
+        FROM lancamentos l
+        WHERE l.deleted_at IS NULL AND l.status = 'pago'
+          AND l.tipo = 'receita'
+          AND l.operacao_id IN (SELECT operacao_id FROM operacao_ativos oa WHERE oa.ativo_id = a.id AND oa.papel = 'objeto')
+      ), 0)::numeric                                                    AS receita_acumulada
+    FROM ativos a
+    JOIN ativo_categorias ac ON ac.id = a.categoria_id
+    WHERE a.deleted_at IS NULL
+      AND a.status NOT IN ('vendido', 'baixado')
+      ${opts.categoriaId ? sql`AND a.categoria_id = ${opts.categoriaId}` : sql``}
+    ORDER BY a.nome
+  `);
+
+  type Linha = {
+    id: string; codigo: string; nome: string; status: string; categoria: string;
+    preco_compra: string; fipe: string; data_fipe_atualizacao: string | null;
+    valor_diaria: string | null; custos_acumulados: string; receita_acumulada: string;
+  };
+
+  const linhas = r.rows as Linha[];
+  return linhas.map((l) => {
+    const fipe = Number(l.fipe);
+    const custos = Number(l.custos_acumulados);
+    const receita = Number(l.receita_acumulada);
+    // Lucro Presumido = (95% FIPE + receita já gerada) − custos (decisão #59)
+    const lucroPresumido = fipe > 0 ? (fipe * 0.95 + receita - custos) : null;
+    return {
+      ...l,
+      preco_compra: Number(l.preco_compra),
+      fipe,
+      custos_acumulados: custos,
+      receita_acumulada: receita,
+      lucro_presumido: lucroPresumido,
+    };
+  });
 }

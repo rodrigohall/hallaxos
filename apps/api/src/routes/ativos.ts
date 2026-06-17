@@ -5,7 +5,7 @@ import {
 } from "@hallaxos/shared";
 import {
   arquivarAtivo, criarAtivo, criarCategoria, editarAtivo, lancamentosDoAtivo, listarAtivos,
-  listarCategorias, obterAtivo, reativarAtivo, timelineDoAtivo,
+  listarCategorias, listarRelatorioPatrimonio, obterAtivo, reativarAtivo, timelineDoAtivo,
 } from "../services/ativos";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
 
@@ -47,6 +47,20 @@ export default async function rotasAtivos(app: FastifyInstance) {
     reply.code(201);
     return { dados: await criarAtivo(input, exigirLogin(req).id) };
   });
+
+  app.get(
+    "/ativos/relatorio-patrimonio",
+    { preHandler: exigirPermissao("ativos", "ler") },
+    async (req) => {
+      const { categoria_id, ordenar } = z
+        .object({
+          categoria_id: z.string().uuid().optional(),
+          ordenar: z.enum(["fipe", "receita", "lucro", "custo"]).optional(),
+        })
+        .parse(req.query);
+      return { dados: await listarRelatorioPatrimonio({ categoriaId: categoria_id, ordenar }) };
+    }
+  );
 
   app.get("/ativos/:id", { preHandler: exigirPermissao("ativos", "ler") }, async (req) => {
     const { id } = params.parse(req.params);
