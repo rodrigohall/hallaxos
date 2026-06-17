@@ -41,7 +41,56 @@ ar**; só a atualização não foi aplicada.
 **O que já corrigimos:** o `sshd` não subia sozinho após reboot. Resolvido com
 `sudo systemctl enable --now ssh` (agora sobe no boot). Mesmo assim a conexão
 ainda pode falhar em janelas ruins (suspeita de fail2ban banindo os IPs dos
-runners do GitHub, ou firewall da Hostinger) — **pendência aberta: estabilizar**.
+runners do GitHub, ou firewall da Hostinger).
+
+**Diagnóstico (cole no terminal do VPS):**
+```bash
+# sshd está de pé e escutando?
+sudo systemctl is-active ssh && sudo ss -tlnp | grep -E ':(22|2222)\b'
+# fail2ban está banindo? (jail do sshd + lista de IPs banidos)
+sudo systemctl is-active fail2ban && sudo fail2ban-client status sshd 2>/dev/null
+# firewall local (ufw e/ou iptables/nftables)
+sudo ufw status verbose 2>/dev/null; sudo iptables -S 2>/dev/null | grep -E '22|DROP|REJECT' | head
+# bans recentes no log
+sudo grep -E 'Ban|Found' /var/log/fail2ban.log 2>/dev/null | tail -20
+```
+Sinais: `fail2ban-client status sshd` listando muitos IPs banidos (bots varrendo
+a :22) confirma a suspeita; um runner pode cair junto. Lembre que a **Hostinger
+tem firewall no painel** (fora do VPS) — se a :22 não estiver liberada lá,
+nenhum ajuste no servidor resolve.
+
+**Correção imediata (destravar agora):**
+```bash
+# desbanir tudo do jail sshd (efeito imediato; não persiste reboot)
+sudo fail2ban-client unban --all
+```
+
+**Correção permanente (recomendada) — tirar o SSH da porta 22 e tolerar mais:**
+A :22 recebe varredura constante de bots, que alimenta o fail2ban e gera os
+banimentos que às vezes pegam o runner. Mover para uma porta alta corta quase
+todo esse ruído. O `deploy.yml` já lê a porta da variável `VPS_PORT`.
+```bash
+# 1) escolha uma porta (ex.: 2222) e habilite no sshd
+echo 'Port 2222' | sudo tee /etc/ssh/sshd_config.d/porta.conf
+# 2) libere no firewall local (ajuste conforme ufw/iptables/nftables)
+sudo ufw allow 2222/tcp 2>/dev/null || true
+# 3) abra a porta TAMBÉM no firewall do painel da Hostinger
+# 4) reinicie o sshd (mantenha a sessão atual aberta até testar a nova!)
+sudo systemctl restart ssh
+# 5) afrouxe o fail2ban para os deploys (mais tolerância, ban curto) e ignore redes confiáveis
+sudo tee /etc/fail2ban/jail.d/sshd.local >/dev/null <<'CFG'
+[sshd]
+maxretry = 8
+findtime = 10m
+bantime  = 10m
+ignoreip = 127.0.0.1/8 ::1
+CFG
+sudo systemctl restart fail2ban
+```
+Depois, no GitHub → Settings → Secrets and variables → Actions → **Variables**,
+crie `VPS_PORT = 2222`. Teste autenticação por chave na nova porta **antes de
+fechar a sessão atual** (`ssh -p 2222 root@SEU_IP`). Pendência considerada
+estável quando alguns deploys seguidos passarem sem timeout.
 
 **Como destravar quando acontecer:**
 - **Opção A — reexecutar:** no GitHub → Actions → o run que falhou → "Re-run

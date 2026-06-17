@@ -109,7 +109,16 @@ jobs:
           # O rsync exclui o .git, então o VPS não tem o SHA — passamos o do
           # runner para carimbar a imagem (vira /api/v1/versao) e bustar o cache.
           SHA_CURTO="$(echo '${{ github.sha }}' | cut -c1-7)"
-          ssh -i ~/.ssh/id_deploy -p "$PORTA" \
-            -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd ~/hallaxos && HALLAX_SHA='$SHA_CURTO' DOMINIO='${{ vars.DOMINIO }}' IA_API_KEY='$IA_API_KEY' IA_MODELO='$IA_MODELO' ./deploy/instalar.sh"
+          SSH="ssh -i ~/.ssh/id_deploy -p $PORTA -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15"
+          REMOTO="cd ~/hallaxos && HALLAX_SHA='$SHA_CURTO' DOMINIO='${{ vars.DOMINIO }}' IA_API_KEY='$IA_API_KEY' IA_MODELO='$IA_MODELO' ./deploy/instalar.sh"
+          # Até 4 tentativas com backoff — o instalador é idempotente, então
+          # reexecutar após um timeout SSH (rede do VPS instável) é seguro.
+          n=0
+          until $SSH "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "$REMOTO"; do
+            n=$((n+1))
+            if [ $n -ge 4 ]; then
+              echo "::error::Instalador não rodou após 4 tentativas. SSH (porta $PORTA) instável: confira sshd ativo, firewall liberando a porta e fail2ban não banindo os runners (ver docs/operacao-vps.md §1)."
+              exit 1
+            fi
+            echo "Tentativa $n falhou; aguardando $((n*10))s…"; sleep $((n*10))
+          done

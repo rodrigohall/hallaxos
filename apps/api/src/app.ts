@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
+import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
@@ -51,6 +52,13 @@ export function criarApp() {
   );
 
   app.register(cookie);
+  // CORS fechado por padrão (same-origin em dev e prod). origin:false não emite
+  // Access-Control-Allow-Origin → o navegador bloqueia qualquer origem cruzada.
+  // Defina CORS_ORIGINS para liberar origens específicas (com cookies/credenciais).
+  app.register(cors, {
+    origin: config.corsOrigins.length > 0 ? config.corsOrigins : false,
+    credentials: true,
+  });
   app.register(multipart, { limits: { fileSize: config.uploadMaxBytes, files: 20 } });
   // Rate limiting global: máximo 200 req/min por IP. Login tem seu próprio limite no Sprint 7.
   // errorResponseBuilder mantém o 429 no mesmo envelope {erro:{codigo,mensagem}} da API —

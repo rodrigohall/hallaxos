@@ -51,15 +51,15 @@
 | ~~Troca de senha do próprio usuário~~ | ✅ Sprint 7 — endpoint + modal; encerra outras sessões | — |
 | ~~Rate limiting global~~ | ✅ Sprint 8 — `@fastify/rate-limit`, 200 req/min por IP em toda a API | — |
 | ~~Auditoria de negações de acesso (doc 05 §4.3)~~ | ✅ Sprint 8 — todo 403 emite `req.log.warn` com usuário/papel/recurso/ação/URL | — |
-| CORS de produção restritivo | Falta restringir origens em produção | Próxima |
-| Deploy intermitente: SSH do VPS deu timeout na :22 em alguns momentos | Voltou a conectar após `systemctl enable ssh` (sobe no boot); últimos deploys passaram. Pode reincidir — suspeita de fail2ban/firewall do Hostinger | Sprint 9 — monitorar e estabilizar |
+| ~~CORS de produção restritivo~~ | ✅ Sprint 9 — `@fastify/cors` fechado por padrão (`origin:false`), liberável por `CORS_ORIGINS` (decisão #57) | — |
+| Deploy intermitente: SSH do VPS deu timeout na :22 | ✅ Mitigado no Sprint 9 — retry 4× no passo do instalador (além do rsync) + runbook com diagnóstico/correção fail2ban+firewall. **Ação no VPS** (recomendada, ainda não aplicada): mover SSH p/ porta alta + `VPS_PORT` no CI + afrouxar fail2ban (ver operacao-vps §1) | VPS |
 
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
 | ~~Helpers de financeiro em `guincho.ts`~~ | ✅ Extraídos para `origemFinanceira.ts` no Sprint 6 | — |
-| Índice parcial UNIQUE de `operacao_ativos` (objeto único não-terminal) | Validado no service; falta no banco (doc 03 §3) | Sprint 7 (migration) |
-| Job detector de referências órfãs (doc 04 §0) | Estrutura pronta; job agendado não roda | Sprint 7 |
+| ~~Objeto único de `operacao_ativos` no banco~~ | ✅ Sprint 9 — **trigger** `trg_operacao_ativo_objeto_unico` (migration 0005); índice parcial não serve (condição cruza com `operacoes.status`, decisão #56) | — |
+| ~~Job detector de referências órfãs (doc 04 §0)~~ | ✅ Sprint 9 — `integridade.ts` roda 1×/dia, alerta no log (deve achar zero) | — |
 | Seed cria guinchos no estilo antigo | Novos indexam certo; `busca:reindexar` resolve | Sprint 7 |
 | Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
 
@@ -111,5 +111,8 @@ Plano:
    autoria; máquina de estados e timeline intactas — decisões #43/#55). **Próximo**
    (sob demanda): ampliar para outras ações **não-destrutivas** (compromisso na
    agenda, manutenção agendada, comentário); destrutivas seguem fora.
-6. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
-   (fail2ban/firewall) para voltar a ter atualização automática confiável.
+6. ~~**Estabilizar o deploy**~~ ✅ mitigado — retry 4× no instalador (além do
+   rsync) + runbook com diagnóstico e correção fail2ban/firewall (operacao-vps §1).
+   Correção permanente (porta SSH alta + `VPS_PORT`) depende de ação no VPS.
+7. **Dívida técnica (Item 5)** ✅ — CORS fechado por padrão (#57); trigger de
+   objeto único (#56, migration 0005); job de referências órfãs (doc 04 §0).

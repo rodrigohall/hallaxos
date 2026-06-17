@@ -1,5 +1,35 @@
 # Changelog
 
+## Sprint 9 — Estabilizar deploy + dívida técnica (2026-06-17)
+
+Fechando os Itens 4 e 5 do sprint.
+
+### Deploy mais resiliente (Item 4)
+- **Retry no passo do instalador:** o job `deploy` reexecuta o `instalar.sh` via
+  SSH até 4× com backoff (ele é idempotente), igual ao rsync — absorve o timeout
+  SSH intermitente do VPS sem falhar o deploy à toa.
+- **Runbook com diagnóstico fail2ban/firewall:** `docs/operacao-vps.md §1` ganhou
+  comandos prontos para diagnosticar (`fail2ban-client status sshd`, `ufw`,
+  `iptables`, log de bans), destravar (`fail2ban-client unban --all`) e a correção
+  **permanente recomendada**: mover o SSH para uma porta alta + `VPS_PORT` no CI +
+  afrouxar o fail2ban. Lembrete do firewall do painel da Hostinger.
+
+### Dívida técnica (Item 5)
+- **CORS restritivo:** `@fastify/cors` registrado **fechado por padrão**
+  (`origin:false`); libere origens específicas via `CORS_ORIGINS`. Front e API são
+  same-origin, então nada muda no uso — é a postura explícita e configurável
+  (decisão #57).
+- **Invariante "objeto único" no banco:** trigger `trg_operacao_ativo_objeto_unico`
+  (migration 0005) impede o mesmo ativo de ser `objeto` de duas operações
+  não-terminais. Trigger (não índice parcial) porque a condição cruza com
+  `operacoes.status` (decisão #56, doc 03 §3).
+- **Detector de referências órfãs:** job diário (`integridade.ts`, doc 04 §0) varre
+  as tabelas com referência transversal e alerta no log se achar uma referência a
+  um registro inexistente (deve achar zero — é detector de bug, não limpeza).
+- **Qualidade:** testes de integração novos para o trigger (bloqueia o 2º objeto;
+  libera após a 1ª operação terminar) e para o detector de órfãs. 60 testes verdes;
+  `pnpm install --frozen-lockfile` ok (lockfile do `@fastify/cors`).
+
 ## Sprint 9 — Copiloto Fase 2: propor lançamento com confirmação (2026-06-17)
 
 O copiloto ganha a primeira ação de **escrita guardrailada** — e continua sem

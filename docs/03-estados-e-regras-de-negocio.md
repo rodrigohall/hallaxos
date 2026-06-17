@@ -169,8 +169,13 @@ A agenda exibe, por consulta direta às origens:
 
 - `lancamentos`: CHECK de origem única (`operacao_id` e `manutencao_id` não
   simultâneos); CHECK `valor > 0`; CHECK `status = 'pago' ⇔ data_pagamento IS NOT NULL`.
-- `operacao_ativos`: UNIQUE parcial impedindo o mesmo ativo como `objeto` em
-  duas operações não-terminais ao mesmo tempo.
+  `ativo_id` é eixo separado (classificação) e **não** entra no CHECK de origem (decisão #53).
+- `operacao_ativos`: o mesmo ativo não pode ser `objeto` de duas operações
+  não-terminais ao mesmo tempo — garantido por **trigger**
+  (`trg_operacao_ativo_objeto_unico`, migration 0005). Um índice UNIQUE parcial
+  não serve: a condição "não-terminal" mora em `operacoes.status` (outra tabela) e
+  índices não cruzam tabelas. O service já bloqueia pelo status do ativo; o trigger
+  é a rede de segurança contra bugs/corridas.
 - `ativos_veiculos`: só existe se a categoria do ativo for veicular (validado
   no service; placa UNIQUE no banco).
 - Extensões 1:1 (`operacoes_*`, `ativos_veiculos`): PK = FK, impossível haver

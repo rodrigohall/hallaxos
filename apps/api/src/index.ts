@@ -4,6 +4,7 @@ import { config } from "./config";
 import { limparSessoesExpiradas } from "./services/auth";
 import { garantirAdminInicial } from "./db/bootstrap";
 import { verificarPrazos } from "./services/notificacoes";
+import { jobReferenciasOrfas } from "./services/integridade";
 
 const app = criarApp();
 
@@ -30,6 +31,11 @@ garantirAdminInicial()
     // Verifica prazos uma vez por hora: devoluções atrasadas, CNH/doc vencendo, etc.
     setInterval(() => verificarPrazos().catch(() => {}), 3600_000);
     verificarPrazos().catch(() => {});
+    // Detector de referências órfãs (doc 04 §0): varre 1×/dia e alerta no log
+    // (deve sempre achar zero). Roda no arranque e a cada 24h.
+    const rodarOrfaos = () => jobReferenciasOrfas(app.log).catch((e) => app.log.error(e));
+    setInterval(rodarOrfaos, 86_400_000);
+    rodarOrfaos();
   })
   .catch((e) => {
     app.log.error(e);
