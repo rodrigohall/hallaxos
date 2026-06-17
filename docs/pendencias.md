@@ -40,7 +40,9 @@
 | ~~Cadastro e busca de oficinas por nome~~ | ✅ Sprint 9 — papel `oficina` em `pessoas`, autocomplete `?papel=oficina` + cadastro inline | — |
 | ~~Notificações: tabela existe, gatilhos não disparam, sem sino na UI~~ | ✅ Sprint 8 — service + job de prazos (devolução, vencimentos, CNH/documento, manutenção) + sino na UI | — |
 | ~~Tags e favoritos: tabelas sem API/UI~~ | ✅ Sprint 8 — services, rotas e UI (estrela + chips de tags) na tela de ativo | — |
-| Compra vincula ativo existente em vez de criá-lo na conclusão | Decisão registrada no Sprint 5 | Se houver demanda |
+| Guard anti-duplicação (porta de entrada única para ativo/compra/lançamento) | Decisão #58 — substitui Sprint 5 "compra vincula ativo" | Sprint 10 Tab 2 |
+| Autocomplete no formulário "novo lançamento" para vincular (UI) | Sprint 9 interconexão | Sprint 10 |
+| Link do lançamento → origem na tela do Financeiro | Sprint 9 interconexão | Sprint 10 |
 
 ### Segurança e confiabilidade
 | Pendência | Contexto | Plano |
@@ -83,36 +85,12 @@ CNH/documento vencendo, manutenção agendada) + sino na UI; **tags** e
 **auditoria de negações** de acesso em todo 403. (Testes, backup e
 endurecimento de login foram antecipados no Sprint 7.)
 
-### Sprint 9 — IA e automações 🚧 EM ANDAMENTO
-O destino do modelo (doc 01 §6): copiloto consumindo busca global, relatórios
-e timeline — perguntas como "quanto lucro o Corolla deu em 2026?" respondidas
-sobre os mesmos endpoints que as telas já usam.
+### Sprint 9 — IA e automações ✅ ENTREGUE
+Copiloto de IA (leitura + proposta de lançamento), interconexão dos módulos
+(lançamento vincula operação/manutenção/ativo, ROI agregado), edição
+pós-lançamento com auditoria, datas retroativas, correções de uso real (manutenção
+iniciar, foto excluir, endereço do cliente no guincho, cadastro de oficinas) e
+estabilização do deploy (CORS restritivo, trigger de objeto único, job de
+referências órfãs, retry no instalador).
 
-Plano:
-1. ~~**Camada de copiloto (backend)**~~ ✅ entregue — `POST /copiloto/perguntar`
-   orquestra o Claude com ferramentas de **leitura** sobre os serviços existentes
-   (busca, dashboard, operações, relatórios), cada uma revalidando o papel
-   (decisão #45). Sem dados próprios; reusa o núcleo. **Desligado** até
-   `IA_API_KEY` (responde 503; sem custo). Degradação graciosa + rate limit próprio.
-2. ~~**UI**: pergunta no ⌘K / painel lateral~~ ✅ entregue — painel lateral
-   (Drawer) com fontes clicáveis (link para a tela real) + entrada no ⌘K (`⌘↵`).
-3. ~~**Ligar a IA**~~ ✅ a `IA_API_KEY` é injetada no `.env` do VPS pelo deploy a
-   partir do secret do GitHub Actions (`instalar.sh` upsert + `deploy.yml`,
-   decisão #54). Definir o secret e dar push liga o copiloto; vazio = desligado
-   (503, sem custo). Modelo `claude-haiku-4-5` confirmado válido/atual.
-4. **Interconexão dos módulos (em andamento)**: ✅ lançamento avulso vincula a
-   operação/manutenção/ativo (`POST /lancamentos`); ✅ `lancamentos.ativo_id`
-   (classificação que coexiste, decisão #53); ✅ resultado/ROI e histórico do
-   ativo somam diretos + herdados; ✅ `GET /ativos/:id/lancamentos` + origem na
-   tela. **Falta**: autocomplete no formulário "novo lançamento" para vincular
-   (UI); link do lançamento → origem na tela do Financeiro.
-5. **Copiloto que escreve (Fase 2)**: ✅ 1ª ação entregue — `propor_lancamento`
-   (propõe; o humano confirma na UI e dispara `POST /lancamentos` com a própria
-   autoria; máquina de estados e timeline intactas — decisões #43/#55). **Próximo**
-   (sob demanda): ampliar para outras ações **não-destrutivas** (compromisso na
-   agenda, manutenção agendada, comentário); destrutivas seguem fora.
-6. ~~**Estabilizar o deploy**~~ ✅ mitigado — retry 4× no instalador (além do
-   rsync) + runbook com diagnóstico e correção fail2ban/firewall (operacao-vps §1).
-   Correção permanente (porta SSH alta + `VPS_PORT`) depende de ação no VPS.
-7. **Dívida técnica (Item 5)** ✅ — CORS fechado por padrão (#57); trigger de
-   objeto único (#56, migration 0005); job de referências órfãs (doc 04 §0).
+### Sprint 10 — Repaginação de UI e interligação 🚧 EM ANDAMENTO

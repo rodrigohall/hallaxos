@@ -5,9 +5,7 @@ import { pode, type PapelUsuario } from "@hallaxos/shared";
 import { db } from "../db/client";
 
 export async function montarDashboard(papel: PapelUsuario) {
-  const operacional = await blocoOperacional();
-  const financeiro = pode(papel, "dashboard_financeiro", "ler") ? await blocoFinanceiro() : null;
-  return { ...operacional, financeiro };
+  return blocoOperacional();
 }
 
 async function blocoOperacional() {
@@ -19,15 +17,15 @@ async function blocoOperacional() {
 
       (SELECT jsonb_build_object(
          'total', count(*)::int,
-         'valor_patrimonial', coalesce(sum(valor_aquisicao), 0),
+         'valor_patrimonial', coalesce(sum(COALESCE(a.valor_fipe, a.valor_aquisicao)), 0),
          'disponiveis', count(*) FILTER (WHERE status = 'disponivel')::int,
          'em_operacao', count(*) FILTER (WHERE status IN ('alugado', 'reservado', 'em_uso_interno'))::int,
-         'indisponiveis', count(*) FILTER (WHERE status = 'em_manutencao')::int)
-       FROM ativos
-       WHERE deleted_at IS NULL AND status NOT IN ('vendido', 'baixado'))   AS patrimonio,
+         'em_manutencao', count(*) FILTER (WHERE status = 'em_manutencao')::int)
+       FROM ativos a
+       WHERE a.deleted_at IS NULL AND a.status NOT IN ('vendido', 'baixado'))   AS patrimonio,
 
       (SELECT coalesce(jsonb_agg(g), '[]'::jsonb) FROM
-        (SELECT o.id, o.codigo, p.nome AS cliente, o.status,
+        (SELECT o.id, o.codigo, p.nome AS cliente, o.status, o.data_inicio,
                 og.origem_endereco, og.destino_endereco
          FROM operacoes o
          JOIN pessoas p ON p.id = o.cliente_id
@@ -36,21 +34,36 @@ async function blocoOperacional() {
            AND o.status IN ('solicitado', 'a_caminho', 'em_execucao')
          ORDER BY o.data_inicio) g)                                         AS guinchos_em_andamento,
 
+      (SELECT coalesce(jsonb_agg(l), '[]'::jsonb) FROM
+        (SELECT o.id, o.codigo, p.nome AS cliente,
+                at.nome AS ativo, o.data_inicio
+         FROM operacoes o
+         JOIN pessoas p ON p.id = o.cliente_id
+         JOIN operacoes_locacao ol ON ol.operacao_id = o.id
+         JOIN operacao_ativos oa ON oa.operacao_id = o.id AND oa.papel = 'objeto'
+         JOIN ativos at ON at.id = oa.ativo_id
+         WHERE o.tipo = 'locacao' AND o.deleted_at IS NULL
+           AND o.status = 'ativa'
+         ORDER BY o.data_inicio LIMIT 20) l)                                AS locacoes_em_andamento,
+
       (SELECT coalesce(jsonb_agg(a), '[]'::jsonb) FROM
-        (SELECT titulo, data_inicio, concluido FROM eventos_agenda
+        (SELECT null::uuid AS id, titulo, data_inicio, concluido,
+                null::text AS link FROM eventos_agenda
          WHERE deleted_at IS NULL AND data_inicio::date = current_date
          UNION ALL
-         SELECT 'Devolução: ' || at.nome, ol.data_devolucao_prevista, false
+         SELECT null::uuid, 'Devolução: ' || at.nome, ol.data_devolucao_prevista, false,
+                '/operacoes/' || o.id::text
          FROM operacoes_locacao ol
          JOIN operacoes o ON o.id = ol.operacao_id AND o.status = 'ativa' AND o.deleted_at IS NULL
          JOIN operacao_ativos oa ON oa.operacao_id = o.id AND oa.papel = 'objeto'
          JOIN ativos at ON at.id = oa.ativo_id
          WHERE ol.data_devolucao_prevista::date = current_date
          UNION ALL
-         SELECT 'Manutenção: ' || at.nome, m.data_agendada::timestamptz, false
+         SELECT m.id, 'Manutenção: ' || at.nome, m.data_agendada::timestamptz, false,
+                '/manutencoes/' || m.id::text
          FROM manutencoes m JOIN ativos at ON at.id = m.ativo_id
          WHERE m.status = 'agendada' AND m.deleted_at IS NULL AND m.data_agendada = current_date
-         ORDER BY 2) a)                                                     AS agenda_do_dia,
+         ORDER BY 3) a)                                                     AS agenda_do_dia,
 
       (SELECT coalesce(jsonb_agg(m), '[]'::jsonb) FROM
         (SELECT m.id, at.nome AS ativo, m.descricao, m.data_agendada
@@ -94,16 +107,43 @@ async function blocoOperacional() {
   return r.rows[0] as Record<string, unknown>;
 }
 
-async function blocoFinanceiro() {
+export async function montarFinanceiro(
+  papel: PapelUsuario,
+  periodo: string,
+  avencer: number
+) {
+  if (!pode(papel, "dashboard_financeiro", "ler")) return null;
+
+  // monta o filtro de data baseado no período
+  let rangeSql: ReturnType<typeof sql>;
+  switch (periodo) {
+    case "semana":
+      rangeSql = sql`data_pagamento BETWEEN date_trunc('week', current_date)::date AND current_date`;
+      break;
+    case "mes":
+      rangeSql = sql`data_pagamento BETWEEN date_trunc('month', current_date)::date AND current_date`;
+      break;
+    case "ano":
+      rangeSql = sql`data_pagamento BETWEEN date_trunc('year', current_date)::date AND current_date`;
+      break;
+    case "ultimos30":
+      rangeSql = sql`data_pagamento BETWEEN current_date - 29 AND current_date`;
+      break;
+    default: // 'hoje'
+      rangeSql = sql`data_pagamento = current_date`;
+  }
+
+  const avencerDias = [7, 15, 30].includes(avencer) ? avencer : 7;
+
   const r = await db.execute(sql`
     SELECT
       (SELECT coalesce(sum(valor), 0) FROM lancamentos
        WHERE tipo = 'receita' AND status = 'pago' AND deleted_at IS NULL
-         AND data_pagamento = current_date)                                 AS receitas_dia,
+         AND ${rangeSql})                                                    AS receitas,
 
       (SELECT coalesce(sum(valor), 0) FROM lancamentos
        WHERE tipo = 'despesa' AND status = 'pago' AND deleted_at IS NULL
-         AND data_pagamento = current_date)                                 AS despesas_dia,
+         AND ${rangeSql})                                                    AS despesas,
 
       (SELECT coalesce(jsonb_agg(f ORDER BY f.dia), '[]'::jsonb) FROM
         (SELECT d.dia,
@@ -122,7 +162,8 @@ async function blocoFinanceiro() {
       (SELECT jsonb_build_object('quantidade', count(*)::int, 'total', coalesce(sum(valor), 0))
        FROM lancamentos
        WHERE status = 'previsto' AND deleted_at IS NULL
-         AND data_vencimento BETWEEN current_date AND current_date + 7)     AS a_vencer_7d
+         AND data_vencimento BETWEEN current_date AND current_date + ${sql.raw(String(avencerDias))})
+                                                                            AS a_vencer
   `);
   return r.rows[0] as Record<string, unknown>;
 }
