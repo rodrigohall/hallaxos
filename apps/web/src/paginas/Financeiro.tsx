@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
@@ -19,6 +19,12 @@ interface Lancamento {
 }
 interface Conta { id: string; nome: string; saldo: string }
 interface Categoria { id: string; nome: string; tipo: string }
+interface VinculoResultado { entidade_tipo: string; entidade_id: string; titulo: string; subtitulo: string }
+
+// Só estes tipos são vínculos válidos de um lançamento (doc 02 §4).
+const ROTULO_VINCULO: Record<string, string> = {
+  operacao: "Operação", manutencao: "Manutenção", ativo: "Ativo",
+};
 
 const FILTROS = ["previsto", "vencido", "pago", "cancelado"] as const;
 const VAZIO = {
@@ -51,6 +57,48 @@ export function Financeiro() {
   const [novaCat, setNovaCat] = useState("");
   const [novaConta, setNovaConta] = useState("");
   const [salvandoAux, setSalvandoAux] = useState(false);
+  // Vínculos do lançamento avulso (interconexão, decisão #53): origem rastreável
+  // (operação OU manutenção — exclusivas) e/ou ativo (classificação que coexiste).
+  // Reusa a busca global (mesmas entidades, escopadas ao papel) — sem fonte nova.
+  const [buscaVinc, setBuscaVinc] = useState("");
+  const [resVinc, setResVinc] = useState<VinculoResultado[]>([]);
+  const [origemVinc, setOrigemVinc] = useState<{ tipo: "operacao" | "manutencao"; id: string; titulo: string } | null>(null);
+  const [ativoVinc, setAtivoVinc] = useState<{ id: string; titulo: string } | null>(null);
+  const timerVinc = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    clearTimeout(timerVinc.current);
+    if (buscaVinc.trim().length < 2) {
+      setResVinc([]);
+      return;
+    }
+    timerVinc.current = setTimeout(() => {
+      api
+        .get<{ dados: VinculoResultado[] }>(`/busca?q=${encodeURIComponent(buscaVinc)}`)
+        .then(({ dados }) => setResVinc(dados.filter((r) => r.entidade_tipo in ROTULO_VINCULO)))
+        .catch(() => setResVinc([]));
+    }, 200);
+    return () => clearTimeout(timerVinc.current);
+  }, [buscaVinc]);
+
+  const limparVinc = () => {
+    setBuscaVinc("");
+    setResVinc([]);
+    setOrigemVinc(null);
+    setAtivoVinc(null);
+  };
+  const fecharNovo = () => {
+    setNovo(false);
+    setForm({ ...VAZIO });
+    limparVinc();
+    setErro("");
+  };
+  const escolherVinc = (r: VinculoResultado) => {
+    if (r.entidade_tipo === "ativo") setAtivoVinc({ id: r.entidade_id, titulo: r.titulo });
+    else setOrigemVinc({ tipo: r.entidade_tipo as "operacao" | "manutencao", id: r.entidade_id, titulo: r.titulo });
+    setBuscaVinc("");
+    setResVinc([]);
+  };
 
   const { data: contas } = useQuery({
     queryKey: ["contas"],
@@ -85,9 +133,14 @@ export function Financeiro() {
         forma_pagamento: form.pago ? form.forma_pagamento : null,
         // Retroativo: data de pagamento só quando pago e informada (senão usa o vencimento).
         data_pagamento: form.pago && form.data_pagamento ? form.data_pagamento : null,
+        // Vínculos opcionais (interconexão): origem exclusiva + ativo que coexiste.
+        operacao_id: origemVinc?.tipo === "operacao" ? origemVinc.id : null,
+        manutencao_id: origemVinc?.tipo === "manutencao" ? origemVinc.id : null,
+        ativo_id: ativoVinc?.id ?? null,
       });
       setNovo(false);
       setForm({ ...VAZIO });
+      limparVinc();
       invalidar();
       notificar({ tipo: "ok", titulo: "Lançamento criado" });
     } catch (err) {
@@ -298,7 +351,7 @@ export function Financeiro() {
         )}
       </Card>
 
-      <Modal aberto={novo} aoFechar={() => setNovo(false)} titulo="Novo lançamento">
+      <Modal aberto={novo} aoFechar={fecharNovo} titulo="Novo lançamento">
         <form onSubmit={criar} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Campo rotulo="Tipo">
@@ -391,9 +444,48 @@ export function Financeiro() {
               </Campo>
             </div>
           )}
+          {/* Vínculos (opcional): liga o lançamento avulso a uma operação/manutenção
+              (origem) e/ou a um ativo (custo direto). Busca as mesmas entidades do ⌘K. */}
+          <Campo rotulo="Vínculos" dica="Opcional — origem (operação/manutenção) e/ou ativo">
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {origemVinc && (
+                  <Chip onRemover={() => setOrigemVinc(null)}>
+                    {ROTULO_VINCULO[origemVinc.tipo]}: {origemVinc.titulo}
+                  </Chip>
+                )}
+                {ativoVinc && (
+                  <Chip onRemover={() => setAtivoVinc(null)}>Ativo: {ativoVinc.titulo}</Chip>
+                )}
+              </div>
+              <Entrada
+                placeholder="Buscar operação, manutenção ou ativo…"
+                value={buscaVinc}
+                onChange={(e) => setBuscaVinc(e.target.value)}
+              />
+              {resVinc.length > 0 && (
+                <ul className="max-h-40 overflow-auto rounded-md border border-borda bg-fundo/40 text-sm">
+                  {resVinc.map((r) => (
+                    <li key={`${r.entidade_tipo}:${r.entidade_id}`}>
+                      <button
+                        type="button"
+                        onClick={() => escolherVinc(r)}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-ouro/10"
+                      >
+                        <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">
+                          {ROTULO_VINCULO[r.entidade_tipo]}
+                        </span>
+                        <span className="truncate">{r.titulo}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Campo>
           {erro && <p className="text-sm text-erro">{erro}</p>}
           <div className="flex justify-end gap-2">
-            <Botao type="button" variante="fantasma" onClick={() => setNovo(false)}>Cancelar</Botao>
+            <Botao type="button" variante="fantasma" onClick={fecharNovo}>Cancelar</Botao>
             <Botao type="submit">Criar</Botao>
           </div>
         </form>
