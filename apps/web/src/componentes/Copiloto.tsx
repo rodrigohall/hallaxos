@@ -7,20 +7,31 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Sparkles, Send, User, Car, Workflow, Wrench, CircleDollarSign, FileText, type LucideIcon,
+  Sparkles, Send, User, Car, Workflow, Wrench, CircleDollarSign, FileText,
+  CheckCircle2, type LucideIcon,
 } from "lucide-react";
 import { api, ApiError } from "../api";
-import { AreaTexto, Botao, Drawer } from "./ui";
+import { AreaTexto, Botao, Campo, Entrada, Selecao, Drawer } from "./ui";
 
 interface Fonte {
   entidade_tipo: string;
   entidade_id: string;
   titulo: string;
 }
+// Fase 2: proposta de ação. O copiloto não escreve — propõe; o humano confirma
+// aqui, e só então a UI dispara o endpoint existente (decisão #43).
+interface Proposta {
+  acao: "criar_lancamento";
+  titulo: string;
+  resumo: string;
+  endpoint: string;
+  payload: { tipo: "receita" | "despesa"; descricao: string; valor: number; data_vencimento: string | null };
+}
 interface Turno {
   pergunta: string;
   resposta?: string;
   fontes?: Fonte[];
+  propostas?: Proposta[];
   erro?: string;
 }
 
@@ -70,11 +81,11 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
       setEnviando(true);
       setTurnos((t) => [...t, { pergunta }]);
       try {
-        const { dados } = await api.post<{ dados: { resposta: string; fontes: Fonte[] } }>(
+        const { dados } = await api.post<{ dados: { resposta: string; fontes: Fonte[]; propostas?: Proposta[] } }>(
           "/copiloto/perguntar",
           { pergunta }
         );
-        setTurnos((t) => atualizarUltimo(t, { resposta: dados.resposta, fontes: dados.fontes }));
+        setTurnos((t) => atualizarUltimo(t, { resposta: dados.resposta, fontes: dados.fontes, propostas: dados.propostas }));
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : "Não consegui responder agora. Tente novamente.";
         setTurnos((t) => atualizarUltimo(t, { erro: msg }));
@@ -173,6 +184,10 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
                   )}
                 </div>
               )}
+              {/* Propostas de ação (Fase 2): o humano confirma; só então cria. */}
+              {t.propostas?.map((p, j) => (
+                <PropostaLancamento key={j} proposta={p} />
+              ))}
               {t.erro && (
                 <p className="max-w-[92%] rounded-lg rounded-bl-sm border border-erro/25 bg-erro/10 px-3 py-2 text-sm text-erro">
                   {t.erro}
@@ -212,6 +227,109 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
         </div>
       </Drawer>
     </Contexto.Provider>
+  );
+}
+
+// Card de proposta (Fase 2): o copiloto sugere, o humano revisa (conta/categoria/
+// vencimento) e confirma — só então dispara POST /lancamentos, com a própria
+// autoria. A criação fica na timeline/auditoria como qualquer outro lançamento.
+interface ContaOpt { id: string; nome: string }
+interface CategoriaOpt { id: string; nome: string; tipo: string }
+
+function PropostaLancamento({ proposta }: { proposta: Proposta }) {
+  const navegar = useNavigate();
+  const [contas, setContas] = useState<ContaOpt[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaOpt[]>([]);
+  const [contaId, setContaId] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [vencimento, setVencimento] = useState(proposta.payload.data_vencimento ?? hoje);
+  const [confirmando, setConfirmando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [feito, setFeito] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      api.get<{ dados: ContaOpt[] }>("/contas").then((r) => r.dados).catch(() => []),
+      api.get<{ dados: CategoriaOpt[] }>("/categorias-financeiras").then((r) => r.dados).catch(() => []),
+    ]).then(([c, cat]) => {
+      setContas(c);
+      setCategorias(cat);
+    });
+  }, []);
+
+  const cats = categorias.filter((c) => c.tipo === proposta.payload.tipo);
+
+  const confirmar = async () => {
+    if (!contaId || !categoriaId) {
+      setErro("Escolha a conta e a categoria.");
+      return;
+    }
+    setConfirmando(true);
+    setErro("");
+    try {
+      await api.post("/lancamentos", {
+        tipo: proposta.payload.tipo,
+        descricao: proposta.payload.descricao,
+        valor: proposta.payload.valor,
+        data_vencimento: vencimento,
+        parcelas: 1,
+        pago: false,
+        conta_id: contaId,
+        categoria_id: categoriaId,
+      });
+      setFeito(true);
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Não foi possível criar o lançamento.");
+    } finally {
+      setConfirmando(false);
+    }
+  };
+
+  if (feito) {
+    return (
+      <div className="max-w-[92%] rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-sm">
+        <div className="flex items-center gap-2 text-ok">
+          <CheckCircle2 className="h-4 w-4" /> Lançamento criado.
+        </div>
+        <button
+          onClick={() => navegar("/financeiro")}
+          className="mt-1 text-xs text-suave underline hover:text-ouro-claro"
+        >
+          Ver no financeiro
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-[92%] space-y-2 rounded-lg border border-ouro/30 bg-ouro/5 px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-sm font-medium text-texto">
+        <Sparkles className="h-3.5 w-3.5 text-ouro" /> {proposta.titulo}
+      </div>
+      <p className="text-xs text-mudo">{proposta.resumo}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Campo rotulo="Conta">
+          <Selecao value={contaId} onChange={(e) => setContaId(e.target.value)}>
+            <option value="">Escolher…</option>
+            {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </Selecao>
+        </Campo>
+        <Campo rotulo="Categoria">
+          <Selecao value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+            <option value="">Escolher…</option>
+            {cats.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </Selecao>
+        </Campo>
+      </div>
+      <Campo rotulo="Vencimento">
+        <Entrada type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
+      </Campo>
+      {erro && <p className="text-xs text-erro">{erro}</p>}
+      <div className="flex justify-end">
+        <Botao tamanho="sm" carregando={confirmando} onClick={confirmar}>Confirmar e criar</Botao>
+      </div>
+    </div>
   );
 }
 

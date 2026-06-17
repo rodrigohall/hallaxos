@@ -247,7 +247,9 @@ GET    /relatorios/inadimplencia          → vencidos por pessoa, idade da dív
 ### Copiloto de IA
 
 ```
-POST   /copiloto/perguntar        { pergunta }  → { resposta, fontes: [{ entidade_tipo, entidade_id, titulo }] }
+POST   /copiloto/perguntar        { pergunta }
+        → { resposta, fontes: [{ entidade_tipo, entidade_id, titulo }],
+            propostas: [{ acao, titulo, resumo, endpoint, payload }] }   // Fase 2
 ```
 
 Perguntas em linguagem natural sobre os dados reais (doc 01 §6). **Fase 1: só
@@ -262,6 +264,15 @@ leitura e **revalidam o papel** do usuário (doc 05, decisão #45):
 | `dashboard_resumo`      | o payload do `/dashboard`                        | bloco financeiro só com papel |
 | `operacoes_abertas`     | `/operacoes?situacao=abertas\|atrasadas`         | quem lê operações             |
 | `relatorio_financeiro`  | DRE + resultado/ROI por ativo (`/relatorios/*`)  | só papéis financeiros         |
+
+- **Fase 2 — escrita com confirmação humana (decisão #43/#55):** a única
+  ferramenta de mutação é `propor_lancamento`, exposta **só a quem pode criar
+  lançamentos** (doc 05). Ela **não escreve**: devolve uma `proposta`
+  (`acao: criar_lancamento`, `endpoint: POST /lancamentos`, `payload`). A UI
+  mostra um card; o humano escolhe conta/categoria e **confirma**, e só então a UI
+  dispara `POST /lancamentos` — com a própria autoria. Máquina de estados e
+  timeline intactas; nada destrutivo entra (anular/estornar/transicionar ficam de
+  fora). Garantido por teste: propor não cria linha no banco.
 
 - **Desligado por padrão:** sem `IA_API_KEY` no servidor, responde
   `503 IA_NAO_CONFIGURADA` e **nenhuma chamada paga** é feita. `GET /auth/sessao`

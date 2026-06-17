@@ -106,9 +106,10 @@ Plano:
    ativo somam diretos + herdados; ✅ `GET /ativos/:id/lancamentos` + origem na
    tela. **Falta**: autocomplete no formulário "novo lançamento" para vincular
    (UI); link do lançamento → origem na tela do Financeiro.
-5. **Copiloto que escreve (Fase 2)**: *proposta de ação* confirmada pelo humano,
-   disparando os endpoints existentes (nunca escreve direto; máquina de estados e
-   autoria intactas — decisão #43). 1º conjunto: **criar lançamento avulso
-   previsto**. Ações destrutivas ficam de fora.
+5. **Copiloto que escreve (Fase 2)**: ✅ 1ª ação entregue — `propor_lancamento`
+   (propõe; o humano confirma na UI e dispara `POST /lancamentos` com a própria
+   autoria; máquina de estados e timeline intactas — decisões #43/#55). **Próximo**
+   (sob demanda): ampliar para outras ações **não-destrutivas** (compromisso na
+   agenda, manutenção agendada, comentário); destrutivas seguem fora.
 6. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
    (fail2ban/firewall) para voltar a ter atualização automática confiável.

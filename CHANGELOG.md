@@ -1,5 +1,26 @@
 # Changelog
 
+## Sprint 9 — Copiloto Fase 2: propor lançamento com confirmação (2026-06-17)
+
+O copiloto ganha a primeira ação de **escrita guardrailada** — e continua sem
+escrever direto no banco (decisão #43).
+
+- **Propor, não criar:** nova ferramenta `propor_lancamento` (única de mutação,
+  fora de `FERRAMENTAS_LEITURA`). Ela devolve uma **proposta** inerte
+  (`POST /lancamentos` + payload), exposta **só a quem pode lançar** e revalidada
+  por papel. O modelo nunca escreve.
+- **Confirmação humana na UI:** o painel do copiloto mostra um card de proposta;
+  o humano escolhe conta/categoria, ajusta o vencimento e **confirma** — só então
+  a UI dispara `POST /lancamentos`, com a **própria autoria**. Máquina de estados
+  e timeline intactas; a criação entra na auditoria como qualquer lançamento.
+- **Fora de escopo (destrutivo):** anular/estornar/transicionar/excluir ficam de
+  fora — entram só com demanda e guardrails próprios (decisão #55).
+- `POST /copiloto/perguntar` passa a retornar `propostas[]` ao lado de
+  `resposta`/`fontes`. Decisões #43/#55; doc 06 atualizado.
+- **Qualidade:** testes garantem o invariante pedido — `propor_lancamento` está
+  fora da leitura, só aparece para quem pode lançar, devolve proposta e **não
+  cria linha no banco** (contagem antes/depois, Postgres real na CI).
+
 ## Sprint 9 — Ligar o copiloto + interconexão dos módulos (2026-06-17)
 
 Duas frentes, sem duplicar dado nem criar fonte paralela: ligar o copiloto de

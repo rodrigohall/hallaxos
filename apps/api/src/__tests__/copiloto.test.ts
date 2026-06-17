@@ -2,6 +2,8 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import {
   FERRAMENTAS_LEITURA,
+  FERRAMENTAS_PROPOSTA,
+  ferramentasPara,
   executarFerramenta,
   perguntar,
 } from "../services/copiloto";
@@ -39,6 +41,43 @@ test("copiloto só expõe ferramentas de leitura (nenhuma de escrita)", () => {
   for (const f of FERRAMENTAS_LEITURA) {
     assert.doesNotMatch(f.name, proibido, `nome de ferramenta sugere escrita: ${f.name}`);
   }
+});
+
+// 1b. Fase 2: a ferramenta de proposta vive FORA da lista de leitura (o invariante
+//     "leitura não muta" segue válido) e o copiloto continua NÃO escrevendo — ela
+//     só monta uma proposta inerte que o humano confirma (decisão #43).
+test("propor_lancamento existe como ferramenta de proposta, separada da leitura", () => {
+  assert.ok(!FERRAMENTAS_LEITURA.some((f) => f.name === "propor_lancamento"), "propor não é leitura");
+  assert.ok(FERRAMENTAS_PROPOSTA.some((f) => f.name === "propor_lancamento"), "propor é proposta");
+});
+
+test("ferramentasPara expõe propor_lancamento só a quem pode lançar", () => {
+  const nomes = (papel: Parameters<typeof ferramentasPara>[0]) =>
+    ferramentasPara(papel).map((f) => f.name);
+  assert.ok(nomes("admin").includes("propor_lancamento"), "admin pode propor");
+  assert.ok(nomes("financeiro").includes("propor_lancamento"), "financeiro pode propor");
+  assert.ok(!nomes("operador").includes("propor_lancamento"), "operador não pode propor");
+});
+
+test("propor_lancamento devolve PROPOSTA e não escreve (decisão #43)", async () => {
+  const r = await executarFerramenta(
+    "propor_lancamento",
+    { tipo: "despesa", descricao: "IPVA do caminhão", valor: 1200, data_vencimento: "2026-08-10" },
+    "admin"
+  );
+  assert.ok(r.proposta, "deve devolver uma proposta");
+  assert.equal(r.proposta!.acao, "criar_lancamento");
+  assert.equal(r.proposta!.endpoint, "POST /lancamentos");
+  assert.equal(r.proposta!.payload.tipo, "despesa");
+  // O tool_result diz ao modelo que nada foi criado — só proposto.
+  const corpo = JSON.parse(r.conteudo) as { proposta_registrada?: boolean };
+  assert.equal(corpo.proposta_registrada, true);
+});
+
+test("propor_lancamento nega o operador (não pode lançar)", async () => {
+  const r = await executarFerramenta("propor_lancamento", { tipo: "despesa", descricao: "x", valor: 10 }, "operador");
+  assert.equal((JSON.parse(r.conteudo) as { sem_permissao?: boolean }).sem_permissao, true);
+  assert.equal(r.proposta, undefined);
 });
 
 // 2. Permissão por ferramenta: um operador não enxerga o financeiro pelo copiloto.
@@ -95,5 +134,22 @@ if (!temBanco) {
     const corpo = JSON.parse(r.conteudo) as { dre: unknown; resultado_por_ativo: unknown[] };
     assert.ok(corpo.dre);
     assert.ok(Array.isArray(corpo.resultado_por_ativo));
+  });
+
+  // Invariante central da Fase 2: propor NÃO escreve. Contamos os lançamentos
+  // antes e depois — propor_lancamento não pode criar nenhuma linha (decisão #43).
+  test("propor_lancamento não cria nada no banco (só confirmação humana escreve)", async () => {
+    const { db } = await import("../db/client");
+    const { sql } = await import("drizzle-orm");
+    const contar = async () =>
+      Number((await db.execute(sql`SELECT count(*)::int AS n FROM lancamentos`)).rows[0]!.n);
+    const antes = await contar();
+    const r = await executarFerramenta(
+      "propor_lancamento",
+      { tipo: "despesa", descricao: "Proposta sem efeito", valor: 99.9 },
+      "admin"
+    );
+    assert.ok(r.proposta, "devolve proposta");
+    assert.equal(await contar(), antes, "nenhum lançamento criado pela proposta");
   });
 }

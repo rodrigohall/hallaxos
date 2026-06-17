@@ -29,9 +29,22 @@ export interface FonteCopiloto {
   titulo: string;
 }
 
+// Fase 2 (decisão #43): o copiloto NÃO escreve no banco. Quando o usuário pede
+// uma ação, o modelo monta uma PROPOSTA estruturada (endpoint existente + payload
+// + resumo). A UI mostra, o humano confirma, e SÓ ENTÃO a UI dispara o endpoint —
+// com a autoria do humano e a máquina de estados intactas. A proposta é inerte.
+export interface PropostaCopiloto {
+  acao: "criar_lancamento";
+  titulo: string;
+  resumo: string;
+  endpoint: string; // ex.: "POST /lancamentos" — disparado pela UI após confirmar
+  payload: Record<string, unknown>; // o que a UI vai enviar (conta/categoria o humano escolhe)
+}
+
 export interface RespostaCopiloto {
   resposta: string;
   fontes: FonteCopiloto[];
+  propostas: PropostaCopiloto[];
 }
 
 const SISTEMA = [
@@ -48,6 +61,13 @@ const SISTEMA = [
   "Se uma ferramenta responder que o papel do usuário não tem acesso, diga isso",
   "sem expor o dado. Se a consulta não trouxer o que é preciso, diga que não",
   "encontrou. Cite as entidades que embasaram a resposta.",
+  "Você NUNCA cria, altera ou apaga dados diretamente. Quando o usuário pedir para",
+  "REGISTRAR uma despesa/receita (lançamento), use a ferramenta propor_lancamento:",
+  "ela apenas monta uma PROPOSTA que o usuário confirma na tela — você não está",
+  "criando nada. Nunca diga que criou/lançou; diga que preparou uma proposta para",
+  "ele revisar e confirmar (a conta e a categoria ele escolhe ao confirmar). Se a",
+  "ferramenta propor_lancamento não estiver disponível, diga que o papel do usuário",
+  "não pode lançar no financeiro.",
 ].join(" ");
 
 // As ferramentas expostas ao modelo — TODAS de leitura (Fase 1). A lista é a
@@ -110,11 +130,44 @@ export const FERRAMENTAS_LEITURA: Anthropic.Tool[] = [
   },
 ];
 
+// Ferramentas de PROPOSTA (Fase 2) — NÃO escrevem. propor_lancamento devolve uma
+// proposta inerte que a UI confirma e dispara via POST /lancamentos. Mantida fora
+// de FERRAMENTAS_LEITURA de propósito: o invariante "leitura não muta" segue válido
+// e testável; esta lista é exposta só a quem pode criar lançamentos (doc 05).
+export const FERRAMENTAS_PROPOSTA: Anthropic.Tool[] = [
+  {
+    name: "propor_lancamento",
+    description:
+      "PROPÕE (não cria) um lançamento financeiro para o usuário confirmar na tela. " +
+      "Use quando ele pedir para registrar/lançar uma despesa ou receita. Não cria nada: " +
+      "monta a proposta; a conta e a categoria são escolhidas pelo usuário ao confirmar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        tipo: { type: "string", enum: ["receita", "despesa"], description: "Tipo do lançamento." },
+        descricao: { type: "string", description: "Descrição curta (ex.: 'IPVA do caminhão AT-0003')." },
+        valor: { type: "number", description: "Valor em reais, positivo." },
+        data_vencimento: { type: "string", description: "Vencimento YYYY-MM-DD (opcional)." },
+      },
+      required: ["tipo", "descricao", "valor"],
+    },
+  },
+];
+
+// Ferramentas disponíveis ao papel: leitura para todos; proposta de lançamento só
+// para quem pode criar lançamentos (doc 05). Mantém o copiloto escopado ao papel.
+export function ferramentasPara(papel: PapelUsuario): Anthropic.Tool[] {
+  return pode(papel, "lancamentos", "criar")
+    ? [...FERRAMENTAS_LEITURA, ...FERRAMENTAS_PROPOSTA]
+    : FERRAMENTAS_LEITURA;
+}
+
 const TIPOS_OPERACAO = new Set<TipoOperacao>(["guincho", "locacao", "venda", "compra"]);
 
 interface ResultadoFerramenta {
   conteudo: string;
   fontes: FonteCopiloto[];
+  proposta?: PropostaCopiloto;
 }
 
 function semPermissao(recurso: string): ResultadoFerramenta {
@@ -208,6 +261,45 @@ export async function executarFerramenta(
       return { conteudo: JSON.stringify({ ano, dre: demonstrativo, resultado_por_ativo: ativos }), fontes: [] };
     }
 
+    case "propor_lancamento": {
+      // Fase 2: NÃO escreve. Revalida o papel (defesa em profundidade) e devolve
+      // uma proposta inerte; a criação real só acontece quando o humano confirma
+      // na UI, que dispara POST /lancamentos com a própria autoria (decisão #43).
+      if (!pode(papel, "lancamentos", "criar")) return semPermissao("lançar no financeiro");
+      const tipo = input.tipo === "receita" ? "receita" : "despesa";
+      const descricao = String(input.descricao ?? "").trim();
+      const valor = typeof input.valor === "number" ? input.valor : Number(input.valor);
+      if (descricao.length < 2 || !Number.isFinite(valor) || valor <= 0) {
+        return {
+          conteudo: JSON.stringify({ erro: "Para propor um lançamento preciso de descrição e valor positivo." }),
+          fontes: [],
+        };
+      }
+      const dataVencimento =
+        typeof input.data_vencimento === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.data_vencimento)
+          ? input.data_vencimento
+          : undefined;
+      const proposta: PropostaCopiloto = {
+        acao: "criar_lancamento",
+        titulo: `Criar ${tipo}: ${descricao}`,
+        resumo:
+          `${tipo === "receita" ? "Receita" : "Despesa"} de R$ ${valor.toFixed(2)}` +
+          (dataVencimento ? ` com vencimento em ${dataVencimento}` : "") +
+          ". Confirme escolhendo a conta e a categoria.",
+        endpoint: "POST /lancamentos",
+        payload: { tipo, descricao, valor, data_vencimento: dataVencimento ?? null },
+      };
+      // O tool_result diz ao modelo que NADA foi criado — só proposto.
+      return {
+        conteudo: JSON.stringify({
+          proposta_registrada: true,
+          mensagem: "Proposta montada. O usuário precisa confirmar na tela para efetivar; nada foi criado ainda.",
+        }),
+        fontes: [],
+        proposta,
+      };
+    }
+
     default:
       return { conteudo: JSON.stringify({ erro: "ferramenta desconhecida" }), fontes: [] };
   }
@@ -248,7 +340,9 @@ export async function perguntar(
   const client = new AnthropicClient({ apiKey: config.iaApiKey });
 
   const fontes: FonteCopiloto[] = [];
+  const propostas: PropostaCopiloto[] = [];
   const vistas = new Set<string>(); // dedup de fontes por tipo:id
+  const ferramentas = ferramentasPara(papel); // leitura + proposta (se o papel puder lançar)
   const mensagens: Anthropic.MessageParam[] = [{ role: "user", content: pergunta }];
 
   try {
@@ -262,7 +356,7 @@ export async function perguntar(
         model: config.iaModelo,
         max_tokens: 4096,
         system: SISTEMA,
-        tools: FERRAMENTAS_LEITURA,
+        tools: ferramentas,
         messages: mensagens,
       });
 
@@ -272,7 +366,7 @@ export async function perguntar(
           .map((b) => b.text)
           .join("\n")
           .trim();
-        return { resposta: texto, fontes };
+        return { resposta: texto, fontes, propostas };
       }
 
       mensagens.push({ role: "assistant", content: resposta.content });
@@ -280,7 +374,7 @@ export async function perguntar(
       const resultados: Anthropic.ToolResultBlockParam[] = [];
       for (const bloco of resposta.content) {
         if (bloco.type !== "tool_use") continue;
-        const { conteudo, fontes: novas } = await executarFerramenta(
+        const { conteudo, fontes: novas, proposta } = await executarFerramenta(
           bloco.name,
           (bloco.input ?? {}) as Record<string, unknown>,
           papel
@@ -291,6 +385,7 @@ export async function perguntar(
           vistas.add(chave);
           fontes.push(f);
         }
+        if (proposta) propostas.push(proposta);
         resultados.push({ type: "tool_result", tool_use_id: bloco.id, content: conteudo });
       }
       mensagens.push({ role: "user", content: resultados });
