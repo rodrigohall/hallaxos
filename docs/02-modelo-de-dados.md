@@ -221,6 +221,15 @@ Toda movimentação financeira. **Origem rastreável é obrigatória por design*
 no máximo uma origem (`operacao_id` ou `manutencao_id`), garantida por CHECK.
 Sem origem = lançamento avulso (aluguel do galpão, conta de luz).
 
+`ativo_id` é um eixo **separado** da origem: vínculo de **classificação que
+coexiste** (decisão #53). Serve para o custo **direto** de um ativo que não é
+operação nem manutenção — IPVA, seguro, multa. Como coexiste, o CHECK de origem
+única **não muda**: um lançamento pode ter `operacao_id` **e** `ativo_id`
+(marcar o ativo de um lançamento de operação), ou só `ativo_id` (custo avulso do
+ativo), ou nenhum. O resultado financeiro/ROI do ativo (doc 03 / relatórios)
+soma os lançamentos **diretos** (`ativo_id`) **+** os **herdados** (via
+operação-objeto e manutenção) — consulta, nunca cópia.
+
 | Campo            | Tipo             | Notas                                              |
 | ---------------- | ---------------- | -------------------------------------------------- |
 | id               | uuid PK          |                                                    |
@@ -231,6 +240,7 @@ Sem origem = lançamento avulso (aluguel do galpão, conta de luz).
 | pessoa_id        | FK pessoas NULL  | Quem paga / quem recebe                            |
 | operacao_id      | FK NULL          | Origem (CHECK: no máximo uma origem preenchida)    |
 | manutencao_id    | FK NULL          | Origem                                             |
+| ativo_id         | FK ativos NULL   | **Classificação** que coexiste com a origem (decisão #53): custo direto do ativo (IPVA, seguro, multa) e/ou marcação do ativo num lançamento de operação/manutenção. **Não** é origem — não dispara geração e não entra no CHECK de origem única |
 | valor            | numeric(12,2)    | Sempre positivo; o sinal vem de `tipo`             |
 | data_vencimento  | date             |                                                    |
 | data_pagamento   | date NULL        | Preenchida = pago                                  |

@@ -97,6 +97,13 @@ jobs:
           done
 
       - name: Executar instalador
+        env:
+          # O secret só chega ao container porque o instalador grava IA_API_KEY no
+          # .env do VPS (o compose lê o .env, não o secret do Actions). Mantido em
+          # env do step para não aparecer no comando inline; o Actions mascara o
+          # valor nos logs. Vazio = instalador não toca no .env (copiloto desligado).
+          IA_API_KEY: ${{ secrets.IA_API_KEY }}
+          IA_MODELO: ${{ vars.IA_MODELO }}
         run: |
           PORTA="${{ steps.ssh.outputs.porta }}"
           # O rsync exclui o .git, então o VPS não tem o SHA — passamos o do
@@ -105,4 +112,4 @@ jobs:
           ssh -i ~/.ssh/id_deploy -p "$PORTA" \
             -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd ~/hallaxos && HALLAX_SHA='$SHA_CURTO' DOMINIO='${{ vars.DOMINIO }}' ./deploy/instalar.sh"
+            "cd ~/hallaxos && HALLAX_SHA='$SHA_CURTO' DOMINIO='${{ vars.DOMINIO }}' IA_API_KEY='$IA_API_KEY' IA_MODELO='$IA_MODELO' ./deploy/instalar.sh"

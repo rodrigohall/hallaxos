@@ -29,6 +29,27 @@ FIM
   echo "Arquivo .env criado com senhas geradas."
 fi
 
+# 2.1 Copiloto de IA (Sprint 9) — a chave nunca é versionada nem gerada aqui.
+# Quem dispara o deploy (CI) injeta o secret IA_API_KEY como variável de ambiente;
+# gravamos/atualizamos a linha no .env DO VPS, que é o que o compose lê em runtime
+# (definir só o secret do GitHub Actions NÃO chega ao container — ver operacao-vps).
+# Idempotente: regrava a cada deploy. Sem a variável, não toca no .env (degradação
+# graciosa: copiloto segue desligado, 503, sem custo).
+upsert_env() {
+  chave="$1"; valor="$2"
+  [ -n "$valor" ] || return 0
+  [ -f .env ] || : > .env
+  if grep -q "^${chave}=" .env 2>/dev/null; then
+    grep -v "^${chave}=" .env > .env.tmp && mv .env.tmp .env
+  fi
+  printf '%s=%s\n' "$chave" "$valor" >> .env
+}
+if [ -n "${IA_API_KEY:-}" ]; then
+  upsert_env IA_API_KEY "$IA_API_KEY"
+  echo "IA_API_KEY aplicada ao .env (copiloto ligado)."
+fi
+upsert_env IA_MODELO "${IA_MODELO:-}"
+
 # 3. Sobe tudo
 # HALLAX_SHA carimba o commit na imagem (vira build arg → /api/v1/versao) e,
 # por mudar a cada deploy, invalida o cache das camadas de código no Dockerfile.

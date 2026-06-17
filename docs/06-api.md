@@ -80,6 +80,9 @@ POST   /ativos/:id/baixar         { motivo }            (terminal)
 GET    /ativos/:id/timeline       cursor — inclui operações e manutenções agregadas
 GET    /ativos/:id/operacoes
 GET    /ativos/:id/manutencoes
+GET    /ativos/:id/lancamentos    → lançamentos vinculados: diretos (ativo_id) +
+         herdados (operação-objeto, manutenção); `origem` ∈ direto|operacao|manutencao
+         (consulta, não cópia — decisão #53). Gated por `lancamentos` (papel financeiro)
 GET    /ativos/:id/financeiro     → receitas, despesas, resultado, ROI (derivados)
 GET    /ativos/categorias         | POST | PATCH /ativos/categorias/:id
 ```
@@ -167,7 +170,9 @@ POST   /manutencoes/:id/iniciar {data_inicio?} | /concluir {km_no_momento?, cust
 ```
 GET    /lancamentos               ?tipo ?status ?categoria_id ?conta_id ?pessoa_id ?periodo ?origem
 POST   /lancamentos               (avulso; com `parcelas: n` gera o grupo de parcelas;
-         `data_pagamento?` quando `pago` registra pagamento retroativo — decisão #51)
+         `data_pagamento?` quando `pago` registra pagamento retroativo — decisão #51).
+         Vínculos opcionais: `operacao_id?` | `manutencao_id?` (origem — no máximo uma)
+         e/ou `ativo_id?` (classificação que coexiste — decisão #53)
 GET    /lancamentos/:id           → com cadeia de origem completa (operação → ativo → pessoa)
 PATCH  /lancamentos/:id           → edita valor/vencimento/conta/categoria/forma;
          lançamentos **gerados** também (vínculo de origem preservado, com auditoria).

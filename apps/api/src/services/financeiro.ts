@@ -97,6 +97,12 @@ export async function criarLancamento(input: LancamentoCriarInput, usuarioId: st
           categoriaId: input.categoria_id,
           contaId: input.conta_id,
           pessoaId: input.pessoa_id ?? null,
+          // Interconexão: vínculo opcional a operação/manutenção (origem) e/ou
+          // ativo (classificação). O CHECK de origem única e o refine do schema
+          // garantem que operação e manutenção não coexistem.
+          operacaoId: input.operacao_id ?? null,
+          manutencaoId: input.manutencao_id ?? null,
+          ativoId: input.ativo_id ?? null,
           valor: ((base + (i === 0 ? resto : 0)) / 100).toFixed(2),
           dataVencimento: venc.toISOString().slice(0, 10),
           // Retroativo: quando pago, usa a data de pagamento informada (ou o vencimento).

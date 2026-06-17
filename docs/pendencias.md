@@ -96,10 +96,19 @@ Plano:
    `IA_API_KEY` (responde 503; sem custo). Degradação graciosa + rate limit próprio.
 2. ~~**UI**: pergunta no ⌘K / painel lateral~~ ✅ entregue — painel lateral
    (Drawer) com fontes clicáveis (link para a tela real) + entrada no ⌘K (`⌘↵`).
-3. **Copiloto que escreve (Fase 2)**: *proposta de ação* confirmada pelo humano,
+3. ~~**Ligar a IA**~~ ✅ a `IA_API_KEY` é injetada no `.env` do VPS pelo deploy a
+   partir do secret do GitHub Actions (`instalar.sh` upsert + `deploy.yml`,
+   decisão #54). Definir o secret e dar push liga o copiloto; vazio = desligado
+   (503, sem custo). Modelo `claude-haiku-4-5` confirmado válido/atual.
+4. **Interconexão dos módulos (em andamento)**: ✅ lançamento avulso vincula a
+   operação/manutenção/ativo (`POST /lancamentos`); ✅ `lancamentos.ativo_id`
+   (classificação que coexiste, decisão #53); ✅ resultado/ROI e histórico do
+   ativo somam diretos + herdados; ✅ `GET /ativos/:id/lancamentos` + origem na
+   tela. **Falta**: autocomplete no formulário "novo lançamento" para vincular
+   (UI); link do lançamento → origem na tela do Financeiro.
+5. **Copiloto que escreve (Fase 2)**: *proposta de ação* confirmada pelo humano,
    disparando os endpoints existentes (nunca escreve direto; máquina de estados e
-   autoria intactas — decisão #43). Ações destrutivas ficam de fora.
-4. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
+   autoria intactas — decisão #43). 1º conjunto: **criar lançamento avulso
+   previsto**. Ações destrutivas ficam de fora.
+6. **Estabilizar o deploy**: resolver o timeout SSH intermitente do VPS
    (fail2ban/firewall) para voltar a ter atualização automática confiável.
-5. **Ligar a IA**: gerar a chave da Anthropic e defini-la como secret `IA_API_KEY`
-   no servidor; ampliar ferramentas (timeline, manutenções) conforme a demanda.

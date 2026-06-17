@@ -271,6 +271,10 @@ export const lancamentos = pgTable("lancamentos", {
   pessoaId: uuid("pessoa_id").references(() => pessoas.id),
   operacaoId: uuid("operacao_id"),
   manutencaoId: uuid("manutencao_id"),
+  // Vínculo de classificação que coexiste com a origem (decisão #53): custo
+  // direto do ativo (IPVA, seguro, multa) ou marcação do ativo num lançamento
+  // de operação/manutenção. Não é origem — não dispara geração.
+  ativoId: uuid("ativo_id").references(() => ativos.id),
   valor: numeric("valor", { precision: 12, scale: 2 }).notNull(),
   dataVencimento: date("data_vencimento").notNull(),
   dataPagamento: date("data_pagamento"),

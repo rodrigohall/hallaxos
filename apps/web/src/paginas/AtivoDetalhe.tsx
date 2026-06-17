@@ -39,7 +39,12 @@ interface AtivoDetalheDados {
   };
   operacoes: Array<{ id: string; codigo: string; tipo: string; status: string; valor_total: string; data_inicio: string; cliente: string }>;
   manutencoes: Array<{ id: string; tipo: string; status: string; descricao: string; data_agendada: string | null; fornecedor: string | null; custo: string }>;
-  lancamentos: Array<{ id: string; tipo: string; descricao: string; valor: string; status: string; data_vencimento: string; data_pagamento: string | null }>;
+  lancamentos: Array<{
+    id: string; tipo: string; descricao: string; valor: string; status: string;
+    data_vencimento: string; data_pagamento: string | null;
+    origem: "direto" | "operacao" | "manutencao";
+    operacaoId: string | null; operacaoCodigo: string | null;
+  }>;
 }
 
 const ROTULOS: Record<string, string> = {
@@ -267,7 +272,24 @@ export function AtivoDetalhe() {
                 {ativo.lancamentos.map((l) => (
                   <ListaLinha
                     key={l.id}
-                    titulo={l.descricao}
+                    titulo={
+                      <span className="inline-flex items-center gap-1.5">
+                        {l.descricao}
+                        {/* Origem: custo direto do ativo, ou herdado — com link para a operação */}
+                        {l.origem === "direto" ? (
+                          <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">custo direto</span>
+                        ) : l.origem === "operacao" && l.operacaoId ? (
+                          <Link
+                            to={`/operacoes/${l.operacaoId}`}
+                            className="rounded-full border border-borda px-1.5 py-px text-[10px] text-suave hover:border-ouro/60 hover:text-ouro-claro"
+                          >
+                            {l.operacaoCodigo ?? "operação"}
+                          </Link>
+                        ) : l.origem === "manutencao" ? (
+                          <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">manutenção</span>
+                        ) : null}
+                      </span>
+                    }
                     subtitulo={
                       l.data_pagamento
                         ? `pago em ${dataCurta(l.data_pagamento)}`

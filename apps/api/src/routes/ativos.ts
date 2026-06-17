@@ -4,7 +4,7 @@ import {
   ativoCriarSchema, ativoEditarSchema, ativoFiltrosSchema, idSchema, paginacaoSchema,
 } from "@hallaxos/shared";
 import {
-  arquivarAtivo, criarAtivo, criarCategoria, editarAtivo, listarAtivos,
+  arquivarAtivo, criarAtivo, criarCategoria, editarAtivo, lancamentosDoAtivo, listarAtivos,
   listarCategorias, obterAtivo, reativarAtivo, timelineDoAtivo,
 } from "../services/ativos";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
@@ -81,6 +81,18 @@ export default async function rotasAtivos(app: FastifyInstance) {
       const { id } = params.parse(req.params);
       const { antes_de } = z.object({ antes_de: idSchema.optional() }).parse(req.query);
       return { dados: await timelineDoAtivo(id, antes_de) };
+    }
+  );
+
+  // Lançamentos vinculados ao ativo — diretos (custo do ativo) + herdados via
+  // operação/manutenção (consulta, não cópia). Gated por `lancamentos` para não
+  // vazar o financeiro a quem não pode vê-lo (operador).
+  app.get(
+    "/ativos/:id/lancamentos",
+    { preHandler: exigirPermissao("lancamentos", "ler") },
+    async (req) => {
+      const { id } = params.parse(req.params);
+      return { dados: await lancamentosDoAtivo(id) };
     }
   );
 }

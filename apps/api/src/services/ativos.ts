@@ -103,7 +103,8 @@ export async function obterAtivo(id: string) {
       lanc AS (
         SELECT l.tipo, l.valor FROM lancamentos l
         WHERE l.deleted_at IS NULL AND l.status = 'pago'
-          AND (l.operacao_id IN (SELECT operacao_id FROM ops)
+          AND (l.ativo_id = ${id}
+               OR l.operacao_id IN (SELECT operacao_id FROM ops)
                OR l.manutencao_id IN (SELECT id FROM manutencoes WHERE ativo_id = ${id}))
       )
       SELECT
@@ -150,15 +151,9 @@ export async function obterAtivo(id: string) {
       ORDER BY coalesce(m.data_agendada, m.created_at::date) DESC LIMIT 20`)
   ).rows;
 
-  const lancamentos = (
-    await db.execute(sql`
-      SELECT l.id, l.tipo, l.descricao, l.valor, l.status, l.data_vencimento, l.data_pagamento
-      FROM lancamentos l
-      WHERE l.deleted_at IS NULL
-        AND (l.operacao_id IN (SELECT operacao_id FROM operacao_ativos WHERE ativo_id = ${id} AND papel = 'objeto')
-             OR l.manutencao_id IN (SELECT id FROM manutencoes WHERE ativo_id = ${id}))
-      ORDER BY coalesce(l.data_pagamento, l.data_vencimento) DESC LIMIT 30`)
-  ).rows;
+  // Lançamentos vinculados (diretos + herdados), com `origem` para distinguir e
+  // navegar — uma só consulta canônica, reusada pelo endpoint dedicado.
+  const lancamentos = await lancamentosDoAtivo(id);
 
   return {
     ...linha.ativo,
@@ -398,6 +393,36 @@ export async function timelineDoAtivo(id: string, antesDe?: string, limite = 50)
     const { usuario_nome, ...e } = l as Record<string, unknown> & { usuario_nome: string | null };
     return { ...e, usuario: usuario_nome ? { nome: usuario_nome } : null };
   });
+}
+
+/**
+ * Lançamentos vinculados ao ativo — por consulta, nunca cópia (doc 02 §9, mesmo
+ * padrão da timeline agregada). Inclui os **diretos** (`ativo_id` = custo do
+ * ativo, ex.: IPVA/seguro/multa) e os **herdados** via operação-objeto e
+ * manutenção. `origem` distingue como o lançamento chegou até aqui.
+ */
+export async function lancamentosDoAtivo(id: string) {
+  const r = await db.execute(sql`
+    SELECT l.id, l.tipo, l.descricao, l.valor, l.status,
+           l.data_vencimento AS "dataVencimento", l.data_pagamento AS "dataPagamento",
+           l.operacao_id AS "operacaoId", l.manutencao_id AS "manutencaoId",
+           l.ativo_id AS "ativoId",
+           CASE
+             WHEN l.ativo_id = ${id} THEN 'direto'
+             WHEN l.operacao_id IS NOT NULL THEN 'operacao'
+             WHEN l.manutencao_id IS NOT NULL THEN 'manutencao'
+             ELSE 'direto'
+           END AS origem,
+           op.codigo AS "operacaoCodigo"
+    FROM lancamentos l
+    LEFT JOIN operacoes op ON op.id = l.operacao_id
+    WHERE l.deleted_at IS NULL
+      AND (l.ativo_id = ${id}
+           OR l.operacao_id IN (SELECT operacao_id FROM operacao_ativos WHERE ativo_id = ${id} AND papel = 'objeto')
+           OR l.manutencao_id IN (SELECT m.id FROM manutencoes m WHERE m.ativo_id = ${id}))
+    ORDER BY coalesce(l.data_pagamento, l.data_vencimento) DESC, l.created_at DESC
+    LIMIT 50`);
+  return r.rows;
 }
 
 export async function listarCategorias() {

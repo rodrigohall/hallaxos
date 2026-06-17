@@ -13,7 +13,8 @@ export async function resultadoPorAtivo(de?: string, ate?: string) {
         - coalesce(sum(l.valor) FILTER (WHERE l.tipo = 'despesa'), 0) AS resultado
     FROM ativos a
     LEFT JOIN lancamentos l ON l.deleted_at IS NULL AND l.status = 'pago' ${periodo}
-      AND (l.operacao_id IN (SELECT operacao_id FROM operacao_ativos oa WHERE oa.ativo_id = a.id AND oa.papel = 'objeto')
+      AND (l.ativo_id = a.id
+           OR l.operacao_id IN (SELECT operacao_id FROM operacao_ativos oa WHERE oa.ativo_id = a.id AND oa.papel = 'objeto')
            OR l.manutencao_id IN (SELECT m.id FROM manutencoes m WHERE m.ativo_id = a.id))
     WHERE a.deleted_at IS NULL
     GROUP BY a.id ORDER BY resultado DESC`);

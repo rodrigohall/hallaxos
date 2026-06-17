@@ -1,21 +1,33 @@
 import { z } from "zod";
 import { FORMAS_PAGAMENTO, STATUS_LANCAMENTO, TIPOS_LANCAMENTO } from "../enums";
 
-export const lancamentoCriarSchema = z.object({
-  tipo: z.enum(TIPOS_LANCAMENTO),
-  descricao: z.string().trim().min(2, "Descreva o lançamento"),
-  categoria_id: z.string().uuid("Escolha a categoria"),
-  conta_id: z.string().uuid("Escolha a conta"),
-  pessoa_id: z.string().uuid().nullish(),
-  valor: z.coerce.number().positive("Valor deve ser maior que zero"),
-  data_vencimento: z.string().date("Informe o vencimento"),
-  // Data de pagamento (retroativo): quando `pago`, permite registrar a data real
-  // do pagamento, diferente do vencimento. Omitida, usa o próprio vencimento.
-  data_pagamento: z.string().date().nullish(),
-  parcelas: z.coerce.number().int().min(1).max(60).default(1),
-  pago: z.boolean().default(false),
-  forma_pagamento: z.enum(FORMAS_PAGAMENTO).nullish(),
-});
+export const lancamentoCriarSchema = z
+  .object({
+    tipo: z.enum(TIPOS_LANCAMENTO),
+    descricao: z.string().trim().min(2, "Descreva o lançamento"),
+    categoria_id: z.string().uuid("Escolha a categoria"),
+    conta_id: z.string().uuid("Escolha a conta"),
+    pessoa_id: z.string().uuid().nullish(),
+    valor: z.coerce.number().positive("Valor deve ser maior que zero"),
+    data_vencimento: z.string().date("Informe o vencimento"),
+    // Data de pagamento (retroativo): quando `pago`, permite registrar a data real
+    // do pagamento, diferente do vencimento. Omitida, usa o próprio vencimento.
+    data_pagamento: z.string().date().nullish(),
+    parcelas: z.coerce.number().int().min(1).max(60).default(1),
+    pago: z.boolean().default(false),
+    forma_pagamento: z.enum(FORMAS_PAGAMENTO).nullish(),
+    // Interconexão (doc 02 §4): vincular um lançamento avulso a uma operação ou
+    // manutenção existente (origem rastreável) e/ou a um ativo (classificação).
+    // `operacao_id` e `manutencao_id` são origem — mutuamente exclusivos (espelha
+    // o CHECK chk_lancamento_origem_unica). `ativo_id` coexiste (decisão #53).
+    operacao_id: z.string().uuid().nullish(),
+    manutencao_id: z.string().uuid().nullish(),
+    ativo_id: z.string().uuid().nullish(),
+  })
+  .refine((v) => !(v.operacao_id && v.manutencao_id), {
+    message: "Um lançamento tem no máximo uma origem: operação ou manutenção, não as duas.",
+    path: ["manutencao_id"],
+  });
 export type LancamentoCriarInput = z.infer<typeof lancamentoCriarSchema>;
 
 // Edição depois de lançado: valor/vencimento/conta/forma e — para um lançamento

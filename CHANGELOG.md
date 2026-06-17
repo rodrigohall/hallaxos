@@ -1,5 +1,45 @@
 # Changelog
 
+## Sprint 9 — Ligar o copiloto + interconexão dos módulos (2026-06-17)
+
+Duas frentes, sem duplicar dado nem criar fonte paralela: ligar o copiloto de
+verdade em produção e começar a costurar lançamento ↔ operação/manutenção/ativo.
+
+### Copiloto: a chave chega ao container (Item 1)
+- **`IA_API_KEY` agora é injetada no `.env` do VPS pelo deploy**, a partir do
+  secret do GitHub Actions (`deploy.yml` passa o secret; `instalar.sh` faz
+  **upsert idempotente** no `.env`). Antes, definir só o secret do Actions **não
+  ligava** o copiloto: o compose lê `${IA_API_KEY}` do `.env` do VPS em runtime e
+  o rsync exclui o `.env` (decisão #54). Vazia = copiloto segue desligado (503,
+  sem custo) — degradação graciosa intacta.
+- Confirmado o fluxo ponta a ponta da Fase 1 (leitura): com a chave, `POST
+  /copiloto/perguntar` responde de verdade, a UI (painel + ⌘K) aparece quando
+  `auth.copiloto.ativo`, e cada ferramenta revalida o papel (doc 05). Modelo
+  padrão `claude-haiku-4-5` — válido e atual; trocável por `IA_MODELO`.
+
+### Interconexão no financeiro (Item 2)
+- **Lançamento avulso agora vincula** a operação **ou** manutenção (origem, no
+  máximo uma — espelha o CHECK) e/ou a um **ativo**: `POST /lancamentos` aceita
+  `operacao_id?`, `manutencao_id?`, `ativo_id?`. Antes o vínculo só nascia das
+  transições; o avulso não tinha como apontar a origem.
+- **Lançamento → ativo (novo):** nova coluna `lancamentos.ativo_id` (migration
+  0004) para o **custo direto** do ativo (IPVA, seguro, multa) que não é operação
+  nem manutenção. É **classificação que coexiste**, não uma terceira origem
+  exclusiva — o CHECK de origem única **não muda** (decisão #53). O resultado/ROI
+  e o histórico financeiro do ativo passam a somar os lançamentos **diretos** +
+  os **herdados** (operação-objeto, manutenção).
+- **Navegação cruzada:** `GET /ativos/:id/lancamentos` (diretos + herdados, com
+  `origem`); a tela do ativo marca a origem de cada lançamento e linka para a
+  operação. Consulta, nunca cópia (doc 02 §9). O guincho não conta como "1 ativo
+  da operação" (caminhão é recurso; veículo do cliente é texto — doc 03).
+
+### Qualidade
+- Testes (`node:test`): contrato aceita `ativo_id`, aceita ativo+operação juntos,
+  **rejeita** operação+manutenção juntas; integração (Postgres real na CI) prova
+  o vínculo lançamento→ativo (persistência, custo direto no resultado do ativo,
+  aparição na tela) e que o **CHECK** `chk_lancamento_origem_unica` barra
+  operação+manutenção no banco. Typecheck, build do web e suíte verdes.
+
 ## Sprint 9 — Edição pós-lançamento, datas retroativas e correções (2026-06-16)
 
 Pedidos do uso real: poder corrigir o que já foi lançado e registrar datas
