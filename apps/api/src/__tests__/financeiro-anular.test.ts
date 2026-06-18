@@ -12,7 +12,7 @@ if (!temBanco) {
 } else {
   const { anularLancamento, criarConta, criarCategoriaFinanceira, criarLancamento, listarContas } =
     await import("../services/financeiro");
-  const { montarDashboard } = await import("../services/dashboard");
+  const { montarFinanceiro } = await import("../services/dashboard");
   const { db, pool } = await import("../db/client");
   const { usuarios, lancamentos, pessoas, operacoes } = await import("../db/schema");
   const { eq } = await import("drizzle-orm");
@@ -46,8 +46,8 @@ if (!temBanco) {
 
   test("anular receita paga tira o valor do saldo e do dashboard", async () => {
     const saldoAntes = await saldoConta();
-    const dashAntes = (await montarDashboard("admin")) as { financeiro: { receitas_dia: string } };
-    const receitasAntes = Number(dashAntes.financeiro.receitas_dia);
+    const finAntes = (await montarFinanceiro("admin", "hoje", 7)) as { receitas: string };
+    const receitasAntes = Number(finAntes.receitas);
 
     const [lanc] = await criarLancamento(
       { tipo: "receita", descricao: "Receita lançada errada", categoria_id: categoriaId,
@@ -58,15 +58,15 @@ if (!temBanco) {
 
     // Conta no saldo e no dashboard enquanto está paga.
     assert.equal(await saldoConta(), saldoAntes + 500, "receita paga deve entrar no saldo");
-    const dashMeio = (await montarDashboard("admin")) as { financeiro: { receitas_dia: string } };
-    assert.equal(Number(dashMeio.financeiro.receitas_dia), receitasAntes + 500);
+    const finMeio = (await montarFinanceiro("admin", "hoje", 7)) as { receitas: string };
+    assert.equal(Number(finMeio.receitas), receitasAntes + 500);
 
     // Anula: sai dos indicadores, sem contrapartida.
     await anularLancamento(lanc!.id, "valor digitado por engano", usuarioId);
 
     assert.equal(await saldoConta(), saldoAntes, "após anular, saldo volta ao anterior");
-    const dashDepois = (await montarDashboard("admin")) as { financeiro: { receitas_dia: string } };
-    assert.equal(Number(dashDepois.financeiro.receitas_dia), receitasAntes, "some do dashboard");
+    const finDepois = (await montarFinanceiro("admin", "hoje", 7)) as { receitas: string };
+    assert.equal(Number(finDepois.receitas), receitasAntes, "some do dashboard");
 
     // Sem contrapartida: nenhum lançamento de estorno foi criado.
     const todos = await db.select().from(lancamentos).where(eq(lancamentos.contaId, contaId));
