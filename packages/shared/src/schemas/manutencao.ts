@@ -8,6 +8,7 @@ export const manutencaoCriarSchema = z.object({
   fornecedor_id: z.string().uuid().nullish(),
   data_agendada: z.string().date().nullish(),
   observacoes: z.string().trim().nullish(),
+  pecas: z.string().trim().nullish(),
 });
 export type ManutencaoCriarInput = z.infer<typeof manutencaoCriarSchema>;
 
@@ -22,6 +23,7 @@ export const manutencaoEditarSchema = z.object({
   data_conclusao: z.string().date().nullish(),
   km_no_momento: z.coerce.number().int().min(0).nullish(),
   observacoes: z.string().trim().nullish(),
+  pecas: z.string().trim().nullish(),
 });
 export type ManutencaoEditarInput = z.infer<typeof manutencaoEditarSchema>;
 

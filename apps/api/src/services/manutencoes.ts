@@ -104,6 +104,7 @@ export async function criarManutencao(input: ManutencaoCriarInput, usuarioId: st
       fornecedorId: input.fornecedor_id ?? null,
       dataAgendada: input.data_agendada ?? null,
       observacoes: input.observacoes ?? null,
+      pecas: input.pecas ?? null,
     }).returning();
     if (input.fornecedor_id) await garantirPapel(tx, input.fornecedor_id, "fornecedor");
     await registrarEvento(tx, {
@@ -131,6 +132,7 @@ export async function editarManutencao(id: string, input: ManutencaoEditarInput,
   if (input.data_conclusao !== undefined) mud.dataConclusao = input.data_conclusao ? new Date(input.data_conclusao + "T12:00:00Z") : null;
   if (input.km_no_momento !== undefined) mud.kmNoMomento = input.km_no_momento;
   if (input.observacoes !== undefined) mud.observacoes = input.observacoes;
+  if (input.pecas !== undefined) mud.pecas = input.pecas;
 
   return db.transaction(async (tx) => {
     const [ed] = await tx.update(manutencoes).set(mud).where(eq(manutencoes.id, id)).returning();

@@ -1,38 +1,132 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Wrench } from "lucide-react";
+import { Plus, Wrench, Clock, CalendarCheck, CheckCircle2 } from "lucide-react";
 import { STATUS_MANUTENCAO, TIPOS_MANUTENCAO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
-  Botao, Card, Chip, Selo, Modal, Campo, Entrada, Selecao, AreaTexto,
-  SkeletonLinhas, EstadoVazio, Lista, ListaLinha, useToast, dinheiro, dataCurta,
+  Botao, Card, Modal, Campo, Entrada, Selecao, AreaTexto,
+  Selo, SkeletonLinhas, EstadoVazio, useToast, dataCurta,
 } from "../componentes/ui";
 import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
 
 interface ManutencaoLista {
   id: string; tipo: string; status: string; descricao: string;
   ativo: string; ativoCodigo: string; fornecedor: string | null;
-  dataAgendada: string | null; custo: string;
+  dataAgendada: string | null; dataInicio: string | null; dataConclusao: string | null;
+  custo: string;
 }
 
 const ROTULO_STATUS: Record<string, string> = {
   agendada: "agendada", em_andamento: "em andamento", concluida: "concluída", cancelada: "cancelada",
 };
 
+function diasDesde(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const hoje = new Date();
+  return Math.floor((hoje.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function diasAte(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const hoje = new Date();
+  return Math.floor((d.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function Contador({ dias, modo }: { dias: number | null; modo: "andamento" | "agenda" | "concluida" }) {
+  if (dias === null) return null;
+  if (modo === "andamento") {
+    return (
+      <span className="text-xs text-mudo">
+        {dias === 0 ? "iniciada hoje" : `${dias} dia${dias !== 1 ? "s" : ""} em andamento`}
+      </span>
+    );
+  }
+  if (modo === "agenda") {
+    if (dias < 0) return <span className="text-xs font-medium text-erro">{Math.abs(dias)} dia{Math.abs(dias) !== 1 ? "s" : ""} atrasada</span>;
+    if (dias === 0) return <span className="text-xs font-medium text-alerta">hoje</span>;
+    return <span className="text-xs text-mudo">em {dias} dia{dias !== 1 ? "s" : ""}</span>;
+  }
+  // concluida
+  return (
+    <span className="text-xs text-mudo">
+      {dias === 0 ? "concluída hoje" : `há ${dias} dia${dias !== 1 ? "s" : ""}`}
+    </span>
+  );
+}
+
+function CardManutencao({ m }: { m: ManutencaoLista }) {
+  const diasAndamento = m.status === "em_andamento" ? diasDesde(m.dataInicio) : null;
+  const diasAgenda = m.status === "agendada" ? diasAte(m.dataAgendada) : null;
+  const diasConcl = (m.status === "concluida" || m.status === "cancelada") ? diasDesde(m.dataConclusao) : null;
+
+  return (
+    <Link
+      to={`/manutencoes/${m.id}`}
+      className="animar-surgir block rounded-lg border border-borda bg-painel p-3 shadow-painel hover:border-borda-forte hover:shadow-flutuante transition-all"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium leading-snug">{m.descricao}</p>
+        <Selo tom={m.status} className="shrink-0">{ROTULO_STATUS[m.status] ?? m.status}</Selo>
+      </div>
+      <p className="mt-1 text-xs text-suave">
+        <span className="font-display font-bold text-ouro">{m.ativoCodigo}</span> · {m.ativo}
+      </p>
+      {m.fornecedor && <p className="mt-0.5 text-xs text-mudo">{m.fornecedor}</p>}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {m.dataAgendada && m.status !== "em_andamento" && (
+          <span className="text-xs text-mudo">{dataCurta(m.dataAgendada)}</span>
+        )}
+        <Contador
+          dias={m.status === "em_andamento" ? diasAndamento : m.status === "agendada" ? diasAgenda : diasConcl}
+          modo={m.status === "em_andamento" ? "andamento" : m.status === "agendada" ? "agenda" : "concluida"}
+        />
+      </div>
+    </Link>
+  );
+}
+
 export function Manutencoes() {
-  const [status, setStatus] = useState<string | null>(null);
   const [nova, setNova] = useState(false);
   const { pode } = useAuth();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["manutencoes", status],
+    queryKey: ["manutencoes"],
     queryFn: () =>
       api.get<{ dados: ManutencaoLista[]; meta: { total: number } }>(
-        `/manutencoes?por_pagina=50${status ? `&status=${status}` : ""}`
+        `/manutencoes?por_pagina=200`
       ),
   });
+
+  const todas = data?.dados ?? [];
+  const emAndamento = todas.filter((m) => m.status === "em_andamento");
+  const agendadas = todas.filter((m) => m.status === "agendada");
+  const concluidas = todas.filter((m) => m.status === "concluida" || m.status === "cancelada");
+
+  const COLUNAS = [
+    {
+      titulo: "Em andamento",
+      icone: Clock,
+      cor: "text-alerta",
+      items: emAndamento,
+    },
+    {
+      titulo: "Agendadas",
+      icone: CalendarCheck,
+      cor: "text-info",
+      items: agendadas,
+    },
+    {
+      titulo: "Concluídas",
+      icone: CheckCircle2,
+      cor: "text-ok",
+      items: concluidas.slice(0, 15),
+      extras: concluidas.length > 15 ? concluidas.length - 15 : 0,
+    },
+  ] as const;
 
   return (
     <div className="space-y-4">
@@ -45,41 +139,46 @@ export function Manutencoes() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <Chip ativo={status === null} onClick={() => setStatus(null)}>todas</Chip>
-        {STATUS_MANUTENCAO.map((s) => (
-          <Chip key={s} ativo={status === s} onClick={() => setStatus(status === s ? null : s)}>
-            {ROTULO_STATUS[s]}
-          </Chip>
-        ))}
-      </div>
-
       {isLoading ? (
         <SkeletonLinhas linhas={4} />
-      ) : !data || data.dados.length === 0 ? (
-        <Card>
+      ) : todas.length === 0 ? (
+        <div className="rounded-lg border border-borda bg-painel p-8">
           <EstadoVazio icone={Wrench} titulo="Nenhuma manutenção" descricao="Agende a manutenção de um ativo para começar." />
-        </Card>
+        </div>
       ) : (
-        <>
-          <Lista>
-            {data.dados.map((m) => (
-              <ListaLinha
-                key={m.id}
-                para={`/manutencoes/${m.id}`}
-                titulo={<>{m.descricao} · <span className="text-suave">{m.ativo}</span></>}
-                subtitulo={
-                  `${m.tipo}` +
-                  (m.fornecedor ? ` · ${m.fornecedor}` : "") +
-                  (m.dataAgendada ? ` · ${dataCurta(m.dataAgendada)}` : "") +
-                  (Number(m.custo) > 0 ? ` · ${dinheiro(m.custo)}` : "")
-                }
-                direita={<Selo tom={m.status}>{ROTULO_STATUS[m.status] ?? m.status}</Selo>}
-              />
-            ))}
-          </Lista>
-          <p className="text-xs text-mudo">{data.meta.total} manutenção(ões)</p>
-        </>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {COLUNAS.map((col) => {
+            const Icone = col.icone;
+            return (
+              <div key={col.titulo} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Icone className={`h-4 w-4 ${col.cor}`} />
+                  <h2 className={`text-sm font-semibold ${col.cor}`}>{col.titulo}</h2>
+                  <span className="ml-auto rounded-full bg-elevado px-2 py-0.5 text-xs font-medium text-mudo">
+                    {col.items.length}{"extras" in col && col.extras > 0 ? `+${col.extras}` : ""}
+                  </span>
+                </div>
+                {col.items.length === 0 ? (
+                  <div className="rounded-lg border border-borda bg-painel/50 py-6 text-center">
+                    <p className="text-xs text-mudo">Nenhuma</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {col.items.map((m) => <CardManutencao key={m.id} m={m} />)}
+                    {"extras" in col && col.extras > 0 && (
+                      <p className="text-center text-xs text-mudo">
+                        + {col.extras} concluída(s) —{" "}
+                        <Link to="/manutencoes?status=concluida" className="text-ouro hover:underline">
+                          ver todas
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {nova && <ModalNova aoFechar={() => setNova(false)} />}
@@ -109,6 +208,7 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
         fornecedor_id: fornecedor?.id ?? null,
         data_agendada: campos.data_agendada || null,
         observacoes: campos.observacoes || null,
+        pecas: campos.pecas || null,
       });
       fila.invalidateQueries({ queryKey: ["manutencoes"] });
       notificar({ tipo: "ok", titulo: "Manutenção agendada" });
@@ -130,12 +230,15 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
               {TIPOS_MANUTENCAO.map((t) => <option key={t} value={t}>{t}</option>)}
             </Selecao>
           </Campo>
-          <Campo rotulo="Data agendada (opcional)">
+          <Campo rotulo="Data agendada">
             <Entrada type="date" value={campos.data_agendada ?? ""} onChange={set("data_agendada")} />
           </Campo>
         </div>
-        <Campo rotulo="Descrição">
-          <Entrada value={campos.descricao ?? ""} onChange={set("descricao")} placeholder="Ex.: Revisão dos 30 mil km" />
+        <Campo rotulo="Descrição do serviço">
+          <Entrada value={campos.descricao ?? ""} onChange={set("descricao")} placeholder="Ex.: Revisão dos 30 mil km, troca de óleo" />
+        </Campo>
+        <Campo rotulo="Peças / material (opcional)" dica="Itens a serem utilizados ou já utilizados">
+          <AreaTexto value={campos.pecas ?? ""} onChange={set("pecas")} placeholder="Ex.: Óleo 5W30, filtro de ar, pastilhas dianteiras" />
         </Campo>
         <div>
           <Seletor
@@ -171,9 +274,6 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
   );
 }
 
-// Cadastro rápido de oficina (PJ marcada como oficina) sem sair da manutenção —
-// mesma ideia do "+ nova categoria/conta" no lançamento. Sem tabela paralela:
-// é uma `pessoa` com o papel `oficina` (doc 02 §1).
 function NovaOficinaInline({
   aoCriar, aoCancelar,
 }: { aoCriar: (item: ItemSeletor) => void; aoCancelar: () => void }) {

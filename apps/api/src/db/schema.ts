@@ -193,6 +193,7 @@ export const manutencoes = pgTable("manutencoes", {
   dataConclusao: timestamp("data_conclusao", { withTimezone: true }),
   kmNoMomento: integer("km_no_momento"),
   observacoes: text("observacoes"),
+  pecas: text("pecas"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

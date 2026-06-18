@@ -19,6 +19,7 @@ interface ManutencaoDetalheDados {
   fornecedor_nome: string | null; data_agendada: string | null;
   data_inicio: string | null; data_conclusao: string | null;
   km_no_momento: number | null; observacoes: string | null;
+  pecas: string | null;
   lancamentos: Array<{ id: string; tipo: string; descricao: string; valor: string; status: string; data_vencimento: string; data_pagamento: string | null }>;
   proximasTransicoes: string[];
 }
@@ -42,7 +43,7 @@ export function ManutencaoDetalhe() {
   const [editando, setEditando] = useState(false);
   const [ed, setEd] = useState({
     tipo: "", descricao: "", observacoes: "", data_agendada: "",
-    data_inicio: "", data_conclusao: "", km_no_momento: "",
+    data_inicio: "", data_conclusao: "", km_no_momento: "", pecas: "",
   });
   const [salvandoEd, setSalvandoEd] = useState(false);
 
@@ -110,6 +111,7 @@ export function ManutencaoDetalhe() {
       data_inicio: m.data_inicio ? m.data_inicio.slice(0, 10) : "",
       data_conclusao: m.data_conclusao ? m.data_conclusao.slice(0, 10) : "",
       km_no_momento: m.km_no_momento != null ? String(m.km_no_momento) : "",
+      pecas: m.pecas ?? "",
     });
     setEditando(true);
   };
@@ -124,6 +126,7 @@ export function ManutencaoDetalhe() {
         data_inicio: ed.data_inicio || null,
         data_conclusao: ed.data_conclusao || null,
         km_no_momento: ed.km_no_momento ? Number(ed.km_no_momento) : null,
+        pecas: ed.pecas || null,
       });
       invalidar();
       notificar({ tipo: "ok", titulo: "Manutenção atualizada" });
@@ -154,15 +157,21 @@ export function ManutencaoDetalhe() {
       </div>
 
       {podeTransicionar && m.proximasTransicoes.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3 rounded-lg border border-borda bg-painel p-3">
           {m.proximasTransicoes.includes("em_andamento") && (
-            <Botao tamanho="sm" onClick={iniciar}><Play className="h-3.5 w-3.5" /> Iniciar</Botao>
+            <Botao onClick={iniciar} className="flex-1 justify-center">
+              <Play className="h-4 w-4" /> Iniciar manutenção
+            </Botao>
           )}
           {m.proximasTransicoes.includes("concluida") && (
-            <Botao tamanho="sm" onClick={() => setAcao("concluir")}><CheckCircle2 className="h-3.5 w-3.5" /> Concluir</Botao>
+            <Botao onClick={() => setAcao("concluir")} className="flex-1 justify-center">
+              <CheckCircle2 className="h-4 w-4" /> Concluir manutenção
+            </Botao>
           )}
           {m.proximasTransicoes.includes("cancelada") && (
-            <Botao variante="perigo" tamanho="sm" onClick={() => setAcao("cancelar")}><XCircle className="h-3.5 w-3.5" /> Cancelar</Botao>
+            <Botao variante="perigo" tamanho="sm" onClick={() => setAcao("cancelar")}>
+              <XCircle className="h-3.5 w-3.5" /> Cancelar
+            </Botao>
           )}
         </div>
       )}
@@ -179,6 +188,12 @@ export function ManutencaoDetalhe() {
               {m.data_conclusao && <div><dt className="inline text-suave">Concluída: </dt><dd className="inline">{dataHora(m.data_conclusao)}</dd></div>}
               {m.km_no_momento != null && <div><dt className="inline text-suave">Km: </dt><dd className="inline">{m.km_no_momento.toLocaleString("pt-BR")}</dd></div>}
               {m.observacoes && <p className="pt-2 text-suave">{m.observacoes}</p>}
+              {m.pecas && (
+                <div className="pt-2">
+                  <dt className="text-xs font-medium text-suave">Peças / material</dt>
+                  <dd className="mt-0.5 whitespace-pre-wrap text-sm">{m.pecas}</dd>
+                </div>
+              )}
             </dl>
           </Card>
           <Documentos entidadeTipo="manutencao" entidadeId={m.id} />
@@ -260,6 +275,9 @@ export function ManutencaoDetalhe() {
           </div>
           <Campo rotulo="Observações">
             <AreaTexto value={ed.observacoes} onChange={(e) => setEd({ ...ed, observacoes: e.target.value })} />
+          </Campo>
+          <Campo rotulo="Peças / material">
+            <AreaTexto value={ed.pecas} onChange={(e) => setEd({ ...ed, pecas: e.target.value })} placeholder="Itens utilizados ou previstos" />
           </Campo>
           <div className="flex justify-end gap-2">
             <Botao variante="fantasma" onClick={() => setEditando(false)}>Cancelar</Botao>
