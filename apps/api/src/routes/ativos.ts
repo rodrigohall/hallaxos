@@ -35,6 +35,7 @@ export default async function rotasAtivos(app: FastifyInstance) {
       busca: filtros.busca,
       status: filtros.status,
       categoriaId: filtros.categoria_id,
+      categoriaNome: filtros.categoria_nome,
       incluirArquivados: filtros.incluir_arquivados,
       pagina,
       porPagina: por_pagina,

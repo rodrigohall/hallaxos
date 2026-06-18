@@ -49,6 +49,7 @@ export const ativoFiltrosSchema = z.object({
   busca: z.string().optional(),
   status: z.enum(STATUS_ATIVO).optional(),
   categoria_id: z.string().uuid().optional(),
+  categoria_nome: z.string().optional(),
   incluir_arquivados: z.coerce.boolean().default(false),
 });
 

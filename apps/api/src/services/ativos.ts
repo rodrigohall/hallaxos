@@ -31,6 +31,7 @@ export async function listarAtivos(opts: {
   busca?: string;
   status?: StatusAtivo;
   categoriaId?: string;
+  categoriaNome?: string;
   incluirArquivados?: boolean;
   pagina: number;
   porPagina: number;
@@ -39,6 +40,7 @@ export async function listarAtivos(opts: {
   if (!opts.incluirArquivados) filtros.push(isNull(ativos.deletedAt));
   if (opts.status) filtros.push(eq(ativos.status, opts.status));
   if (opts.categoriaId) filtros.push(eq(ativos.categoriaId, opts.categoriaId));
+  if (opts.categoriaNome) filtros.push(ilike(ativoCategorias.nome, `%${opts.categoriaNome}%`));
   if (opts.busca) {
     const b = `%${opts.busca}%`;
     const placa = opts.busca.toUpperCase().replace(/[^A-Z0-9]/g, "");
