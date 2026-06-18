@@ -70,7 +70,7 @@ function CardManutencao({ m }: { m: ManutencaoLista }) {
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug">{m.descricao}</p>
-        <Selo tom={m.status} className="shrink-0">{ROTULO_STATUS[m.status] ?? m.status}</Selo>
+        <span className="shrink-0"><Selo tom={m.status}>{ROTULO_STATUS[m.status] ?? m.status}</Selo></span>
       </div>
       <p className="mt-1 text-xs text-suave">
         <span className="font-display font-bold text-ouro">{m.ativoCodigo}</span> · {m.ativo}
