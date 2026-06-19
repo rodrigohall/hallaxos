@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 9 — edição pós-lançamento,
-> datas retroativas e correções (2026-06-16), conferida contra o código.
+> assumida — não esquecimento. Última revisão: Sprint 10 — UI repaginada
+> (Dashboard, Ativos, Operações, Manutenções) — 2026-06-18, conferida contra o código.
 
 ## Estado atual — o que está em produção
 
@@ -12,37 +12,29 @@
 | Design system Hallax (tokens, componentes, dashboard centro de comando) | ✅ Sprint 1.5 |
 | Deploy VPS em um comando + CI/CD por push (GitHub Actions) | ✅ |
 | Clientes/Pessoas (CRUD, papéis automáticos, timeline, arquivamento protegido) | ✅ Sprint 1 |
-| Ativos (núcleo + veicular, categorias, fotos/documentos, comentários, timeline agregada, FIPE, expectativa de lucro de venda) | ✅ Sprints 2 e 5 |
+| Ativos (núcleo + veicular, categorias, fotos/documentos, comentários, timeline agregada, FIPE, expectativa de lucro de venda, diária base, relatório patrimônio) | ✅ Sprints 2, 5, 10 |
 | Financeiro (lançamentos, parcelas até 60x, estorno, contas com saldo derivado, fluxo de caixa) | ✅ Sprint 3 |
-| Relatórios (resultado/ROI por ativo, DRE mensal e por categoria) | ✅ Sprint 3 |
-| Operações unificadas: Guincho · Locação · Venda · Compra (máquinas de estado, financeiro automático, CNH bloqueia ativação) | ✅ Sprints 4 e 5 |
+| Relatórios (resultado/ROI por ativo, DRE mensal e por categoria, patrimônio) | ✅ Sprints 3, 10 |
+| Operações unificadas: Guincho · Locação · Venda · Compra (máquinas de estado, financeiro automático, CNH bloqueia ativação, CEP, auto-fill, desconto, retroativo) | ✅ Sprints 4, 5, 10 |
 | Anexos transversais (upload múltiplo, octet-stream/HEIC, foto principal, lightbox) | ✅ Sprints 2 e 5 |
-| Manutenções (máquina de estados, custo, hodômetro) e Agenda (calendário derivado + compromissos) | ✅ Sprint 6 |
+| Manutenções (máquina de estados, custo, hodômetro, kanban 3 colunas, contadores de dias, campo peças) e Agenda (calendário derivado + compromissos) | ✅ Sprints 6, 10 |
+| Dashboard (relógio ao vivo, seletor de período, split em 2 endpoints, frota navegável, aluguéis em andamento) | ✅ Sprint 10 |
 | Confiança: backup automático do Postgres, suíte de testes no CI, bloqueio progressivo de login, troca de senha própria | ✅ Sprint 7 |
 | Notificações (sino + job de prazos), tags, favoritos, rate limiting (200 req/min por IP), auditoria de negações | ✅ Sprint 8 |
+| Copiloto de IA Fase 1 (leitura guardrailada) + Fase 2 (propor lançamento com confirmação) | ✅ Sprint 9 |
 
 ## Pendências em aberto (consolidado, conferido no código)
 
 ### Funcional
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| ~~Aba de Manutenções quebrada em produção~~ | ✅ Corrigido — `WHERE` cru qualificado por `m` na lista (bug latente do Sprint 6, `42P01`). Teste de integração + Postgres na CI | — |
-| ~~Exclusão permanente de foto no lugar errado~~ | ✅ `DELETE /documentos/:id?permanente=true` (hard delete arquivo + linha) | — |
-| ~~Lançamento lançado errado ainda contava no dashboard~~ | ✅ `POST /lancamentos/:id/anular` (admin) — `cancelado` sem contrapartida, preserva vínculo de origem (decisão 41) | — |
-| ~~Manutenções sem API/UI~~ | ✅ Entregue no Sprint 6 (módulo completo com máquina de estados) | — |
-| ~~Agenda (tela calendário)~~ | ✅ Entregue no Sprint 6 (calendário mensal derivado + compromissos manuais) | — |
-| ~~Editar op/manutenção/financeiro depois de lançados~~ | ✅ Sprint 9 — lançamento gerado/pago editável com auditoria (pago só admin, decisão #48); `PATCH /operacoes/:id` (descritivos+datas, #49); manutenção editável fora de `agendada` (#50). Valor da operação ajusta-se pelo lançamento, sem recálculo automático | — |
-| ~~Datas retroativas (op/manutenção/financeiro com data antiga)~~ | ✅ Sprint 9 — `data_inicio`/`data`/`data_conclusao`/`data_pagamento` opcionais; honra a data informada (#51) | — |
-| ~~Manutenção "Iniciar" dava erro interno~~ | ✅ Sprint 9 — lia o registro dentro da transação aberta; agora lê após o commit (#52), com teste de integração | — |
-| ~~Excluir foto não funcionava (iPhone sem botão; PC não refletia)~~ | ✅ Sprint 9 — controles da foto sempre visíveis (não só hover) + exclusão aguarda o refetch | — |
-| ~~Edição dos lançamentos antes de finalizar (conta, forma, parcelas, vencimentos)~~ | ✅ Sprint 9 — bloco `financeiro` na transição + `previa-financeira`; persiste só ao confirmar | — |
-| ~~"Usar endereço do cliente" no guincho~~ | ✅ Sprint 9 — atalho preenche origem/destino a partir do endereço da pessoa (texto, sem duplicar) | — |
-| ~~Cadastro e busca de oficinas por nome~~ | ✅ Sprint 9 — papel `oficina` em `pessoas`, autocomplete `?papel=oficina` + cadastro inline | — |
-| ~~Notificações: tabela existe, gatilhos não disparam, sem sino na UI~~ | ✅ Sprint 8 — service + job de prazos (devolução, vencimentos, CNH/documento, manutenção) + sino na UI | — |
-| ~~Tags e favoritos: tabelas sem API/UI~~ | ✅ Sprint 8 — services, rotas e UI (estrela + chips de tags) na tela de ativo | — |
-| Guard anti-duplicação (porta de entrada única para ativo/compra/lançamento) | Decisão #58 — substitui Sprint 5 "compra vincula ativo" | Sprint 10 Tab 2 |
-| Autocomplete no formulário "novo lançamento" para vincular (UI) | Sprint 9 interconexão | Sprint 10 |
-| Link do lançamento → origem na tela do Financeiro | Sprint 9 interconexão | Sprint 10 |
+| ~~Guard anti-duplicação (porta de entrada única para ativo/compra/lançamento)~~ | ✅ Sprint 10 — decisão #58 (mão única por porta de entrada) | — |
+| ~~Dashboard com relógio e seletor de período~~ | ✅ Sprint 10 — `RelogioVivo`, `SeletorPeriodo`, split em 2 endpoints (decisão #60) | — |
+| ~~Ativos com diária base e relatório patrimônio~~ | ✅ Sprint 10 — `valor_diaria_base`, lucro presumido (decisão #59), `RelatorioPatrimonio` | — |
+| ~~Operações com CEP, auto-fill, desconto e retroativo~~ | ✅ Sprint 10 — ViaCEP, auto-fill locação (diária+caução), desconto R$/%, toggle retroativo | — |
+| ~~Manutenções em kanban com contadores de dias e campo peças~~ | ✅ Sprint 10 — kanban 3 colunas, `diasDesde`/`diasAte`/`Contador`, migration 0007, field `pecas` | — |
+| ~~paginacaoSchema max 100 → 200~~ | ✅ Sprint 10 — kanban precisa de `por_pagina=200` | — |
+| Funcionalidades novas (a pedir) | — | Próximo sprint |
 
 ### Segurança e confiabilidade
 | Pendência | Contexto | Plano |
@@ -93,4 +85,11 @@ iniciar, foto excluir, endereço do cliente no guincho, cadastro de oficinas) e
 estabilização do deploy (CORS restritivo, trigger de objeto único, job de
 referências órfãs, retry no instalador).
 
-### Sprint 10 — Repaginação de UI e interligação 🚧 EM ANDAMENTO
+### Sprint 10 — Repaginação de UI e interligação ✅ ENTREGUE
+
+Dashboard com relógio ao vivo, seletor de período (hoje/semana/mês/ano/últimos 30d),
+split em dois endpoints (operacional + financeiro). Ativos com guard anti-duplicação,
+diária base, lucro presumido e relatório de patrimônio. Operações com filtro por tipo
+em botões grandes, CEP com autocomplete (ViaCEP), auto-fill de diária/caução, desconto
+R$/%, toggle retroativo. Manutenções em kanban 3 colunas com contadores de dias e
+campo peças. 60 testes verdes. Deploy confirmado (run `27735492174`, `success`).
