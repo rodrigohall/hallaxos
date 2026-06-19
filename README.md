@@ -108,55 +108,29 @@ Documentos vivos, sincronizados a cada sprint: [`CHANGELOG.md`](CHANGELOG.md) ·
 
 ## Status do projeto
 
-**Sprint 8 concluída — em produção.** Sistema operacional de ponta a ponta:
-login e permissões por papel, clientes, **ativos** (fotos, documentos, FIPE,
-resultado financeiro e expectativa de lucro de venda), **operações unificadas**
-(guincho · locação · venda · compra, com máquinas de estado e financeiro
-automático), **financeiro** (parcelas, estorno, contas, fluxo de caixa),
-**relatórios** (ROI por ativo, DRE), **manutenções** e **agenda** derivada,
-busca global, timeline imutável e dashboard. Confiabilidade: **backup
-automático** do Postgres, **suíte de testes** como porta de qualidade no CI,
-**bloqueio progressivo de login** e troca de senha própria. Serviços
-transversais: **notificações** (sino na UI + job de prazos), **tags**,
-**favoritos**, **rate limiting** (200 req/min por IP) e auditoria de negações.
-Deploy contínuo no VPS a cada push.
+**Sprint 10 concluída — em produção (18/jun/2026).** As quatro abas principais
+foram completamente repaginadas:
 
-**Sprint 9 em andamento — Copiloto de IA (leitura + UI, em produção).**
-`POST /copiloto/perguntar` orquestra o modelo Claude por *function calling* sobre
-os **serviços que as telas já usam** (busca, dashboard, operações, relatórios),
-sem dados próprios e revalidando o papel do usuário em cada ferramenta. **Fase 1
-é só leitura** ("quanto faturei em maio?", "quais guinchos estão abertos?"): cita
-as fontes e nunca inventa número. UI no **⌘K + painel lateral** com fontes
-clicáveis. **Desligado por padrão** (sem custo) até o secret `IA_API_KEY`; modelo
-`claude-haiku-4-5` (configurável por `IA_MODELO`). Escrita guardrailada fica para
-a Fase 2 e a estabilização do deploy segue pendente. Roadmap em
-[`docs/pendencias.md`](docs/pendencias.md).
+- **Dashboard**: relógio ao vivo, seletor de período nos KPIs financeiros
+  (hoje/semana/mês/ano/últimos 30d), frota clicável, aluguéis em andamento.
+  Bloco financeiro separado em `GET /dashboard/financeiro?periodo=X` (decisão #60)
+  — não recarrega tudo ao trocar de período.
+- **Ativos**: guard anti-duplicação (decisão #58) ao criar ativo já comprado,
+  campo de diária base, lucro presumido (decisão #59) e relatório de patrimônio.
+- **Operações**: filtro por tipo em botões grandes com ícone, CEP com autocomplete
+  nos campos de origem/destino do guincho (ViaCEP), auto-fill da diária e caução
+  ao selecionar ativo na locação, desconto R$/% e toggle retroativo.
+- **Manutenções**: kanban 3 colunas (em andamento · agendadas · concluídas),
+  contadores de dias por card, campo peças/material (`ALTER TABLE manutencoes ADD
+  COLUMN pecas text`, migration 0007).
 
-**Atritos do uso real resolvidos (jun/2026):** edição dos lançamentos
-financeiros **antes de finalizar** a operação (conta, forma, parcelas e
-vencimentos, persistindo só ao confirmar), atalho **"Usar endereço do cliente"**
-no guincho e **cadastro/busca de oficinas** (papel `oficina` em Pessoas, sem
-tabela nova). Detalhes no [`CHANGELOG.md`](CHANGELOG.md).
+60 testes verdes. Deploy automático confirmado (run `27735492174`, `success`).
 
-**Ajustes recentes em produção (jun/2026):** correção do login (rate-limit
-incompatível com Fastify 5), **upload pelo iPhone** (iOS Safari invalidava o
-arquivo ao limpar o input cedo demais), **criar categoria/conta direto no
-lançamento** (necessário porque em produção não há seed) e **CEP com
-autocomplete** no cadastro de cliente (ViaCEP). Detalhes no
+**Sprints anteriores em produção:** sistema operacional completo (login,
+permissões, clientes, ativos, operações unificadas, financeiro, relatórios,
+manutenções, agenda, busca global, timeline, notificações, tags, favoritos,
+copiloto de IA Fase 1+2, backup automático). Detalhes completos no
 [`CHANGELOG.md`](CHANGELOG.md).
-
-**Correções do uso real II (15/jun/2026 — em produção):** a **aba de Manutenções**
-voltou a abrir (bug latente desde o Sprint 6: `WHERE` cru referenciando o nome
-real da tabela depois do alias `m`, `42P01`); **exclusão permanente de foto**
-(`DELETE /documentos/:id?permanente=true` faz hard delete real do arquivo + linha,
-com modal e evento na timeline); e **anulação de lançamento** (`POST
-/lancamentos/:id/anular`, só admin) que tira o valor de todos os indicadores sem
-contrapartida, **preservando a linha e o vínculo origem→lançamento** — diferente
-do estorno e do hard delete. Porta de qualidade: a CI ganhou um **Postgres real**
-no job `verificar` + **testes de integração** (lista de manutenções e anulação),
-porque erro de SQL cru passa pelo typecheck/build e só estoura em runtime. **33
-testes verdes; deploy automático no VPS concluído** (run verde, sem timeout SSH).
-Detalhes no [`CHANGELOG.md`](CHANGELOG.md) e em [`docs/decisoes.md`](docs/decisoes.md) (#41).
 
 ### Continuar o desenvolvimento (para uma nova sessão)
 
@@ -165,18 +139,17 @@ Detalhes no [`CHANGELOG.md`](CHANGELOG.md) e em [`docs/decisoes.md`](docs/deciso
   nesse branch). Desenvolva e dê push aqui. Os demais branches `claude/*` são
   obsoletos — podem ser apagados na UI do GitHub (já estão contidos no histórico
   deste).
-- **Estado e próximos passos:** consolidados em [`CHANGELOG.md`](CHANGELOG.md) e
-  [`docs/pendencias.md`](docs/pendencias.md) (seção Roadmap → Sprint 9).
+- **Último estado entregue:** Sprint 10 completa — 4 abas repaginadas + 3
+  correções de build/runtime. Veja o topo do [`CHANGELOG.md`](CHANGELOG.md).
 - **Operação/deploy do servidor:** leia o runbook
   [`docs/operacao-vps.md`](docs/operacao-vps.md) — VPS Hostinger, fluxo de
   deploy, o problema intermitente de SSH e como contornar (re-run ou aplicação
-  manual pelo terminal), e a recuperação do `.env`. Importante porque o deploy
-  automático ainda falha às vezes e exige passos manuais no VPS.
-- **Próximas tarefas conhecidas:** copiloto com escrita guardrailada (Fase 2 —
-  proposta de ação confirmada pelo humano, via endpoints existentes),
-  **estabilizar o deploy** (timeout SSH intermitente do VPS — investigar
-  fail2ban/firewall da Hostinger), e ligar a IA quando houver chave
-  (`IA_API_KEY`). O usuário tem mais funcionalidades a pedir na próxima sessão.
+  manual pelo terminal), e a recuperação do `.env`.
+- **Próximas tarefas conhecidas** (a pedir na próxima sessão): funcionalidades
+  novas a critério do dono do produto; copiloto Fase 2 com mais ações de escrita;
+  estabilização do timeout SSH do VPS (fail2ban/firewall Hostinger).
+- **`paginacaoSchema` max:** 200 (foi 100 até o Sprint 10 — manutenção kanban
+  precisava de `por_pagina=200`).
 
 > **Fluxo de trabalho desta linha de desenvolvimento:** o dono do produto tem
 > acesso ao terminal do VPS (Hostinger) e topa rodar comandos colados quando o

@@ -1,5 +1,88 @@
 # Changelog
 
+## Sprint 10 — UI repaginada: Dashboard, Ativos, Operações e Manutenções (2026-06-18)
+
+Quatro abas completamente repaginadas em sequência. Nenhuma tabela nova, nenhum dado
+duplicado — só novas formas de consultar e exibir o núcleo.
+
+### Dashboard repaginado (Tab 1)
+
+- **Relógio ao vivo** (`RelogioVivo`): hora atual do VPS exibida no cabeçalho do
+  dashboard, atualizada a cada segundo — indica que o sistema está respondendo.
+- **Seletor de período** (`SeletorPeriodo`): KPIs financeiros filtráveis por
+  *hoje / semana / mês / ano / últimos 30 dias*, com chips clicáveis. Dispara
+  `GET /dashboard/financeiro?periodo=X&a_vencer=Y`.
+- **Dashboard separado em dois endpoints** (decisão #60): `GET /dashboard` devolve
+  o bloco operacional (frota, guinchos, locações, agenda, alertas); `GET
+  /dashboard/financeiro` devolve receitas, despesas, fluxo 7 dias, contas vencidas
+  e a vencer — filtrado por papel (`dashboard_financeiro`). Evita que um único
+  payload enorme seja recarregado a cada mudança de período.
+- **Frota navegável**: cards de ativo clicáveis abrindo a tela de detalhe; status
+  exibido por `Selo` colorido.
+- **Aluguéis em andamento**: lista inline com cliente, ativo e data de início.
+
+### Ativos repaginados (Tab 2)
+
+- **Guard anti-duplicação** (decisão #58): ao criar ativo, pode-se marcar "já
+  comprado" — gera ativo + operação de compra em cadeia unidirecional (ativo →
+  compra). Criar compra separadamente também pode gerar ativo, mas nunca em cadeia
+  que recriaria o outro. Mão única por porta de entrada.
+- **Campo de diária base** (`valor_diaria_base`) no cadastro do ativo: preenche
+  automaticamente o valor de diária ao abrir uma locação para este ativo.
+- **Lucro presumido** (decisão #59): exibido na tela do ativo como expectativa de
+  receita de locação — calcula `diária × (dias desde aquisição × taxa de ocupação)`.
+- **Relatório Patrimônio** (`RelatorioPatrimonio`): nova aba na tela de Ativos
+  com valor patrimonial total, breakdown por status e por categoria, exportável.
+- `categoria_nome` adicionado ao `ativoFiltrosSchema` e ao `listarAtivos` — permite
+  filtrar ativos pelo nome da categoria (usado no Seletor de guincho:
+  `categoria_nome=Caminhão`).
+
+### Operações repaginadas (Tab 3)
+
+- **Filtro por tipo em botões grandes**: em vez de chips, 4 botões ícone-texto
+  (`grid-cols-2 sm:grid-cols-4`) com os ícones Truck / KeyRound / TrendingUp /
+  ShoppingCart — visualmente mais claros.
+- **CEP com autocomplete** nos campos de origem e destino do guincho: ao sair do
+  campo CEP (`onBlur`), consulta a ViaCEP e preenche o endereço completo.
+- **Auto-fill da locação**: ao selecionar o ativo, preenche `valor_diaria` a partir
+  de `valor_diaria_base` do ativo e sugere `caucao = valorFipe × 0,05`.
+- **Desconto com toggle R$/%)**: campo de desconto com botão de alternância entre
+  valor absoluto e percentual.
+- **Retroativo toggle**: checkbox que exibe campo `data_inicio` para registrar
+  operações com data passada.
+- Seletor de caminhão guincho filtrado por `status=disponivel&categoria_nome=Caminhão`.
+
+### Manutenções repaginadas (Tab 4)
+
+- **Kanban 3 colunas**: *Em andamento* / *Agendadas* / *Concluídas* — as
+  manutenções sempre foram uma lista plana; agora são agrupadas por estado.
+- **Contadores de dias** por card: "X dias em andamento", "hoje", "X dias
+  atrasada", "há X dias" — calculados no cliente sem dado novo.
+- **Campo peças/material** (`pecas: text NULL`): novo campo em manutenções para
+  registrar os itens utilizados ou previstos. Migration `0007_manutencao_pecas.sql`;
+  schema Drizzle, schemas Zod (criar/editar), service (criar/editar) e UI (criar
+  modal + edição pós-lançamento) atualizados.
+- Botões Iniciar/Concluir maiores (`flex-1 justify-center`) em container destacado.
+
+### Correções desta sprint
+
+- **`paginacaoSchema` max 100 → 200**: o kanban pedia `por_pagina=200` mas o
+  schema limitava a 100, resultando em 400 em toda listagem de manutenções —
+  aba em branco.
+- **`Selo` não aceita `className`**: agente havia escrito
+  `<Selo className="shrink-0">` — envolto em `<span>` para corrigir a falha de
+  build.
+- **Teste `financeiro-anular.test.ts`**: após a separação do dashboard em dois
+  endpoints, o teste chamava `montarDashboard("admin").financeiro.receitas_dia`
+  que não existe mais. Corrigido para `montarFinanceiro("admin","hoje",7).receitas`.
+
+### Qualidade
+
+60 testes verdes (Postgres real na CI). Typecheck e build limpos. Deploy automático
+confirmado (run `27735492174`, `success`, commit `ff2b2a4`).
+
+---
+
 ## Sprint 9 — Estabilizar deploy + dívida técnica (2026-06-17)
 
 Fechando os Itens 4 e 5 do sprint.
