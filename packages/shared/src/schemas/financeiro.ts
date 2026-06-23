@@ -43,6 +43,8 @@ export const lancamentoEditarSchema = z.object({
   data_vencimento: z.string().date().optional(),
   data_pagamento: z.string().date().optional(),
   forma_pagamento: z.enum(FORMAS_PAGAMENTO).nullish(),
+  // Linkar lançamento avulso a um ativo (classificação, decisão #53).
+  ativo_id: z.string().uuid().nullish(),
 });
 export type LancamentoEditarInput = z.infer<typeof lancamentoEditarSchema>;
 
@@ -53,6 +55,10 @@ export const lancamentoPagarSchema = z.object({
 });
 export type LancamentoPagarInput = z.infer<typeof lancamentoPagarSchema>;
 
+// Tipos de origem para drill-down do dashboard financeiro por origem.
+export const TIPOS_ORIGEM_LANCAMENTO = ["guincho", "locacao", "venda", "compra", "manutencao", "avulso"] as const;
+export type TipoOrigemLancamento = (typeof TIPOS_ORIGEM_LANCAMENTO)[number];
+
 export const lancamentoFiltrosSchema = z.object({
   tipo: z.enum(TIPOS_LANCAMENTO).optional(),
   status: z.enum([...STATUS_LANCAMENTO, "vencido"] as const).optional(),
@@ -60,6 +66,8 @@ export const lancamentoFiltrosSchema = z.object({
   conta_id: z.string().uuid().optional(),
   pessoa_id: z.string().uuid().optional(),
   busca: z.string().optional(),
+  // Drill-down por origem/tipo — usado pelo Dashboard Financeiro.
+  operacao_tipo: z.enum(TIPOS_ORIGEM_LANCAMENTO).optional(),
 });
 
 export const contaCriarSchema = z.object({

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, CarFront, Workflow, Wrench, CalendarDays,
-  CircleDollarSign, BarChart3, ShieldCheck, KeyRound, LogOut, Menu, X, type LucideIcon,
+  CircleDollarSign, BarChart3, ShieldCheck, KeyRound, LogOut, Menu, X,
+  TrendingUp, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
@@ -38,6 +39,9 @@ export function Layout() {
     { para: "/clientes", rotulo: "Clientes", icone: Users },
     ...(pode("lancamentos", "ler")
       ? [{ para: "/financeiro", rotulo: "Financeiro", icone: CircleDollarSign }]
+      : []),
+    ...(pode("dashboard_financeiro", "ler")
+      ? [{ para: "/dashboard-financeiro", rotulo: "Dashboard $", icone: TrendingUp }]
       : []),
     ...(pode("relatorios_financeiros", "ler")
       ? [{ para: "/relatorios", rotulo: "Relatórios", icone: BarChart3 }]

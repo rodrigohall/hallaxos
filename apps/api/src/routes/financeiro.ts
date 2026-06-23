@@ -23,7 +23,8 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
     const { pagina, por_pagina } = paginacaoSchema.parse(req.query);
     const { dados, total } = await listarLancamentos({
       tipo: f.tipo, status: f.status, categoriaId: f.categoria_id, contaId: f.conta_id,
-      pessoaId: f.pessoa_id, busca: f.busca, pagina, porPagina: por_pagina,
+      pessoaId: f.pessoa_id, busca: f.busca, operacaoTipo: f.operacao_tipo,
+      pagina, porPagina: por_pagina,
     });
     return { dados, meta: { total, pagina, por_pagina } };
   });

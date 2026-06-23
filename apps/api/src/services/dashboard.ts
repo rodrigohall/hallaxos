@@ -1,7 +1,7 @@
 // Dashboard: o centro da operação (doc 01 §1.9). Sem tabelas próprias —
 // tudo derivado do núcleo em uma única chamada.
 import { sql } from "drizzle-orm";
-import { pode, type PapelUsuario } from "@hallaxos/shared";
+import { pode, type PapelUsuario, type TipoOrigemLancamento } from "@hallaxos/shared";
 import { db } from "../db/client";
 
 export async function montarDashboard(papel: PapelUsuario) {
@@ -166,4 +166,121 @@ export async function montarFinanceiro(
                                                                             AS a_vencer
   `);
   return r.rows[0] as Record<string, unknown>;
+}
+
+/** Breakdown financeiro por origem/tipo de operação.
+ *  Pago: filtrado pelo período do seletor (= data_pagamento no intervalo).
+ *  Previsto: todos os lançamentos em aberto (independente de período — mostra o que está pendente).
+ *  Decisão #60: endpoint separado para não recarregar o bloco operacional.
+ */
+export async function montarFinanceiroPorOrigem(
+  papel: PapelUsuario,
+  periodo: string,
+) {
+  if (!pode(papel, "dashboard_financeiro", "ler")) return null;
+
+  let rangeSql: ReturnType<typeof sql>;
+  switch (periodo) {
+    case "semana":
+      rangeSql = sql`data_pagamento BETWEEN date_trunc('week', current_date)::date AND current_date`;
+      break;
+    case "mes":
+      rangeSql = sql`data_pagamento BETWEEN date_trunc('month', current_date)::date AND current_date`;
+      break;
+    case "ano":
+      rangeSql = sql`data_pagamento BETWEEN date_trunc('year', current_date)::date AND current_date`;
+      break;
+    case "ultimos30":
+      rangeSql = sql`data_pagamento BETWEEN current_date - 29 AND current_date`;
+      break;
+    default: // 'hoje'
+      rangeSql = sql`data_pagamento = current_date`;
+  }
+
+  const r = await db.execute(sql`
+    WITH base AS (
+      SELECT
+        CASE
+          WHEN o.tipo IS NOT NULL THEN o.tipo::text
+          WHEN l.manutencao_id IS NOT NULL THEN 'manutencao'
+          ELSE 'avulso'
+        END                             AS origem,
+        l.tipo                          AS tipo_lancamento,
+        l.status,
+        l.data_vencimento,
+        l.data_pagamento,
+        l.valor::numeric                AS valor
+      FROM lancamentos l
+      LEFT JOIN operacoes o ON o.id = l.operacao_id AND o.deleted_at IS NULL
+      WHERE l.deleted_at IS NULL AND l.status != 'cancelado'
+    )
+    SELECT
+      origem,
+      coalesce(sum(valor) FILTER (
+        WHERE tipo_lancamento = 'receita' AND status = 'pago' AND ${rangeSql}
+      ), 0)                             AS receita_paga,
+      coalesce(sum(valor) FILTER (
+        WHERE tipo_lancamento = 'despesa' AND status = 'pago' AND ${rangeSql}
+      ), 0)                             AS despesa_paga,
+      coalesce(sum(valor) FILTER (
+        WHERE tipo_lancamento = 'receita' AND status = 'previsto'
+      ), 0)                             AS receita_prevista,
+      coalesce(sum(valor) FILTER (
+        WHERE tipo_lancamento = 'despesa' AND status = 'previsto'
+      ), 0)                             AS despesa_prevista,
+      coalesce(sum(valor) FILTER (
+        WHERE tipo_lancamento = 'receita' AND status = 'previsto'
+          AND data_vencimento < current_date
+      ), 0)                             AS vencido_receitas,
+      coalesce(sum(valor) FILTER (
+        WHERE tipo_lancamento = 'despesa' AND status = 'previsto'
+          AND data_vencimento < current_date
+      ), 0)                             AS vencido_despesas,
+      count(*) FILTER (
+        WHERE status = 'pago' AND ${rangeSql}
+      )::int                            AS qtd
+    FROM base
+    GROUP BY origem
+    ORDER BY origem
+  `);
+
+  const ORIGENS = ["guincho", "locacao", "venda", "compra", "manutencao", "avulso"] as const;
+  type Origem = (typeof ORIGENS)[number];
+  const zero = () => ({
+    receita_paga: 0, despesa_paga: 0,
+    receita_prevista: 0, despesa_prevista: 0,
+    vencido_receitas: 0, vencido_despesas: 0,
+    liquido: 0, qtd: 0,
+  });
+
+  const tipos: Record<Origem, ReturnType<typeof zero>> = Object.fromEntries(
+    ORIGENS.map((o) => [o, zero()]),
+  ) as Record<Origem, ReturnType<typeof zero>>;
+
+  for (const row of r.rows as Record<string, unknown>[]) {
+    const origem = row.origem as Origem;
+    if (!tipos[origem]) continue;
+    const t = tipos[origem];
+    t.receita_paga = Number(row.receita_paga);
+    t.despesa_paga = Number(row.despesa_paga);
+    t.receita_prevista = Number(row.receita_prevista);
+    t.despesa_prevista = Number(row.despesa_prevista);
+    t.vencido_receitas = Number(row.vencido_receitas);
+    t.vencido_despesas = Number(row.vencido_despesas);
+    t.liquido = t.receita_paga - t.despesa_paga;
+    t.qtd = Number(row.qtd);
+  }
+
+  const total = {
+    receita_paga: ORIGENS.reduce((s, o) => s + tipos[o].receita_paga, 0),
+    despesa_paga: ORIGENS.reduce((s, o) => s + tipos[o].despesa_paga, 0),
+    liquido: 0,
+    a_receber: ORIGENS.reduce((s, o) => s + Math.max(0, tipos[o].receita_prevista - tipos[o].vencido_receitas), 0),
+    a_pagar: ORIGENS.reduce((s, o) => s + Math.max(0, tipos[o].despesa_prevista - tipos[o].vencido_despesas), 0),
+    vencido_receitas: ORIGENS.reduce((s, o) => s + tipos[o].vencido_receitas, 0),
+    vencido_despesas: ORIGENS.reduce((s, o) => s + tipos[o].vencido_despesas, 0),
+  };
+  total.liquido = total.receita_paga - total.despesa_paga;
+
+  return { periodo, tipos, total };
 }

@@ -168,14 +168,17 @@ POST   /manutencoes/:id/iniciar {data_inicio?} | /concluir {km_no_momento?, cust
 ### Financeiro
 
 ```
-GET    /lancamentos               ?tipo ?status ?categoria_id ?conta_id ?pessoa_id ?periodo ?origem
+GET    /lancamentos               ?tipo ?status ?categoria_id ?conta_id ?pessoa_id ?periodo ?busca
+                                    ?operacao_tipo=guincho|locacao|venda|compra|manutencao|avulso
+                                    (drill-down por origem — usado pelo Dashboard Financeiro)
 POST   /lancamentos               (avulso; com `parcelas: n` gera o grupo de parcelas;
          `data_pagamento?` quando `pago` registra pagamento retroativo — decisão #51).
          Vínculos opcionais: `operacao_id?` | `manutencao_id?` (origem — no máximo uma)
          e/ou `ativo_id?` (classificação que coexiste — decisão #53)
 GET    /lancamentos/:id           → com cadeia de origem completa (operação → ativo → pessoa)
-PATCH  /lancamentos/:id           → edita valor/vencimento/conta/categoria/forma;
+PATCH  /lancamentos/:id           → edita valor/vencimento/conta/categoria/forma/ativo_id;
          lançamentos **gerados** também (vínculo de origem preservado, com auditoria).
+         `ativo_id?` seta/limpa a classificação por ativo (decisão #53).
          Editar um **pago** é só `admin` e aceita `data_pagamento` (decisão #48).
 POST   /lancamentos/:id/pagar     { data_pagamento, conta_id, forma_pagamento }
 POST   /lancamentos/:id/estornar  { motivo }   | POST /lancamentos/:id/cancelar { motivo }
@@ -208,16 +211,27 @@ Busca global:  GET /busca?q=...  → resultados agrupados por tipo, filtrados po
 ### Agenda
 
 ```
-GET    /agenda                    ?de ?ate ?responsavel_id
+GET    /agenda                    ?de ?ate ?tipo[]=devolucao|manutencao|vencimento|cnh|documento|compromisso
                                   → eventos manuais + derivados (devoluções, manutenções,
-                                    vencimentos, CNH/documentos) consultados das fontes — doc 03 §2
-POST   /agenda                    (evento manual)
+                                    vencimentos, CNH/documentos) consultados das fontes — doc 03 §2.
+                                    `tipo` (opcional, repetível) filtra por categoria de evento.
+POST   /agenda                    (evento manual; opcionais: `entidade_tipo`+`entidade_id` para
+                                    linkar a entidade existente, OU `gerar_lancamento` para criar
+                                    um lançamento avulso em conjunto — guard #58, mão única)
 PATCH  /agenda/:id | POST /agenda/:id/concluir | DELETE /agenda/:id
 ```
 
 ### Dashboard
 
 ```
+GET    /dashboard/financeiro/por-origem   ?periodo=hoje|semana|mes|ano|ultimos30
+                                  → breakdown por origem/tipo: guincho, locação, venda, compra,
+                                    manutenção, avulso — cada um com receita_paga, despesa_paga,
+                                    receita_prevista, despesa_prevista, vencido_receitas,
+                                    vencido_despesas, liquido, qtd + total consolidado.
+                                    `pago*` filtrado pelo período; `previsto*` = todo em aberto.
+                                    Gated por `dashboard_financeiro` (decisão #60).
+
 GET    /dashboard                 → um único payload com todos os blocos do dia:
                                     agenda_do_dia, ativos { disponiveis, alugados, em_manutencao },
                                     guinchos_em_andamento, receitas_dia, despesas_dia,

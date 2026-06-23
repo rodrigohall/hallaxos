@@ -113,6 +113,16 @@
 | 59 | Lucro Presumido de Venda = (FIPE × 0,95 + receita já gerada) − custos acumulados; caixa "Expectativa de lucro de venda" existente é absorvida por esta fórmula e removida | Fórmula única, usada tanto na tela do ativo quanto no Relatório de Patrimônio. Antes da venda o ROI era % sobre custo de compra — substituído pelo "Lucro Presumido" porque o FIPE é a melhor estimativa de valor de saída disponível sem integração ao vivo. |
 | 60 | Dashboard financeiro em endpoint separado `GET /dashboard/financeiro?periodo&avencer` com seletor de período e recarrega só os 4 KPIs, não o dashboard inteiro | Operacional (patrimônio, frota, agenda) é estável (refetch 30s). Financeiro muda conforme o período escolhido pelo usuário — misturar no mesmo endpoint recalcularia o bloco operacional a cada troca de seletor, sem necessidade. Separação de responsabilidade sem duplicar dado. |
 
+## Sprint 11 — Agenda estendida e Dashboard Financeiro por Origem
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 61 | Filtro por tipo na Agenda via **CTE** (`WITH todos_eventos AS (… UNION ALL …) SELECT … WHERE tipo = ANY($1)`) | A query de agenda é um UNION ALL de 6 branches. Aplicar o filtro em cada branch duplicaria o predicado e quebraria se algum branch fosse omitido. Encapsular em CTE permite um único WHERE no topo, sem alterar a lógica de cada branch. |
+| 62 | `criarEventoAgenda` retorna `{ evento, lancamentoId }` em vez de só o evento | Criar evento + lançamento em transação atômica exige que o chamador saiba o `lancamentoId` gerado (para navegar até ele ou confirmar o vínculo). Mudar a assinatura é mais limpo que um campo opcional no evento. O endpoint `POST /agenda` expõe `{ dados: { evento, lancamentoId } }`. |
+| 63 | Dashboard Financeiro separado em nova rota `/dashboard-financeiro`, não incorporado ao `/dashboard` | O `/dashboard` já tem dois endpoints (operacional + financeiro por período, decisão #60). Adicionar "por origem" tornaria o painel único demasiado denso. Rota dedicada permite uma UX com linha 1 = contas e linha 2 = origens, com indicador selecionável e drill-down — impossível de encaixar no layout de 4 KPIs existente. |
+| 64 | Classificação de origem do lançamento via **CASE SQL** (`o.tipo` / `manutencao_id IS NOT NULL` → `'manutencao'` / else `'avulso'`) no endpoint `por-origem`, sem coluna derivada no banco | Regra máxima: a origem já existe (FK + tipo da operação). Calcular em runtime preserva o núcleo íntegro e permite retroação (lançamentos antigos herdam a classificação correta sem recálculo). |
+| 65 | Persistência das seleções de conta no Dashboard Financeiro em **localStorage**, sem backend | A seleção de qual conta exibir em cada uma das 4 caixas é preferência de interface, não dado de negócio. Não há razão para round-trip ao servidor para salvar isso. Chave `hallax_dashboard_fin_contas`. |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica

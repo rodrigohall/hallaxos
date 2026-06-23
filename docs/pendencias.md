@@ -93,3 +93,12 @@ diária base, lucro presumido e relatório de patrimônio. Operações com filtr
 em botões grandes, CEP com autocomplete (ViaCEP), auto-fill de diária/caução, desconto
 R$/%, toggle retroativo. Manutenções em kanban 3 colunas com contadores de dias e
 campo peças. 60 testes verdes. Deploy confirmado (run `27735492174`, `success`).
+
+### Sprint 11 — Agenda estendida e Dashboard Financeiro por Origem ✅ ENTREGUE
+
+Nenhuma migração nova. Agenda repaginada com filtro por tipo (CTE), seletor de período
+(semana/mês/trimestre/semestre), itens clicáveis com link para origem e criação de
+evento + lançamento em transação atômica. Nova rota `/dashboard-financeiro` com linha
+de contas (localStorage), linha de origens (guincho/locação/venda/compra/manutenção/avulso)
+com indicador selecionável, drill-down e linkar lançamento → ativo via `PATCH /lancamentos/:id`.
+Novo endpoint `GET /dashboard/financeiro/por-origem`. 5 testes de integração (sprint11.test.ts).

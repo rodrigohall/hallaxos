@@ -1,5 +1,63 @@
 # Changelog
 
+## Sprint 11 — Agenda estendida e Dashboard Financeiro por Origem (2026-06-23)
+
+Nenhuma tabela nova, nenhuma migração. Toda a informação já existia no núcleo —
+Sprint 11 expõe, filtra e agrega de formas novas.
+
+### Agenda estendida (Tab 1)
+
+- **Filtro por tipo**: chips de toggle (operações / manutenções / vencimentos /
+  CNH / documentos / compromissos) filtram a lista e o calendário. Internamente
+  a query UNION ALL foi encapsulada em CTE (`todos_eventos`) + `WHERE tipo = ANY($1)`
+  — evita duplicar o predicado em cada branch.
+- **Seletor de período**: Semana / Mês / Trimestre / Semestre. Mês mantém
+  navegação de mês com setas; os outros calculam automaticamente a janela a
+  partir da data de hoje.
+- **Itens clicáveis**: eventos derivados (operação, manutenção, vencimento, CNH,
+  documento) abrem a tela de origem via `useNavigate`. Compromissos manuais
+  toggleiam `concluido` via `PATCH /agenda/:id`.
+- **Criar evento + lançamento em transação** (guard #58): campo `gerar_lancamento`
+  no modal de novo compromisso; quando preenchido, o evento e o lançamento são
+  inseridos atomicamente. O evento recebe `entidade_tipo = "lancamento"` e
+  `entidade_id = lancamento.id` automaticamente. Retorna `{ evento, lancamentoId }`.
+- **Repaginação visual**: chips coloridos por tipo, fundo `bg-elevado` para o
+  mês/período ativo no mini-calendário, ring de destaque no dia atual.
+
+### Dashboard Financeiro por Origem (Tab 2 — nova rota `/dashboard-financeiro`)
+
+- **Linha 1 — 4 caixas por conta**: seleção persistida em localStorage
+  (`hallax_dashboard_fin_contas`). Exibe saldo de `GET /contas`; clicar abre
+  drill-down dos lançamentos da conta.
+- **Linha 2 — 6 caixas por origem**: guincho / locação / venda / compra /
+  manutenção / avulso. Cada caixa exibe o indicador escolhido pelo usuário
+  (receita_paga / despesa_paga / líquido / receita_prevista / despesa_prevista /
+  vencido_receitas / vencido_despesas / qtd). Clicar abre drill-down.
+- **Totais**: linha de totais abaixo das caixas de origem.
+- **Novo endpoint `GET /dashboard/financeiro/por-origem?periodo=`**: CTE-SQL que
+  classifica cada lançamento por origem (via `operacoes.tipo`, `manutencao_id`,
+  ou nenhum → `avulso`) e agrega os 7 indicadores por tipo. Pago filtrado
+  por `data_pagamento` dentro do período; previsto sem filtro de período.
+- **Drill-down por ativo**: busca de ativo com debounce 250 ms, carrega
+  `GET /ativos/:id/lancamentos` ao selecionar.
+- **Linkar lançamento → ativo**: botão "Linkar" no drill-down abre modal de busca;
+  `PATCH /lancamentos/:id { ativo_id }` seta ou limpa o vínculo (decisão #53).
+
+### Backend — melhorias transversais
+
+- `editarLancamento` suporta campo `ativo_id` (null para deslinkar — decisão #53).
+- `listarLancamentos` suporta filtro `operacao_tipo` (guincho/locação/…/avulso);
+  `avulso` = sem `operacao_id` e sem `manutencao_id`.
+- `eventoAgendaCriarSchema` com campos `entidade_tipo?`, `entidade_id?`,
+  `gerar_lancamento?` (refine: linkar OU gerar, não ambos).
+- `lancamentoEditarSchema` com campo `ativo_id?` (uuid | null).
+
+### Testes
+
+- `sprint11.test.ts`: 5 testes de integração cobrindo agenda/filtro-tipo,
+  agenda/gerar-lançamento, linkar-lançamento→ativo, dashboard/por-origem
+  estrutura e agrupamento.
+
 ## Sprint 10 — UI repaginada: Dashboard, Ativos, Operações e Manutenções (2026-06-18)
 
 Quatro abas completamente repaginadas em sequência. Nenhuma tabela nova, nenhum dado

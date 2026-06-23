@@ -10,8 +10,8 @@ const params = z.object({ id: idSchema });
 
 export default async function rotasAgenda(app: FastifyInstance) {
   app.get("/agenda", { preHandler: exigirPermissao("agenda", "ler") }, async (req) => {
-    const { de, ate } = agendaFiltrosSchema.parse(req.query);
-    return { dados: await listarAgenda(de, ate) };
+    const { de, ate, tipo } = agendaFiltrosSchema.parse(req.query);
+    return { dados: await listarAgenda(de, ate, tipo) };
   });
 
   app.post("/agenda", { preHandler: exigirPermissao("agenda", "criar") }, async (req, reply) => {

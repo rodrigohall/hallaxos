@@ -24,7 +24,7 @@ async function indexarLancamento(conn: typeof db, l: Lancamento) {
 
 export async function listarLancamentos(opts: {
   tipo?: string; status?: string; categoriaId?: string; contaId?: string;
-  pessoaId?: string; busca?: string; pagina: number; porPagina: number;
+  pessoaId?: string; busca?: string; operacaoTipo?: string; pagina: number; porPagina: number;
 }) {
   const filtros = [isNull(lancamentos.deletedAt)];
   if (opts.tipo) filtros.push(eq(lancamentos.tipo, opts.tipo as never));
@@ -37,6 +37,14 @@ export async function listarLancamentos(opts: {
   if (opts.contaId) filtros.push(eq(lancamentos.contaId, opts.contaId));
   if (opts.pessoaId) filtros.push(eq(lancamentos.pessoaId, opts.pessoaId));
   if (opts.busca) filtros.push(sql`unaccent(${lancamentos.descricao}) ILIKE unaccent(${"%" + opts.busca + "%"})`);
+  // Filtro por origem/tipo — para drill-down do dashboard financeiro.
+  if (opts.operacaoTipo === "manutencao") {
+    filtros.push(sql`${lancamentos.manutencaoId} IS NOT NULL`);
+  } else if (opts.operacaoTipo === "avulso") {
+    filtros.push(sql`${lancamentos.operacaoId} IS NULL AND ${lancamentos.manutencaoId} IS NULL`);
+  } else if (opts.operacaoTipo) {
+    filtros.push(sql`${lancamentos.operacaoId} IN (SELECT id FROM operacoes WHERE tipo = ${opts.operacaoTipo} AND deleted_at IS NULL)`);
+  }
   const where = and(...filtros);
 
   const [{ total }] = (await db
@@ -158,6 +166,9 @@ export async function editarLancamento(
   if (input.valor !== undefined) mudancas.valor = input.valor.toFixed(2);
   if (input.data_vencimento) mudancas.dataVencimento = input.data_vencimento;
   if (input.forma_pagamento !== undefined) mudancas.formaPagamento = input.forma_pagamento;
+  // Linkar ao ativo (classificação que coexiste, decisão #53): setar ativo_id em
+  // qualquer lançamento — mesmo que já tenha operacao_id/manutencao_id.
+  if (input.ativo_id !== undefined) mudancas.ativoId = input.ativo_id;
   // Invariante chk_lancamento_pago_com_data (pago ⇔ data_pagamento): a data de
   // pagamento só se aplica a um lançamento pago, e não pode ficar nula nele.
   if (input.data_pagamento !== undefined) {

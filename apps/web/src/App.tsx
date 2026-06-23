@@ -18,6 +18,7 @@ import { Manutencoes } from "./paginas/Manutencoes";
 import { ManutencaoDetalhe } from "./paginas/ManutencaoDetalhe";
 import { Agenda } from "./paginas/Agenda";
 import { Financeiro } from "./paginas/Financeiro";
+import { DashboardFinanceiro } from "./paginas/DashboardFinanceiro";
 import { Relatorios } from "./paginas/Relatorios";
 import { Usuarios } from "./paginas/Usuarios";
 
@@ -62,6 +63,7 @@ export function App() {
               <Route path="/manutencoes/:id" element={<ManutencaoDetalhe />} />
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/financeiro" element={<Financeiro />} />
+              <Route path="/dashboard-financeiro" element={<DashboardFinanceiro />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>

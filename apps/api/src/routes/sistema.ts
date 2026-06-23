@@ -2,7 +2,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { idSchema, REFERENCIA_ENTIDADES } from "@hallaxos/shared";
-import { montarDashboard, montarFinanceiro } from "../services/dashboard";
+import { montarDashboard, montarFinanceiro, montarFinanceiroPorOrigem } from "../services/dashboard";
 import { buscar } from "../services/busca";
 import { listarTimeline } from "../services/timeline";
 import { db } from "../db/client";
@@ -27,6 +27,19 @@ export default async function rotasSistema(app: FastifyInstance) {
         .parse(req.query);
       return {
         dados: await montarFinanceiro(exigirLogin(req).papel, periodo, avencer),
+      };
+    }
+  );
+
+  app.get(
+    "/dashboard/financeiro/por-origem",
+    { preHandler: exigirPermissao("dashboard_financeiro", "ler") },
+    async (req) => {
+      const { periodo } = z
+        .object({ periodo: z.enum(["hoje", "semana", "mes", "ano", "ultimos30"]).default("mes") })
+        .parse(req.query);
+      return {
+        dados: await montarFinanceiroPorOrigem(exigirLogin(req).papel, periodo),
       };
     }
   );
