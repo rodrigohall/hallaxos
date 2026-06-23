@@ -1,8 +1,7 @@
 // Dashboard Financeiro: dois cortes do mesmo dado — por CONTA (onde está o
 // dinheiro) e por ORIGEM/TIPO (de onde veio). Tudo é consulta sobre o núcleo;
 // nenhum dado próprio. Decisão #60 (endpoint separado do operacional).
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, TrendingUp, TrendingDown, ArrowDownToLine, ArrowUpFromLine,
@@ -11,6 +10,7 @@ import {
   BarChart3, CircleDollarSign,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
@@ -42,9 +42,11 @@ interface Lancamento {
   id: string; tipo: string; descricao: string; valor: string; status: string;
   dataVencimento: string; dataPagamento: string | null; vencido: boolean;
   categoria: string; conta: string; pessoa: string | null;
-  contaId: string; ativoId: string | null; operacaoId: string | null;
-  manutencaoId: string | null;
+  categoriaId: string; contaId: string; ativoId: string | null;
+  formaPagamento: string | null; temOrigem: boolean;
+  operacaoId: string | null; manutencaoId: string | null;
 }
+interface Categoria { id: string; nome: string; tipo: string }
 interface LancamentosResp { dados: Lancamento[]; meta: { total: number } }
 
 interface AtivoLancamento extends Lancamento { origem: string }
@@ -122,7 +124,13 @@ export function DashboardFinanceiro() {
   const [resAtivos, setResAtivos] = useState<BuscaResultado[]>([]);
   const timerBusca = useRef<ReturnType<typeof setTimeout>>();
 
-  // Modal de edição de lançamento (simplificado: só ativo_id)
+  // Modal de edição de lançamento
+  const [editarLanc, setEditarLanc] = useState<Lancamento | null>(null);
+  const [formEd, setFormEd] = useState({ descricao: "", valor: "", data_vencimento: "", categoria_id: "", conta_id: "", forma_pagamento: "", data_pagamento: "" });
+  const [erroEd, setErroEd] = useState("");
+  const [salvandoEd, setSalvandoEd] = useState(false);
+
+  // Modal de linkar lançamento → ativo
   const [linkarLanc, setLinkarLanc] = useState<Lancamento | null>(null);
   const [buscaAtivLink, setBuscaAtivLink] = useState("");
   const [resAtivLink, setResAtivLink] = useState<BuscaResultado[]>([]);
@@ -134,6 +142,11 @@ export function DashboardFinanceiro() {
   const { data: contas, isLoading: loadContas } = useQuery({
     queryKey: ["contas"],
     queryFn: () => api.get<{ dados: Conta[] }>("/contas").then((r) => r.dados),
+  });
+
+  const { data: categorias } = useQuery({
+    queryKey: ["categorias-financeiras"],
+    queryFn: () => api.get<{ dados: Categoria[] }>("/categorias-financeiras").then((r) => r.dados),
   });
 
   const { data: porOrigem, isLoading: loadOrigem } = useQuery({
@@ -203,6 +216,47 @@ export function DashboardFinanceiro() {
       notificar({ tipo: "erro", titulo: "Erro ao vincular", descricao: e instanceof ApiError ? e.message : undefined });
     } finally {
       setSalvandoLink(false);
+    }
+  };
+
+  const abrirEdicao = (l: Lancamento) => {
+    setEditarLanc(l);
+    setErroEd("");
+    setFormEd({
+      descricao: l.descricao,
+      valor: l.valor,
+      data_vencimento: l.dataVencimento,
+      categoria_id: l.categoriaId,
+      conta_id: l.contaId,
+      forma_pagamento: l.formaPagamento ?? "",
+      data_pagamento: l.dataPagamento ?? "",
+    });
+  };
+
+  const salvarEdicao = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editarLanc) return;
+    setErroEd("");
+    setSalvandoEd(true);
+    try {
+      const payload: Record<string, unknown> = {
+        descricao: formEd.descricao,
+        valor: Number(formEd.valor),
+        data_vencimento: formEd.data_vencimento,
+        categoria_id: formEd.categoria_id,
+        conta_id: formEd.conta_id,
+        forma_pagamento: formEd.forma_pagamento || null,
+      };
+      if (editarLanc.status === "pago" && formEd.data_pagamento) payload.data_pagamento = formEd.data_pagamento;
+      await api.patch(`/lancamentos/${editarLanc.id}`, payload);
+      fila.invalidateQueries({ queryKey: ["drill-lancamentos"] });
+      fila.invalidateQueries({ queryKey: ["dashboard-fin-por-origem"] });
+      notificar({ tipo: "ok", titulo: "Lançamento atualizado" });
+      setEditarLanc(null);
+    } catch (err) {
+      setErroEd(err instanceof ApiError ? err.message : "Erro inesperado.");
+    } finally {
+      setSalvandoEd(false);
     }
   };
 
@@ -355,6 +409,7 @@ export function DashboardFinanceiro() {
               ehAdmin={ehAdmin}
               podeEditar={pode("lancamentos", "editar")}
               podeTransicionar={pode("lancamentos", "transicionar")}
+              aoEditar={abrirEdicao}
               aoLinkar={setLinkarLanc}
               onAtualizar={() => fila.invalidateQueries({ queryKey: ["drill-lancamentos"] })}
             />
@@ -416,7 +471,8 @@ export function DashboardFinanceiro() {
                   ehAdmin={ehAdmin}
                   podeEditar={pode("lancamentos", "editar")}
                   podeTransicionar={pode("lancamentos", "transicionar")}
-                  aoLinkar={setLinkarLanc}
+                  aoEditar={abrirEdicao}
+              aoLinkar={setLinkarLanc}
                   mostrarOrigem
                   onAtualizar={() => fila.invalidateQueries({ queryKey: ["drill-lancamentos"] })}
                 />
@@ -425,6 +481,63 @@ export function DashboardFinanceiro() {
           )}
         </Card>
       </section>
+
+      {/* Modal: editar lançamento */}
+      <Modal aberto={!!editarLanc} aoFechar={() => setEditarLanc(null)} titulo="Editar lançamento">
+        {editarLanc && (
+          <form onSubmit={salvarEdicao} className="space-y-4">
+            {editarLanc.temOrigem && (
+              <p className="rounded-md border border-info/25 bg-info/10 px-3 py-2 text-xs text-suave">
+                Lançamento gerado por uma operação/manutenção. Editar aqui corrige o valor sem desfazer o vínculo.
+              </p>
+            )}
+            <Campo rotulo="Descrição">
+              <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />
+            </Campo>
+            <div className="grid grid-cols-2 gap-4">
+              <Campo rotulo="Valor (R$)">
+                <Entrada type="number" step="0.01" min="0.01" required value={formEd.valor}
+                  onChange={(e) => setFormEd({ ...formEd, valor: e.target.value })} />
+              </Campo>
+              <Campo rotulo="Vencimento">
+                <Entrada type="date" required value={formEd.data_vencimento}
+                  onChange={(e) => setFormEd({ ...formEd, data_vencimento: e.target.value })} />
+              </Campo>
+              <Campo rotulo="Categoria">
+                <Selecao required value={formEd.categoria_id} onChange={(e) => setFormEd({ ...formEd, categoria_id: e.target.value })}>
+                  <option value="">Escolha…</option>
+                  {categorias?.filter((c) => c.tipo === editarLanc.tipo).map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </Selecao>
+              </Campo>
+              <Campo rotulo="Conta">
+                <Selecao required value={formEd.conta_id} onChange={(e) => setFormEd({ ...formEd, conta_id: e.target.value })}>
+                  <option value="">Escolha…</option>
+                  {contas?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </Selecao>
+              </Campo>
+              <Campo rotulo="Forma de pagamento">
+                <Selecao value={formEd.forma_pagamento} onChange={(e) => setFormEd({ ...formEd, forma_pagamento: e.target.value })}>
+                  <option value="">—</option>
+                  {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
+                </Selecao>
+              </Campo>
+              {editarLanc.status === "pago" && (
+                <Campo rotulo="Data do pagamento" dica="Retroativo">
+                  <Entrada type="date" value={formEd.data_pagamento}
+                    onChange={(e) => setFormEd({ ...formEd, data_pagamento: e.target.value })} />
+                </Campo>
+              )}
+            </div>
+            {erroEd && <p className="text-sm text-erro">{erroEd}</p>}
+            <div className="flex justify-end gap-2">
+              <Botao type="button" variante="fantasma" onClick={() => setEditarLanc(null)}>Cancelar</Botao>
+              <Botao type="submit" carregando={salvandoEd}>Salvar</Botao>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* Modal: linkar lançamento → ativo */}
       {linkarLanc && (
@@ -576,20 +689,20 @@ function Total({ rotulo, valor, tom }: { rotulo: string; valor: number; tom: "ok
 }
 
 function ListaDrillDown({
-  lancamentos, total, ehAdmin, podeEditar, podeTransicionar, aoLinkar, mostrarOrigem, onAtualizar,
+  lancamentos, total, ehAdmin, podeEditar, podeTransicionar, aoEditar, aoLinkar, mostrarOrigem, onAtualizar,
 }: {
   lancamentos: Lancamento[];
   total: number;
   ehAdmin: boolean;
   podeEditar: boolean;
   podeTransicionar: boolean;
+  aoEditar: (l: Lancamento) => void;
   aoLinkar: (l: Lancamento) => void;
   mostrarOrigem?: boolean;
   onAtualizar: () => void;
 }) {
   const notificar = useToast();
   const fila = useQueryClient();
-  const navegar = useNavigate();
 
   if (lancamentos.length === 0) {
     return <EstadoVazio titulo="Nenhum lançamento" descricao="Não há lançamentos neste filtro." />;
@@ -646,9 +759,9 @@ function ListaDrillDown({
             </div>
             {/* Ações */}
             <div className="flex items-center gap-1 shrink-0">
-              {podeEditar && (
+              {podeEditar && l.status !== "cancelado" && (
                 <button
-                  onClick={() => navegar(`/financeiro`)}
+                  onClick={() => aoEditar(l)}
                   className="rounded p-1.5 text-mudo hover:text-primario hover:bg-elevado transition-colors"
                   title="Editar"
                 >
