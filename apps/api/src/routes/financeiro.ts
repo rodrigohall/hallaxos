@@ -9,7 +9,7 @@ import {
   anularLancamento, cancelarLancamento, criarCategoriaFinanceira, criarConta,
   criarLancamento, editarLancamento, estornarLancamento, fluxoCaixa,
   listarCategoriasFinanceiras, listarContas, listarLancamentos, pagarLancamento,
-  pagarLancamentosLote,
+  pagarLancamentosLote, vincularLancamentos,
 } from "../services/financeiro";
 import { dre, resultadoPorAtivo, planilhaPivot } from "../services/relatorios";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
@@ -46,6 +46,16 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
   app.post("/lancamentos/:id/pagar", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {
     const { id } = params.parse(req.params);
     return { dados: await pagarLancamento(id, lancamentoPagarSchema.parse(req.body), exigirLogin(req).id) };
+  });
+
+  // Vinculação automática: lança lancamentos avulsos a operações/manutenções por heurística
+  // (pessoa_id + janela de 7 dias). dry_run=true retorna o preview sem gravar.
+  // Restrito a admin.
+  app.post("/lancamentos/vincular", async (req) => {
+    const u = exigirLogin(req);
+    if (u.papel !== "admin") throw semPermissao();
+    const { dry_run } = z.object({ dry_run: z.boolean().default(true) }).parse(req.body);
+    return { dados: await vincularLancamentos(dry_run, u.id) };
   });
 
   app.post("/lancamentos/pagar-lote", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {

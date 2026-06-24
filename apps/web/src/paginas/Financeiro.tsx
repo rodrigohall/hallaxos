@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
-  ListChecks,
+  ListChecks, Link2,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -65,6 +65,42 @@ export function Financeiro() {
   const [loteData, setLoteData] = useState(new Date().toISOString().slice(0, 10));
   const [loteConta, setLoteConta] = useState("");
   const [loteEnviando, setLoteEnviando] = useState(false);
+  // Vinculação automática de avulsos (admin only)
+  const [vincularAberto, setVincularAberto] = useState(false);
+  type VincularPreview = { dry_run: true; operacoes: { lancamento_id: string; descricao: string; valor: string; operacao_codigo: string }[]; manutencoes: { lancamento_id: string; descricao: string; valor: string }[]; total: number };
+  const [vincularPreview, setVincularPreview] = useState<VincularPreview | null>(null);
+  const [vincularEnviando, setVincularEnviando] = useState(false);
+
+  const abrirVincular = async () => {
+    setVincularPreview(null);
+    setVincularAberto(true);
+    setVincularEnviando(true);
+    try {
+      const { dados } = await api.post<{ dados: VincularPreview }>("/lancamentos/vincular", { dry_run: true });
+      setVincularPreview(dados);
+    } catch {
+      notificar({ tipo: "erro", titulo: "Erro ao calcular vínculos" });
+      setVincularAberto(false);
+    } finally {
+      setVincularEnviando(false);
+    }
+  };
+
+  const confirmarVincular = async () => {
+    setVincularEnviando(true);
+    try {
+      const { dados } = await api.post<{ dados: { total: number; operacoes: number; manutencoes: number } }>("/lancamentos/vincular", { dry_run: false });
+      notificar({ tipo: "ok", titulo: `${dados.total} lançamento(s) vinculado(s)` });
+      setVincularAberto(false);
+      setVincularPreview(null);
+      invalidar();
+    } catch {
+      notificar({ tipo: "erro", titulo: "Erro ao vincular" });
+    } finally {
+      setVincularEnviando(false);
+    }
+  };
+
   // Vínculos do lançamento avulso (interconexão, decisão #53): origem rastreável
   // (operação OU manutenção — exclusivas) e/ou ativo (classificação que coexiste).
   // Reusa a busca global (mesmas entidades, escopadas ao papel) — sem fonte nova.
@@ -271,11 +307,22 @@ export function Financeiro() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <h1 className="font-display text-lg font-bold">Financeiro</h1>
-        {pode("lancamentos", "criar") && (
-          <Botao tamanho="sm" className="ml-auto" onClick={() => setNovo(true)}>
-            <Plus className="h-3.5 w-3.5" /> Novo lançamento
-          </Botao>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {ehAdmin && (
+            <button
+              title="Vincular lançamentos avulsos automaticamente"
+              onClick={abrirVincular}
+              className="rounded-md p-1.5 text-suave hover:bg-elevado hover:text-ouro"
+            >
+              <Link2 className="h-4 w-4" />
+            </button>
+          )}
+          {pode("lancamentos", "criar") && (
+            <Botao tamanho="sm" onClick={() => setNovo(true)}>
+              <Plus className="h-3.5 w-3.5" /> Novo lançamento
+            </Botao>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -639,6 +686,63 @@ export function Financeiro() {
             >
               Confirmar pagamento em lote
             </Botao>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal aberto={vincularAberto} aoFechar={() => { setVincularAberto(false); setVincularPreview(null); }} titulo="Vincular lançamentos avulsos">
+        <div className="space-y-4">
+          {vincularEnviando && !vincularPreview ? (
+            <p className="text-sm text-suave">Calculando correspondências…</p>
+          ) : vincularPreview?.total === 0 ? (
+            <p className="text-sm text-suave">Nenhum lançamento avulso com correspondência inequívoca encontrado.</p>
+          ) : vincularPreview ? (
+            <>
+              <p className="text-sm text-suave">
+                Foram encontrados <span className="font-semibold text-texto">{vincularPreview.total}</span> lançamento(s) com correspondência única por cliente/fornecedor e data:
+              </p>
+              {vincularPreview.operacoes.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-mudo uppercase tracking-wider">Operações ({vincularPreview.operacoes.length})</p>
+                  <ul className="space-y-1">
+                    {vincularPreview.operacoes.slice(0, 5).map((r) => (
+                      <li key={r.lancamento_id} className="flex items-center justify-between text-sm">
+                        <span className="truncate text-texto">{r.descricao}</span>
+                        <span className="ml-3 shrink-0 text-xs text-mudo">{r.operacao_codigo} · {dinheiro(r.valor)}</span>
+                      </li>
+                    ))}
+                    {vincularPreview.operacoes.length > 5 && (
+                      <li className="text-xs text-mudo">… e mais {vincularPreview.operacoes.length - 5}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              {vincularPreview.manutencoes.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-mudo uppercase tracking-wider">Manutenções ({vincularPreview.manutencoes.length})</p>
+                  <ul className="space-y-1">
+                    {vincularPreview.manutencoes.slice(0, 5).map((r) => (
+                      <li key={r.lancamento_id} className="flex items-center justify-between text-sm">
+                        <span className="truncate text-texto">{r.descricao}</span>
+                        <span className="ml-3 shrink-0 text-xs text-mudo">{dinheiro(r.valor)}</span>
+                      </li>
+                    ))}
+                    {vincularPreview.manutencoes.length > 5 && (
+                      <li className="text-xs text-mudo">… e mais {vincularPreview.manutencoes.length - 5}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              <p className="text-xs text-mudo">Lançamentos com mais de uma correspondência possível são ignorados (ambíguos). Lançamentos sem pessoa_id também são ignorados.</p>
+            </>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Botao variante="fantasma" onClick={() => { setVincularAberto(false); setVincularPreview(null); }}>Cancelar</Botao>
+            {vincularPreview && vincularPreview.total > 0 && (
+              <Botao carregando={vincularEnviando} disabled={vincularEnviando} onClick={confirmarVincular}>
+                Vincular {vincularPreview.total} lançamento(s)
+              </Botao>
+            )}
           </div>
         </div>
       </Modal>

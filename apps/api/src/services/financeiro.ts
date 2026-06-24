@@ -223,6 +223,82 @@ export async function pagarLancamento(id: string, input: LancamentoPagarInput, u
   });
 }
 
+export async function vincularLancamentos(dryRun: boolean, usuarioId: string) {
+  // Unlinked lancamentos com exatamente UMA operação candidata (pessoa + janela de 7 dias).
+  const resOp = await db.execute(sql`
+    WITH contagem AS (
+      SELECT l.id AS lancamento_id, l.descricao, l.valor::numeric AS valor,
+             o.id AS operacao_id, o.codigo,
+             COUNT(*) OVER (PARTITION BY l.id) AS n
+      FROM lancamentos l
+      JOIN operacoes o
+        ON o.cliente_id = l.pessoa_id AND o.deleted_at IS NULL
+        AND l.created_at::date
+            BETWEEN (o.created_at::date - INTERVAL '1 day')
+                AND (o.created_at::date + INTERVAL '7 days')
+      WHERE l.operacao_id IS NULL AND l.manutencao_id IS NULL
+        AND l.deleted_at IS NULL AND l.pessoa_id IS NOT NULL
+    )
+    SELECT lancamento_id, descricao, valor, operacao_id, codigo FROM contagem WHERE n = 1
+  `);
+  type RowOp = { lancamento_id: string; descricao: string; valor: string; operacao_id: string; codigo: string };
+  const vincularOp = resOp.rows as RowOp[];
+  const jaOp = new Set(vincularOp.map((r) => r.lancamento_id));
+
+  // Unlinked lancamentos com exatamente UMA manutenção candidata — excluindo os já resolvidos por operação.
+  const resMan = await db.execute(sql`
+    WITH contagem AS (
+      SELECT l.id AS lancamento_id, l.descricao, l.valor::numeric AS valor,
+             m.id AS manutencao_id,
+             COUNT(*) OVER (PARTITION BY l.id) AS n
+      FROM lancamentos l
+      JOIN manutencoes m
+        ON m.fornecedor_id = l.pessoa_id AND m.deleted_at IS NULL
+        AND l.created_at::date
+            BETWEEN (m.created_at::date - INTERVAL '1 day')
+                AND (m.created_at::date + INTERVAL '7 days')
+      WHERE l.operacao_id IS NULL AND l.manutencao_id IS NULL
+        AND l.deleted_at IS NULL AND l.pessoa_id IS NOT NULL
+    )
+    SELECT lancamento_id, descricao, valor, manutencao_id FROM contagem WHERE n = 1
+  `);
+  type RowMan = { lancamento_id: string; descricao: string; valor: string; manutencao_id: string };
+  const vincularMan = (resMan.rows as RowMan[]).filter((r) => !jaOp.has(r.lancamento_id));
+
+  if (dryRun) {
+    return {
+      dry_run: true,
+      operacoes: vincularOp.map((r) => ({ lancamento_id: r.lancamento_id, descricao: r.descricao, valor: r.valor, operacao_codigo: r.codigo })),
+      manutencoes: vincularMan.map((r) => ({ lancamento_id: r.lancamento_id, descricao: r.descricao, valor: r.valor })),
+      total: vincularOp.length + vincularMan.length,
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    for (const r of vincularOp) {
+      await tx.update(lancamentos).set({ operacaoId: r.operacao_id }).where(eq(lancamentos.id, r.lancamento_id));
+      await registrarEvento(tx, {
+        entidadeTipo: "lancamento", entidadeId: r.lancamento_id, evento: "atualizado",
+        descricao: `Vinculado automaticamente à operação ${r.codigo}`, usuarioId,
+      });
+    }
+    for (const r of vincularMan) {
+      await tx.update(lancamentos).set({ manutencaoId: r.manutencao_id }).where(eq(lancamentos.id, r.lancamento_id));
+      await registrarEvento(tx, {
+        entidadeTipo: "lancamento", entidadeId: r.lancamento_id, evento: "atualizado",
+        descricao: "Vinculado automaticamente a manutenção", usuarioId,
+      });
+    }
+  });
+
+  return {
+    dry_run: false,
+    operacoes: vincularOp.length,
+    manutencoes: vincularMan.length,
+    total: vincularOp.length + vincularMan.length,
+  };
+}
+
 export async function pagarLancamentosLote(
   ids: string[],
   input: LancamentoPagarInput,
