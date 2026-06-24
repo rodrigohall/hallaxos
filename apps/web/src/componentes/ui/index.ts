@@ -10,3 +10,4 @@ export * from "./Toast";
 export * from "./Estados";
 export * from "./Timeline";
 export * from "./Tabela";
+export * from "./PlanilhaGrade";

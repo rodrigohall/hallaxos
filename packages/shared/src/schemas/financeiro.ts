@@ -68,6 +68,9 @@ export const lancamentoFiltrosSchema = z.object({
   busca: z.string().optional(),
   // Drill-down por origem/tipo — usado pelo Dashboard Financeiro.
   operacao_tipo: z.enum(TIPOS_ORIGEM_LANCAMENTO).optional(),
+  // Filtro por intervalo de datas — usado pelo drill-down da Planilha.
+  de: z.string().date().optional(),
+  ate: z.string().date().optional(),
 });
 
 export const contaCriarSchema = z.object({
@@ -78,3 +81,23 @@ export const categoriaFinanceiraCriarSchema = z.object({
   nome: z.string().trim().min(2),
   tipo: z.enum(TIPOS_LANCAMENTO),
 });
+
+export const DIMENSOES_LINHA = ["categoria", "origem", "conta", "tipo"] as const;
+export const DIMENSOES_COLUNA = ["mes", "trimestre", "ativo", "status"] as const;
+export const MEDIDAS_PLANILHA = ["liquido", "receita", "despesa"] as const;
+export type DimensaoLinha = (typeof DIMENSOES_LINHA)[number];
+export type DimensaoColuna = (typeof DIMENSOES_COLUNA)[number];
+export type MedidaPlanilha = (typeof MEDIDAS_PLANILHA)[number];
+
+export const planilhaFiltrosSchema = z.object({
+  linha: z.enum(DIMENSOES_LINHA).default("categoria"),
+  coluna: z.enum(DIMENSOES_COLUNA).default("mes"),
+  medida: z.enum(MEDIDAS_PLANILHA).default("liquido"),
+  ano: z.coerce.number().int().min(2020).max(2100).optional(),
+  de: z.string().date().optional(),
+  ate: z.string().date().optional(),
+  conta_id: z.string().uuid().optional(),
+  origem: z.enum(["guincho", "locacao", "venda", "compra", "manutencao", "avulso"]).optional(),
+  status: z.enum(["previsto", "pago"]).default("pago"),
+});
+export type PlanilhaFiltros = z.infer<typeof planilhaFiltrosSchema>;

@@ -3,14 +3,14 @@ import { z } from "zod";
 import {
   idSchema, paginacaoSchema, lancamentoCriarSchema, lancamentoEditarSchema,
   lancamentoFiltrosSchema, lancamentoPagarSchema, contaCriarSchema,
-  categoriaFinanceiraCriarSchema,
+  categoriaFinanceiraCriarSchema, planilhaFiltrosSchema,
 } from "@hallaxos/shared";
 import {
   anularLancamento, cancelarLancamento, criarCategoriaFinanceira, criarConta,
   criarLancamento, editarLancamento, estornarLancamento, fluxoCaixa,
   listarCategoriasFinanceiras, listarContas, listarLancamentos, pagarLancamento,
 } from "../services/financeiro";
-import { dre, resultadoPorAtivo } from "../services/relatorios";
+import { dre, resultadoPorAtivo, planilhaPivot } from "../services/relatorios";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
 import { semPermissao } from "../lib/erros";
 
@@ -24,6 +24,7 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
     const { dados, total } = await listarLancamentos({
       tipo: f.tipo, status: f.status, categoriaId: f.categoria_id, contaId: f.conta_id,
       pessoaId: f.pessoa_id, busca: f.busca, operacaoTipo: f.operacao_tipo,
+      de: f.de, ate: f.ate,
       pagina, porPagina: por_pagina,
     });
     return { dados, meta: { total, pagina, por_pagina } };
@@ -100,5 +101,22 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
   app.get("/relatorios/dre", { preHandler: exigirPermissao("relatorios_financeiros", "ler") }, async (req) => {
     const { ano } = z.object({ ano: z.coerce.number().int().min(2020).max(2100) }).parse(req.query);
     return { dados: await dre(ano) };
+  });
+
+  app.get("/relatorios/planilha", { preHandler: exigirPermissao("relatorios_financeiros", "ler") }, async (req) => {
+    const f = planilhaFiltrosSchema.parse(req.query);
+    return {
+      dados: await planilhaPivot({
+        linha: f.linha,
+        coluna: f.coluna,
+        medida: f.medida,
+        ano: f.ano,
+        de: f.de,
+        ate: f.ate,
+        contaId: f.conta_id,
+        origemFiltro: f.origem,
+        statusFiltro: f.status,
+      }),
+    };
   });
 }

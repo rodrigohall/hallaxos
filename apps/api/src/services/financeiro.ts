@@ -25,6 +25,7 @@ async function indexarLancamento(conn: typeof db, l: Lancamento) {
 export async function listarLancamentos(opts: {
   tipo?: string; status?: string; categoriaId?: string; contaId?: string;
   pessoaId?: string; busca?: string; operacaoTipo?: string; pagina: number; porPagina: number;
+  de?: string; ate?: string;
 }) {
   const filtros = [isNull(lancamentos.deletedAt)];
   if (opts.tipo) filtros.push(eq(lancamentos.tipo, opts.tipo as never));
@@ -37,6 +38,12 @@ export async function listarLancamentos(opts: {
   if (opts.contaId) filtros.push(eq(lancamentos.contaId, opts.contaId));
   if (opts.pessoaId) filtros.push(eq(lancamentos.pessoaId, opts.pessoaId));
   if (opts.busca) filtros.push(sql`unaccent(${lancamentos.descricao}) ILIKE unaccent(${"%" + opts.busca + "%"})`);
+  // Filtro por data (pago usa data_pagamento; previsto usa data_vencimento).
+  if (opts.de && opts.ate) {
+    filtros.push(
+      sql`COALESCE(${lancamentos.dataPagamento}, ${lancamentos.dataVencimento}) BETWEEN ${opts.de} AND ${opts.ate}`
+    );
+  }
   // Filtro por origem/tipo — para drill-down do dashboard financeiro.
   if (opts.operacaoTipo === "manutencao") {
     filtros.push(sql`${lancamentos.manutencaoId} IS NOT NULL`);
