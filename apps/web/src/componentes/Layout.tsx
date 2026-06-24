@@ -3,7 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, CarFront, Workflow, Wrench, CalendarDays,
   CircleDollarSign, BarChart3, ShieldCheck, KeyRound, LogOut, Menu, X,
-  TrendingUp, type LucideIcon,
+  TrendingUp, ClipboardList, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
@@ -48,6 +48,9 @@ export function Layout() {
       : []),
     ...(pode("usuarios", "ler")
       ? [{ para: "/usuarios", rotulo: "Usuários", icone: ShieldCheck }]
+      : []),
+    ...(pode("usuarios", "ler")
+      ? [{ para: "/auditoria", rotulo: "Auditoria", icone: ClipboardList }]
       : []),
   ];
 

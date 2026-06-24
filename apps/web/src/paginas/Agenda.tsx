@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, Plus, Truck, Wrench, CircleDollarSign,
   IdCard, FileText, CalendarClock, Check, Trash2, Filter, Link2,
-  ReceiptText,
+  ReceiptText, UserCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { api, ApiError } from "../api";
@@ -93,6 +93,7 @@ export function Agenda() {
   });
   const [periodo, setPeriodo] = useState<Periodo>("mes");
   const [tiposAtivos, setTiposAtivos] = useState<Set<string>>(new Set());
+  const [soMeus, setSoMeus] = useState(false);
   const [novo, setNovo] = useState(false);
   const [diaSel, setDiaSel] = useState<string | null>(null);
 
@@ -117,11 +118,12 @@ export function Agenda() {
   const tipoParams = tiposAtivos.size > 0
     ? "&" + Array.from(tiposAtivos).map((t) => `tipo=${t}`).join("&")
     : "";
+  const soMeusParam = soMeus ? "&so_meus=true" : "";
 
   const { data, isLoading } = useQuery({
-    queryKey: ["agenda", de, ate, tipoParams],
+    queryKey: ["agenda", de, ate, tipoParams, soMeus],
     queryFn: () =>
-      api.get<{ dados: ItemAgenda[] }>(`/agenda?de=${de}&ate=${ate}${tipoParams}`).then((r) => r.dados),
+      api.get<{ dados: ItemAgenda[] }>(`/agenda?de=${de}&ate=${ate}${tipoParams}${soMeusParam}`).then((r) => r.dados),
   });
 
   const porDia = useMemo(() => {
@@ -225,6 +227,17 @@ export function Agenda() {
               </button>
             );
           })}
+          {/* "Só os meus" — filtra operações e compromissos pelo usuário logado */}
+          <button
+            onClick={() => setSoMeus((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ml-2
+              ${soMeus
+                ? "bg-info/20 text-info"
+                : "text-suave hover:bg-elevado hover:text-primario"}`}
+          >
+            <UserCheck className="h-3 w-3" />
+            Só os meus
+          </button>
           {tiposAtivos.size > 0 && (
             <button
               onClick={() => setTiposAtivos(new Set())}

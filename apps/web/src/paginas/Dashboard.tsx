@@ -260,7 +260,7 @@ export function Dashboard() {
                   <span className="flex-1 text-sm">{a.texto}</span>
                   {rota && (
                     <button
-                      onClick={() => navegar(rota)}
+                      onClick={() => nav(rota)}
                       className="shrink-0 rounded px-2 py-0.5 text-xs text-suave transition-colors hover:bg-elevado hover:text-ouro"
                     >
                       Ver →

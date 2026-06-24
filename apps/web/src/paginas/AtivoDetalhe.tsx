@@ -5,8 +5,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PencilLine, Archive, ArchiveRestore, History, TrendingUp, TrendingDown,
   Scale, CarFront, Workflow, Wrench, CircleDollarSign, ChevronDown, Tag,
-  CalendarDays, Percent,
+  CalendarDays, Percent, Sparkles,
 } from "lucide-react";
+import { useCopiloto } from "../componentes/Copiloto";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
@@ -71,7 +72,8 @@ function RotuloFipe({ data }: { data: string | null }) {
 
 export function AtivoDetalhe() {
   const { id } = useParams();
-  const { pode } = useAuth();
+  const { pode, copilotoAtivo } = useAuth();
+  const { abrir: abrirCopiloto } = useCopiloto();
   const navegar = useNavigate();
   const fila = useQueryClient();
   const notificar = useToast();
@@ -132,6 +134,11 @@ export function AtivoDetalhe() {
         <Selo tom={ativo.status}>{ROTULOS[ativo.status] ?? ativo.status}</Selo>
         {ativo.deletedAt && <Selo tom="erro">arquivado</Selo>}
         <div className="ml-auto flex gap-2">
+          {copilotoAtivo && (
+            <Botao tamanho="sm" variante="fantasma" onClick={() => abrirCopiloto(`Analise o ativo ${ativo.nome} (${ativo.codigo}): receita acumulada, custos, lucro atual, status e próximas manutenções previstas.`)}>
+              <Sparkles className="h-3.5 w-3.5" /> Copiloto
+            </Botao>
+          )}
           {pode("ativos", "editar") && !ativo.deletedAt && (
             <Link to={`/ativos/${ativo.id}/editar`}>
               <Botao variante="secundario" tamanho="sm">
@@ -273,7 +280,16 @@ export function AtivoDetalhe() {
           {/* Operações */}
           <Card titulo="Operações" icone={Workflow}>
             {ativo.operacoes.length === 0 ? (
-              <EstadoVazio icone={Workflow} titulo="Nenhuma operação ainda" descricao="Locações, guinchos e vendas deste ativo aparecem aqui." />
+              <EstadoVazio
+                icone={Workflow}
+                titulo="Nenhuma operação ainda"
+                descricao="Locações, guinchos e vendas deste ativo aparecem aqui."
+                acao={pode("operacoes", "criar") ? (
+                  <Botao tamanho="sm" variante="secundario" onClick={() => navegar("/operacoes/nova")}>
+                    Nova operação
+                  </Botao>
+                ) : undefined}
+              />
             ) : (
               <>
                 <Lista>

@@ -9,6 +9,7 @@ import {
   anularLancamento, cancelarLancamento, criarCategoriaFinanceira, criarConta,
   criarLancamento, editarLancamento, estornarLancamento, fluxoCaixa,
   listarCategoriasFinanceiras, listarContas, listarLancamentos, pagarLancamento,
+  pagarLancamentosLote,
 } from "../services/financeiro";
 import { dre, resultadoPorAtivo, planilhaPivot } from "../services/relatorios";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
@@ -45,6 +46,16 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
   app.post("/lancamentos/:id/pagar", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {
     const { id } = params.parse(req.params);
     return { dados: await pagarLancamento(id, lancamentoPagarSchema.parse(req.body), exigirLogin(req).id) };
+  });
+
+  app.post("/lancamentos/pagar-lote", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {
+    const { ids, ...pagamento } = z.object({
+      ids: z.array(z.string().uuid()).min(1).max(200),
+      data_pagamento: z.string().date(),
+      conta_id: z.string().uuid().optional(),
+      forma_pagamento: lancamentoPagarSchema.shape.forma_pagamento,
+    }).parse(req.body);
+    return { dados: await pagarLancamentosLote(ids, pagamento, exigirLogin(req).id) };
   });
 
   app.post("/lancamentos/:id/cancelar", { preHandler: exigirPermissao("lancamentos", "transicionar") }, async (req) => {

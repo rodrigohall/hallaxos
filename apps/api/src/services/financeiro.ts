@@ -223,6 +223,24 @@ export async function pagarLancamento(id: string, input: LancamentoPagarInput, u
   });
 }
 
+export async function pagarLancamentosLote(
+  ids: string[],
+  input: LancamentoPagarInput,
+  usuarioId: string,
+): Promise<{ ok: number; falhas: Array<{ id: string; erro: string }> }> {
+  let ok = 0;
+  const falhas: Array<{ id: string; erro: string }> = [];
+  for (const id of ids) {
+    try {
+      await pagarLancamento(id, input, usuarioId);
+      ok++;
+    } catch (e) {
+      falhas.push({ id, erro: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return { ok, falhas };
+}
+
 export async function cancelarLancamento(id: string, motivo: string, usuarioId: string) {
   const atual = await obter(id);
   if (atual.status !== "previsto") throw conflito("Só lançamentos previstos podem ser cancelados — use estorno para pagos.");

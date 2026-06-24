@@ -21,6 +21,7 @@ import { Financeiro } from "./paginas/Financeiro";
 import { DashboardFinanceiro } from "./paginas/DashboardFinanceiro";
 import { Relatorios } from "./paginas/Relatorios";
 import { Usuarios } from "./paginas/Usuarios";
+import { Auditoria } from "./paginas/Auditoria";
 
 const filaQueries = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -66,6 +67,7 @@ export function App() {
               <Route path="/dashboard-financeiro" element={<DashboardFinanceiro />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/usuarios" element={<Usuarios />} />
+              <Route path="/auditoria" element={<Auditoria />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

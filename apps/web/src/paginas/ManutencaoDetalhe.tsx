@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, Wrench, CircleDollarSign, Play, CheckCircle2, XCircle, Pencil } from "lucide-react";
-import { TIPOS_MANUTENCAO } from "@hallaxos/shared";
+import { History, Wrench, CircleDollarSign, Play, CheckCircle2, XCircle, Pencil, CheckCircle, ChevronDown } from "lucide-react";
+import { TIPOS_MANUTENCAO, FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
@@ -27,6 +27,12 @@ interface ManutencaoDetalheDados {
 const ROTULO_STATUS: Record<string, string> = {
   agendada: "agendada", em_andamento: "em andamento", concluida: "concluída", cancelada: "cancelada",
 };
+const ROTULO_FORMA: Record<string, string> = {
+  dinheiro: "Dinheiro", pix: "Pix", cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito", boleto: "Boleto", transferencia: "Transferência",
+};
+const LIMITE_LISTA = 5;
+const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 export function ManutencaoDetalhe() {
   const { id } = useParams();
@@ -40,6 +46,12 @@ export function ManutencaoDetalhe() {
   const [dataConcl, setDataConcl] = useState("");
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [verMaisLanc, setVerMaisLanc] = useState(false);
+  const [pagandoLanc, setPagandoLanc] = useState<{ id: string; descricao: string; valor: string } | null>(null);
+  const [pagForma, setPagForma] = useState("");
+  const [pagData, setPagData] = useState(hojeISO());
+  const [pagConta, setPagConta] = useState("");
+  const [pagEnviando, setPagEnviando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [ed, setEd] = useState({
     tipo: "", descricao: "", observacoes: "", data_agendada: "",
@@ -50,6 +62,11 @@ export function ManutencaoDetalhe() {
   const { data: m } = useQuery({
     queryKey: ["manutencao", id],
     queryFn: () => api.get<{ dados: ManutencaoDetalheDados }>(`/manutencoes/${id}`).then((r) => r.dados),
+  });
+  const { data: contas } = useQuery({
+    queryKey: ["contas"],
+    enabled: pagandoLanc !== null,
+    queryFn: () => api.get<{ dados: Array<{ id: string; nome: string }> }>(`/contas`).then((r) => r.dados),
   });
   const { data: eventos, isLoading: carregandoTL } = useQuery({
     queryKey: ["manutencao-timeline", id],
@@ -208,20 +225,98 @@ export function ManutencaoDetalhe() {
             {m.lancamentos.length === 0 ? (
               <EstadoVazio icone={CircleDollarSign} titulo="Nenhum custo lançado" descricao="O custo é informado na conclusão." />
             ) : (
-              <Lista>
-                {m.lancamentos.map((l) => (
-                  <ListaLinha
-                    key={l.id}
-                    titulo={l.descricao}
-                    subtitulo={l.data_pagamento ? `pago em ${dataCurta(l.data_pagamento)}` : `vence ${dataCurta(l.data_vencimento)} · ${l.status}`}
-                    direita={<span className="text-sm font-medium text-erro">− {dinheiro(l.valor)}</span>}
-                  />
-                ))}
-              </Lista>
+              <>
+                <Lista>
+                  {(verMaisLanc ? m.lancamentos : m.lancamentos.slice(0, LIMITE_LISTA)).map((l) => (
+                    <ListaLinha
+                      key={l.id}
+                      titulo={l.descricao}
+                      subtitulo={l.data_pagamento ? `pago em ${dataCurta(l.data_pagamento)}` : `vence ${dataCurta(l.data_vencimento)} · ${l.status}`}
+                      direita={
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-erro">− {dinheiro(l.valor)}</span>
+                          {l.status === "previsto" && podeTransicionar && (
+                            <button
+                              onClick={() => { setPagandoLanc({ id: l.id, descricao: l.descricao, valor: l.valor }); setPagData(hojeISO()); setPagForma(""); setPagConta(""); }}
+                              title="Registrar pagamento"
+                              className="text-mudo hover:text-ok transition-colors"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      }
+                    />
+                  ))}
+                </Lista>
+                {m.lancamentos.length > LIMITE_LISTA && (
+                  <button
+                    onClick={() => setVerMaisLanc((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
+                    {verMaisLanc ? "Ver menos" : `Ver mais ${m.lancamentos.length - LIMITE_LISTA}`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
         </div>
       </div>
+
+      {/* Mini-modal: registrar pagamento de lançamento */}
+      <Modal aberto={!!pagandoLanc} aoFechar={() => setPagandoLanc(null)} titulo="Registrar pagamento">
+        {pagandoLanc && (
+          <div className="space-y-4">
+            <p className="text-sm text-suave">
+              {pagandoLanc.descricao} · <span className="font-medium text-texto">{dinheiro(pagandoLanc.valor)}</span>
+            </p>
+            <Campo rotulo="Forma de pagamento">
+              <Selecao value={pagForma} onChange={(e) => setPagForma(e.target.value)}>
+                <option value="">Selecione</option>
+                {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{ROTULO_FORMA[f] ?? f}</option>)}
+              </Selecao>
+            </Campo>
+            <Campo rotulo="Data do pagamento">
+              <Entrada type="date" value={pagData} onChange={(e) => setPagData(e.target.value)} />
+            </Campo>
+            <Campo rotulo="Conta (opcional)">
+              <Selecao value={pagConta} onChange={(e) => setPagConta(e.target.value)}>
+                <option value="">Conta padrão</option>
+                {(contas ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </Selecao>
+            </Campo>
+            <div className="flex justify-end gap-2">
+              <Botao variante="fantasma" onClick={() => setPagandoLanc(null)}>Cancelar</Botao>
+              <Botao
+                onClick={async () => {
+                  if (!pagForma) return;
+                  setPagEnviando(true);
+                  try {
+                    await api.post(`/lancamentos/${pagandoLanc.id}/pagar`, {
+                      data_pagamento: pagData,
+                      forma_pagamento: pagForma,
+                      ...(pagConta ? { conta_id: pagConta } : {}),
+                    });
+                    fila.invalidateQueries({ queryKey: ["manutencao", id] });
+                    fila.invalidateQueries({ queryKey: ["lancamentos"] });
+                    notificar({ tipo: "ok", titulo: "Pagamento registrado" });
+                    setPagandoLanc(null);
+                  } catch (e) {
+                    notificar({ tipo: "erro", titulo: "Não foi possível registrar", descricao: e instanceof ApiError ? e.message : undefined });
+                  } finally {
+                    setPagEnviando(false);
+                  }
+                }}
+                carregando={pagEnviando}
+                disabled={!pagForma || pagEnviando}
+              >
+                Confirmar pagamento
+              </Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal aberto={!!acao} aoFechar={fechar} titulo={acao === "concluir" ? "Concluir manutenção" : "Cancelar manutenção"}>
         {acao === "concluir" ? (

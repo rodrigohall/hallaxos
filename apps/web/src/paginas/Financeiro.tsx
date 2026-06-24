@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
+  ListChecks,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -57,6 +58,13 @@ export function Financeiro() {
   const [novaCat, setNovaCat] = useState("");
   const [novaConta, setNovaConta] = useState("");
   const [salvandoAux, setSalvandoAux] = useState(false);
+  // Pagamento em lote
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [loteModal, setLoteModal] = useState(false);
+  const [loteForma, setLoteForma] = useState("");
+  const [loteData, setLoteData] = useState(new Date().toISOString().slice(0, 10));
+  const [loteConta, setLoteConta] = useState("");
+  const [loteEnviando, setLoteEnviando] = useState(false);
   // Vínculos do lançamento avulso (interconexão, decisão #53): origem rastreável
   // (operação OU manutenção — exclusivas) e/ou ativo (classificação que coexiste).
   // Reusa a busca global (mesmas entidades, escopadas ao papel) — sem fonte nova.
@@ -286,6 +294,20 @@ export function Financeiro() {
         <Chip ativo={tipo === "despesa"} onClick={() => setTipo(tipo === "despesa" ? null : "despesa")}>despesas</Chip>
       </div>
 
+      {/* Barra de ação em lote */}
+      {selecionados.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-info/30 bg-info/10 px-4 py-2.5">
+          <ListChecks className="h-4 w-4 shrink-0 text-info" />
+          <span className="flex-1 text-sm font-medium">{selecionados.size} selecionado(s)</span>
+          <Botao tamanho="sm" onClick={() => setLoteModal(true)}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Pagar selecionados
+          </Botao>
+          <Botao tamanho="sm" variante="fantasma" onClick={() => setSelecionados(new Set())}>
+            Limpar
+          </Botao>
+        </div>
+      )}
+
       <Card>
         {isLoading ? (
           <SkeletonLinhas linhas={5} />
@@ -299,6 +321,21 @@ export function Financeiro() {
                   key={l.id}
                   titulo={
                     <span className="flex items-center gap-2">
+                      {pode("lancamentos", "transicionar") && l.status === "previsto" && (
+                        <input
+                          type="checkbox"
+                          checked={selecionados.has(l.id)}
+                          onChange={(e) => {
+                            setSelecionados((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(l.id); else next.delete(l.id);
+                              return next;
+                            });
+                          }}
+                          className="h-3.5 w-3.5 shrink-0 rounded border-borda accent-ouro cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
                       {l.tipo === "receita"
                         ? <TrendingUp className="h-3.5 w-3.5 shrink-0 text-ok" />
                         : <TrendingDown className="h-3.5 w-3.5 shrink-0 text-erro" />}
@@ -546,6 +583,64 @@ export function Financeiro() {
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Modal: pagamento em lote */}
+      <Modal aberto={loteModal} aoFechar={() => setLoteModal(false)} titulo={`Pagar ${selecionados.size} lançamento(s)`}>
+        <div className="space-y-4">
+          <p className="text-sm text-suave">
+            Os {selecionados.size} lançamentos selecionados serão marcados como pagos com os mesmos dados.
+          </p>
+          <Campo rotulo="Forma de pagamento">
+            <Selecao value={loteForma} onChange={(e) => setLoteForma(e.target.value)}>
+              <option value="">Selecione</option>
+              {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
+            </Selecao>
+          </Campo>
+          <Campo rotulo="Data do pagamento">
+            <Entrada type="date" value={loteData} onChange={(e) => setLoteData(e.target.value)} />
+          </Campo>
+          <Campo rotulo="Conta (opcional)">
+            <Selecao value={loteConta} onChange={(e) => setLoteConta(e.target.value)}>
+              <option value="">Conta de cada lançamento</option>
+              {contas?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </Selecao>
+          </Campo>
+          <div className="flex justify-end gap-2">
+            <Botao variante="fantasma" onClick={() => setLoteModal(false)}>Cancelar</Botao>
+            <Botao
+              disabled={!loteForma || loteEnviando}
+              carregando={loteEnviando}
+              onClick={async () => {
+                if (!loteForma) return;
+                setLoteEnviando(true);
+                try {
+                  const r = await api.post<{ dados: { ok: number; falhas: Array<{ id: string; erro: string }> } }>("/lancamentos/pagar-lote", {
+                    ids: Array.from(selecionados),
+                    data_pagamento: loteData,
+                    forma_pagamento: loteForma,
+                    ...(loteConta ? { conta_id: loteConta } : {}),
+                  });
+                  invalidar();
+                  setSelecionados(new Set());
+                  setLoteModal(false);
+                  const { ok, falhas } = r.dados;
+                  if (falhas.length === 0) {
+                    notificar({ tipo: "ok", titulo: `${ok} pagamento(s) registrado(s)` });
+                  } else {
+                    notificar({ tipo: "alerta", titulo: `${ok} pago(s), ${falhas.length} com falha` });
+                  }
+                } catch (err) {
+                  notificar({ tipo: "erro", titulo: "Pagamento em lote falhou", descricao: err instanceof ApiError ? err.message : undefined });
+                } finally {
+                  setLoteEnviando(false);
+                }
+              }}
+            >
+              Confirmar pagamento em lote
+            </Botao>
+          </div>
+        </div>
       </Modal>
 
       <Modal aberto={!!acao} aoFechar={() => setAcao(null)}

@@ -5,10 +5,12 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   History, Workflow, CircleDollarSign, User, Package, MapPin, ArrowRight, Pencil,
+  Sparkles, CheckCircle, ChevronDown,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import { useCopiloto } from "../componentes/Copiloto";
 import {
   Botao, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto, Timeline, useToast,
   dinheiro, dataCurta, dataHora, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
@@ -38,6 +40,7 @@ const ROTULO_FORMA: Record<string, string> = {
 };
 
 const hojeISO = () => new Date().toISOString().slice(0, 10);
+const LIMITE_LISTA = 5;
 
 /** Vencimentos mensais a partir de uma data base (mesma lógica do back). */
 function datasMensais(base: string, n: number): string[] {
@@ -58,7 +61,8 @@ interface ContaLista { id: string; nome: string }
 
 export function OperacaoDetalhe() {
   const { id } = useParams();
-  const { usuario } = useAuth();
+  const { usuario, copilotoAtivo } = useAuth();
+  const { abrir: abrirCopiloto } = useCopiloto();
   const fila = useQueryClient();
   const notificar = useToast();
   const [transicao, setTransicao] = useState<string | null>(null);
@@ -79,6 +83,12 @@ export function OperacaoDetalhe() {
   const [forma, setForma] = useState("");
   const [dataBase, setDataBase] = useState(hojeISO());
   const [vencimentos, setVencimentos] = useState<string[]>([hojeISO()]);
+  const [verMaisLanc, setVerMaisLanc] = useState(false);
+  const [pagandoLanc, setPagandoLanc] = useState<{ id: string; descricao: string; valor: string } | null>(null);
+  const [pagForma, setPagForma] = useState("");
+  const [pagData, setPagData] = useState(hojeISO());
+  const [pagConta, setPagConta] = useState("");
+  const [pagEnviando, setPagEnviando] = useState(false);
 
   const geraLancamento = !!transicao && GERA_LANCAMENTO.has(transicao);
 
@@ -89,7 +99,7 @@ export function OperacaoDetalhe() {
   });
   const { data: contas } = useQuery({
     queryKey: ["contas"],
-    enabled: geraLancamento,
+    enabled: geraLancamento || pagandoLanc !== null,
     queryFn: () => api.get<{ dados: ContaLista[] }>(`/contas`).then((r) => r.dados),
   });
 
@@ -217,11 +227,18 @@ export function OperacaoDetalhe() {
         <Link to={`/clientes/${op.cliente.id}`} className="text-sm text-suave hover:text-ouro">
           · {op.cliente.nome}
         </Link>
-        {podeTransicionar && (
-          <Botao tamanho="sm" variante="secundario" className="ml-auto" onClick={abrirEdicao}>
-            <Pencil className="h-3.5 w-3.5" /> Editar
-          </Botao>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {copilotoAtivo && (
+            <Botao tamanho="sm" variante="fantasma" onClick={() => abrirCopiloto(`Resuma a operação ${op.codigo} (${ROTULO_TIPO[op.tipo] ?? op.tipo}) do cliente ${op.cliente.nome}: status atual, valor, lançamentos pendentes e próximas etapas.`)}>
+              <Sparkles className="h-3.5 w-3.5" /> Copiloto
+            </Botao>
+          )}
+          {podeTransicionar && (
+            <Botao tamanho="sm" variante="secundario" onClick={abrirEdicao}>
+              <Pencil className="h-3.5 w-3.5" /> Editar
+            </Botao>
+          )}
+        </div>
       </div>
 
       {/* Transições nomeadas */}
@@ -309,20 +326,42 @@ export function OperacaoDetalhe() {
             {op.lancamentos.length === 0 ? (
               <EstadoVazio icone={CircleDollarSign} titulo="Nenhum lançamento" descricao="Lançamentos são gerados ao avançar a operação." />
             ) : (
-              <Lista>
-                {op.lancamentos.map((l) => (
-                  <ListaLinha
-                    key={l.id}
-                    titulo={l.descricao}
-                    subtitulo={l.data_pagamento ? `pago em ${dataCurta(l.data_pagamento)}` : `vence ${dataCurta(l.data_vencimento)} · ${l.status}`}
-                    direita={
-                      <span className={`text-sm font-medium ${l.tipo === "receita" ? "text-ok" : "text-erro"}`}>
-                        {l.tipo === "receita" ? "+" : "−"} {dinheiro(l.valor)}
-                      </span>
-                    }
-                  />
-                ))}
-              </Lista>
+              <>
+                <Lista>
+                  {(verMaisLanc ? op.lancamentos : op.lancamentos.slice(0, LIMITE_LISTA)).map((l) => (
+                    <ListaLinha
+                      key={l.id}
+                      titulo={l.descricao}
+                      subtitulo={l.data_pagamento ? `pago em ${dataCurta(l.data_pagamento)}` : `vence ${dataCurta(l.data_vencimento)} · ${l.status}`}
+                      direita={
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-medium ${l.tipo === "receita" ? "text-ok" : "text-erro"}`}>
+                            {l.tipo === "receita" ? "+" : "−"} {dinheiro(l.valor)}
+                          </span>
+                          {l.status === "previsto" && podeTransicionar && (
+                            <button
+                              onClick={() => { setPagandoLanc({ id: l.id, descricao: l.descricao, valor: l.valor }); setPagData(hojeISO()); setPagForma(""); setPagConta(""); }}
+                              title="Registrar pagamento"
+                              className="text-mudo hover:text-ok transition-colors"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      }
+                    />
+                  ))}
+                </Lista>
+                {op.lancamentos.length > LIMITE_LISTA && (
+                  <button
+                    onClick={() => setVerMaisLanc((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
+                    {verMaisLanc ? "Ver menos" : `Ver mais ${op.lancamentos.length - LIMITE_LISTA}`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
         </div>
@@ -416,6 +455,60 @@ export function OperacaoDetalhe() {
                 carregando={enviando}
               >
                 {ACAO_TRANSICAO[transicao] ?? "Confirmar"}
+              </Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Mini-modal: registrar pagamento de lançamento */}
+      <Modal aberto={!!pagandoLanc} aoFechar={() => setPagandoLanc(null)} titulo="Registrar pagamento">
+        {pagandoLanc && (
+          <div className="space-y-4">
+            <p className="text-sm text-suave">
+              {pagandoLanc.descricao} · <span className="font-medium text-texto">{dinheiro(pagandoLanc.valor)}</span>
+            </p>
+            <Campo rotulo="Forma de pagamento">
+              <Selecao value={pagForma} onChange={(e) => setPagForma(e.target.value)}>
+                <option value="">Selecione</option>
+                {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{ROTULO_FORMA[f] ?? f}</option>)}
+              </Selecao>
+            </Campo>
+            <Campo rotulo="Data do pagamento">
+              <Entrada type="date" value={pagData} onChange={(e) => setPagData(e.target.value)} />
+            </Campo>
+            <Campo rotulo="Conta (opcional)">
+              <Selecao value={pagConta} onChange={(e) => setPagConta(e.target.value)}>
+                <option value="">Conta padrão</option>
+                {(contas ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </Selecao>
+            </Campo>
+            <div className="flex justify-end gap-2">
+              <Botao variante="fantasma" onClick={() => setPagandoLanc(null)}>Cancelar</Botao>
+              <Botao
+                onClick={async () => {
+                  if (!pagForma) return;
+                  setPagEnviando(true);
+                  try {
+                    await api.post(`/lancamentos/${pagandoLanc.id}/pagar`, {
+                      data_pagamento: pagData,
+                      forma_pagamento: pagForma,
+                      ...(pagConta ? { conta_id: pagConta } : {}),
+                    });
+                    fila.invalidateQueries({ queryKey: ["operacao", id] });
+                    fila.invalidateQueries({ queryKey: ["lancamentos"] });
+                    notificar({ tipo: "ok", titulo: "Pagamento registrado" });
+                    setPagandoLanc(null);
+                  } catch (e) {
+                    notificar({ tipo: "erro", titulo: "Não foi possível registrar", descricao: e instanceof ApiError ? e.message : undefined });
+                  } finally {
+                    setPagEnviando(false);
+                  }
+                }}
+                carregando={pagEnviando}
+                disabled={!pagForma || pagEnviando}
+              >
+                Confirmar pagamento
               </Botao>
             </div>
           </div>

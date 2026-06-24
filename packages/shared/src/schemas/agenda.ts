@@ -13,6 +13,8 @@ export const agendaFiltrosSchema = z.object({
     (v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v]),
     z.array(z.enum(TIPOS_EVENTO)).optional(),
   ),
+  // Filtra operações e compromissos pelo responsável autenticado.
+  so_meus: z.coerce.boolean().optional(),
 });
 export type AgendaFiltros = z.infer<typeof agendaFiltrosSchema>;
 

@@ -20,11 +20,19 @@ export interface ItemAgenda {
 }
 
 /** Eventos da agenda no intervalo [de, ate] (datas YYYY-MM-DD inclusivas).
- *  `tipos` opcional filtra por categoria de evento. */
-export async function listarAgenda(de: string, ate: string, tipos?: string[]): Promise<ItemAgenda[]> {
+ *  `tipos` opcional filtra por categoria de evento.
+ *  `responsavelId` opcional filtra operações e compromissos pelo responsável. */
+export async function listarAgenda(de: string, ate: string, tipos?: string[], responsavelId?: string): Promise<ItemAgenda[]> {
   // O filtro de tipo é aplicado após a UNION via CTE para não duplicar lógica.
   const tipoFiltro = tipos && tipos.length > 0
     ? sql`WHERE tipo = ANY(${sql.raw(`ARRAY['${tipos.join("','")}']`)})`
+    : sql``;
+
+  const filtroResponsavelCompromisso = responsavelId
+    ? sql` AND responsavel_id = ${responsavelId}::uuid`
+    : sql``;
+  const filtroResponsavelDevolucao = responsavelId
+    ? sql` AND o.responsavel_id = ${responsavelId}::uuid`
     : sql``;
 
   const r = await db.execute(sql`
@@ -35,6 +43,7 @@ export async function listarAgenda(de: string, ate: string, tipos?: string[]): P
              entidade_tipo::text AS entidade_tipo, entidade_id::text AS entidade_id
       FROM eventos_agenda
       WHERE deleted_at IS NULL AND data_inicio::date BETWEEN ${de}::date AND ${ate}::date
+      ${filtroResponsavelCompromisso}
 
       UNION ALL
       -- Devoluções de locação previstas
@@ -47,6 +56,7 @@ export async function listarAgenda(de: string, ate: string, tipos?: string[]): P
       JOIN ativos at ON at.id = oa.ativo_id
       WHERE ol.data_devolucao_real IS NULL
         AND ol.data_devolucao_prevista::date BETWEEN ${de}::date AND ${ate}::date
+      ${filtroResponsavelDevolucao}
 
       UNION ALL
       -- Manutenções agendadas
