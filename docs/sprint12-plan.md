@@ -49,15 +49,15 @@ Agenda         ✅       ✅       ✅         ✅            ✅           —
 
 ---
 
-## As 5 Frentes
+## As 6 Frentes
 
 ```
 A — Ficha 360°          B — Navegação         C — Centro do dia
     cada entidade           sem beco               Dashboard+Agenda+Notif
 
-D — Atrito diário       E — Clareza visual
-    ações em lote           polimento transversal
-    copiloto contextual
+D — Atrito diário       E — Clareza visual    F — Planilhas Financeiras ★
+    ações em lote           polimento              pivot detalhada +
+    copiloto contextual     transversal            customizável + export
 ```
 
 ---
@@ -709,6 +709,233 @@ Todo campo `type="date"` que aceita data no passado deve ter `dica="Retroativo"`
 
 ---
 
+# 🟪 FRENTE F — Planilhas Financeiras detalhadas e customizáveis
+
+> O coração do pedido: dar ao usuário **planilhas vivas** sobre o financeiro —
+> tão detalhadas quanto um extrato linha-a-linha, e tão flexíveis quanto uma
+> tabela dinâmica do Excel. **Zero dado novo:** todas as dimensões já existem
+> no núcleo (categoria, conta, pessoa, ativo, origem, tipo, status, mês).
+
+## O que existe hoje (e por que não basta)
+
+| Tela | O que faz | Limite |
+|---|---|---|
+| `Financeiro` | Lista de lançamentos com filtros simples (status/tipo) | Linha a linha, sem totais nem agrupamento |
+| `Relatorios` | DRE por mês, por categoria, ROI por ativo | `Tabela` **estática**, eixos fixos, sem export, sem drill |
+| `DashboardFinanceiro` | Caixas por conta e por origem | Cartões-resumo, não planilha |
+
+Falta o que o usuário pediu: uma **planilha pivotável** onde ele escolhe o que
+vai nas linhas, o que vai nas colunas, qual medida exibir, filtra, vê totais e
+exporta — sem nunca sair de um número que bate com o resto do sistema.
+
+---
+
+## F1 — Planilha Dinâmica (pivot) ★ NÚCLEO DA FRENTE
+
+Uma nova aba em Relatórios: **"Planilha"**. O usuário monta a visão.
+
+### Anatomia da tela
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Planilha Financeira                          [Salvar visão] [Exportar ▾]│
+├──────────────────────────────────────────────────────────────────────┤
+│  CONFIGURAR                                                            │
+│  Linhas:  [Categoria ▾]    Colunas: [Mês ▾]    Medida: [Líquido ▾]    │
+│  Período: [2026 ▾]  Filtros: [+ Conta] [+ Origem] [+ Status] [+ Tipo] │
+├──────────────────────────────────────────────────────────────────────┤
+│                    │  Jan    │  Fev    │  Mar    │  …  │  TOTAL  │     │
+│  ──────────────────┼─────────┼─────────┼─────────┼─────┼─────────┤     │
+│  Locação           │  4.800  │  5.200  │  5.000  │     │ 15.000  │ ok  │
+│  Guincho           │  1.200  │    980  │  1.450  │     │  3.630  │ ok  │
+│  Manutenção        │ (1.300) │  (450)  │  (820)  │     │ (2.570) │ erro│
+│  Avulso            │    300  │      0  │   −120  │     │    180  │     │
+│  ──────────────────┼─────────┼─────────┼─────────┼─────┼─────────┤     │
+│  TOTAL             │  5.000  │  5.730  │  5.510  │     │ 16.240  │ ouro│
+└──────────────────────────────────────────────────────────────────────┘
+                                                  ↑ clicar numa célula →
+                                                    drill-down dos lançamentos
+```
+
+### Dimensões disponíveis (todas já no núcleo)
+
+| Eixo | Opções |
+|---|---|
+| **Linhas** | Categoria · Conta · Origem · Ativo · Cliente · Tipo · Status |
+| **Colunas** | Mês · Trimestre · Tipo (receita/despesa) · Status · Origem · (nenhuma) |
+| **Medida** | Receita paga · Despesa paga · Líquido · A receber · A pagar · Vencido · Qtd lançamentos |
+| **Período** | Ano · intervalo de/até · trimestre · "tudo" |
+| **Filtros** | Conta, origem, categoria, cliente, tipo, status (multi-seleção) |
+
+### Backend — um endpoint genérico, sem tabela nova
+
+```ts
+// GET /relatorios/planilha
+//   ?linha=categoria&coluna=mes&medida=liquido&ano=2026
+//   &conta_id=...&origem=locacao&status=pago  (filtros opcionais)
+//
+// Monta SQL dinâmico SEGURO: linha/coluna/medida vêm de um allowlist
+// (enums), nunca interpolados crus. Filtros viram WHERE parametrizado.
+//
+// Retorna formato tabular pronto pro front:
+{
+  linhas: ["Locação", "Guincho", "Manutenção", "Avulso"],
+  colunas: ["2026-01", "2026-02", "2026-03"],
+  celulas: [[4800, 5200, 5000], [1200, 980, 1450], ...],  // linha × coluna
+  totais_linha: [15000, 3630, ...],
+  totais_coluna: [5000, 5730, 5510],
+  total_geral: 16240,
+  // cada célula carrega os filtros que a geraram, p/ o drill-down
+}
+```
+
+O SQL base é um `GROUP BY <linha>, <coluna>` com `SUM(valor) FILTER (...)`
+conforme a medida — exatamente a mesma lógica de `montarFinanceiroPorOrigem`
+(Sprint 11), generalizada. **Allowlist de colunas** evita SQL injection: cada
+dimensão mapeia para uma expressão SQL fixa no servidor.
+
+### Customização persistida (decisão de arquitetura)
+
+- **Sem backend para preferências**: a "visão" (linha/coluna/medida/filtros)
+  é serializada na **URL** (`?linha=...&coluna=...`) e em **localStorage**
+  (`hallax_planilhas_salvas`) — mesmo padrão do `DashboardFinanceiro`
+  (decisão #65). Compartilhar uma visão = compartilhar a URL.
+- "Salvar visão" guarda um preset nomeado no localStorage; um seletor
+  recarrega presets salvos.
+
+**Esforço:** back médio (endpoint genérico com allowlist) + front alto (a
+grade pivot é o componente mais rico do sprint).
+
+---
+
+## F2 — Componente visual `PlanilhaGrade`
+
+A grade precisa parecer planilha de verdade, dentro do design system.
+
+```tsx
+// Cabeçalho fixo (sticky) + primeira coluna fixa para rolagem horizontal
+<div className="overflow-auto rounded-lg border border-borda">
+  <table className="w-full border-collapse text-sm tabular-nums">
+    <thead className="sticky top-0 bg-elevado">
+      <tr>
+        <th className="sticky left-0 bg-elevado px-3 py-2 text-left text-xs
+                       font-semibold uppercase tracking-wider text-suave">
+          {rotuloLinha}
+        </th>
+        {colunas.map(c => (
+          <th className="px-3 py-2 text-right text-xs font-medium text-mudo">{c}</th>
+        ))}
+        <th className="px-3 py-2 text-right text-xs font-bold text-ouro">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {linhas.map((linha, i) => (
+        <tr className="border-t border-borda hover:bg-elevado/40 transition-colors">
+          <td className="sticky left-0 bg-painel px-3 py-2 font-medium">{linha}</td>
+          {celulas[i].map((v, j) => (
+            <td onClick={() => abrirDrill(i, j)}
+                className={`cursor-pointer px-3 py-2 text-right
+                  ${v < 0 ? "text-erro" : v > 0 ? "text-ok" : "text-mudo"}
+                  hover:bg-ouro/10`}>
+              {v === 0 ? "—" : dinheiro(v)}
+            </td>
+          ))}
+          <td className="px-3 py-2 text-right font-bold">{dinheiro(totaisLinha[i])}</td>
+        </tr>
+      ))}
+    </tbody>
+    <tfoot className="border-t-2 border-borda-forte bg-elevado">
+      <tr>
+        <td className="sticky left-0 bg-elevado px-3 py-2 font-bold text-ouro">TOTAL</td>
+        {totaisColuna.map(t => (
+          <td className="px-3 py-2 text-right font-bold">{dinheiro(t)}</td>
+        ))}
+        <td className="px-3 py-2 text-right font-bold text-ouro">{dinheiro(totalGeral)}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+```
+
+**Detalhes visuais:**
+- Números **tabulares** (`tabular-nums`) — colunas alinham perfeitamente.
+- Negativos em `text-erro`, positivos em `text-ok`, zero vira `—` em `text-mudo`.
+- Linha/coluna de total com peso e dourado discreto.
+- Cabeçalho e primeira coluna **fixos** (sticky) — rola sem perder referência.
+- Mobile: scroll horizontal suave; em telas estreitas, oferecer "modo lista"
+  alternativo (cada linha vira um cartão expansível).
+
+**Esforço:** front médio-alto. Componente reutilizável também pela DRE (F4).
+
+---
+
+## F3 — Drill-down em qualquer célula
+
+Clicar numa célula abre os lançamentos **exatos** que somam aquele número —
+reusando o `ListaDrillDown` que já existe no `DashboardFinanceiro`.
+
+```
+Clique em [Locação × Fev × Líquido = 5.200]
+   → Drawer lateral abre:
+      "Locação · Fevereiro/2026 · 8 lançamentos · líquido R$ 5.200"
+      +R$ 800  Locação OP-0051 · pago 03/02   [Ver operação →]
+      +R$ 800  Locação OP-0051 · pago 03/03   [Ver operação →]
+      ...
+```
+
+A célula carrega os filtros que a geraram (`origem=locacao`, `mes=2026-02`),
+que viram query para `GET /lancamentos`. **Rastreabilidade ponta a ponta**: do
+número agregado ao lançamento individual à operação de origem.
+
+**Esforço:** front baixo (reusa `ListaDrillDown` + `Drawer` existentes).
+
+---
+
+## F4 — Exportação (CSV / impressão)
+
+```
+[Exportar ▾]
+  ├── Copiar para área de transferência (TSV — cola direto no Excel)
+  ├── Baixar CSV
+  └── Imprimir / PDF (window.print com folha de estilo de impressão)
+```
+
+- **CSV/TSV gerado no cliente** a partir da matriz já carregada — sem endpoint
+  novo, sem segredo no servidor.
+- Folha de impressão (`@media print`): fundo branco, texto escuro, oculta
+  navegação — a planilha vira relatório entregável.
+
+**Esforço:** baixo. Geração de CSV no cliente + CSS de impressão.
+
+---
+
+## F5 — DRE e Relatórios atuais migram para a grade nova
+
+O `Relatorios.tsx` atual (DRE por mês, por categoria, ROI) passa a usar o
+`PlanilhaGrade` — ganhando export, drill-down e totais consistentes de graça.
+A DRE vira simplesmente um **preset** da planilha dinâmica:
+`linha=categoria, coluna=mes, medida=liquido`.
+
+**Esforço:** baixo (refatorar o que existe para o componente novo).
+
+---
+
+## Resumo da Frente F
+
+| # | Ticket | Camada | Esforço |
+|---|--------|--------|---------|
+| F1 | Endpoint `GET /relatorios/planilha` (pivot genérico, allowlist) | back médio | Médio |
+| F2 | Componente `PlanilhaGrade` (sticky, tabular, totais) | front | Médio-alto |
+| F3 | Drill-down por célula (reusa `ListaDrillDown` + `Drawer`) | front | Baixo |
+| F4 | Exportação CSV/TSV/impressão (cliente) | front | Baixo |
+| F5 | Migrar DRE/ROI atuais para a grade nova (DRE = preset) | front | Baixo |
+
+> **Regra máxima preservada:** a planilha é 100% **consulta** sobre o núcleo.
+> Nenhum total é armazenado; todo número é recalculado e, por construção, bate
+> com o financeiro, o dashboard e os lançamentos individuais (drill-down prova).
+
+---
+
 # Sequência recomendada
 
 ```
@@ -723,7 +950,15 @@ Sprint   A1 PessoaDetalhe       B1 CTAs cruzados       A4 link manut→lanc
 
 Sprint   C2 agenda filtro       D1 copiloto contextual  A3 manut→operacao
 13       C3 notif agrupadas     D2 pagamento em lote
+
+Sprint   F1 endpoint pivot      F3 drill por célula     F4 exportação CSV
+14 (★)   F2 PlanilhaGrade       F5 migrar DRE→grade
+         "Planilhas              (a Frente F é grande e visual — merece um
+          Financeiras"            sprint próprio, o pedido recente do dono)
 ```
+
+A **Frente F (Planilhas)** pode ser antecipada para o Sprint 12 se for a
+prioridade do dono — F1+F2 entregam a planilha pivotável; F3/F4/F5 enriquecem.
 
 ---
 
@@ -735,6 +970,9 @@ Sprint   C2 agenda filtro       D1 copiloto contextual  A3 manut→operacao
 | A2/A4/D2 → modal compartilhado | Extrair `ModalPagarLancamento` antes de replicar em 4 telas |
 | C1 → back shape | `alertas` do dashboard ganha campos — retro-compatível (adiciona, não remove) |
 | D2 | Transação em lote: verificar permissão por ID antes de processar |
+| F1 segurança | linha/coluna/medida vêm de **allowlist** (enum→expressão SQL fixa), nunca interpolados — sem SQL injection |
+| F3/F5 reuso | drill-down reusa `ListaDrillDown`; grade reusa em DRE/ROI — extrair `PlanilhaGrade` antes de F5 |
+| F gating | tudo sob `relatorios_financeiros:ler` — quem não vê financeiro não monta planilha |
 
 **Regra de segurança:** se qualquer ticket levar a uma migração → **parar e
 reavaliar**. Este sprint é interligação e UI sobre o núcleo existente.
