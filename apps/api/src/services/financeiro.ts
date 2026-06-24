@@ -447,3 +447,68 @@ export async function fluxoCaixa(de: string, ate: string) {
     GROUP BY d.dia ORDER BY d.dia`);
   return r.rows;
 }
+
+/** Faturamento de receitas pagas por tipo de operação, agrupado por mês. */
+export async function faturamentoPorTipo(meses: number) {
+  const r = await db.execute(sql`
+    WITH serie AS (
+      SELECT generate_series(
+        date_trunc('month', current_date - (${meses} - 1) * interval '1 month'),
+        date_trunc('month', current_date),
+        interval '1 month'
+      )::date AS mes
+    )
+    SELECT
+      s.mes,
+      coalesce(sum(l.valor) FILTER (WHERE o.tipo = 'guincho'), 0)::numeric     AS guincho,
+      coalesce(sum(l.valor) FILTER (WHERE o.tipo = 'locacao'), 0)::numeric     AS locacao,
+      coalesce(sum(l.valor) FILTER (WHERE o.tipo = 'venda_ativo'), 0)::numeric AS venda_ativo,
+      coalesce(sum(l.valor) FILTER (WHERE l.operacao_id IS NULL AND l.manutencao_id IS NULL), 0)::numeric AS avulso
+    FROM serie s
+    LEFT JOIN lancamentos l
+      ON l.deleted_at IS NULL
+      AND l.tipo = 'receita'
+      AND l.status = 'pago'
+      AND date_trunc('month', l.data_pagamento) = s.mes
+    LEFT JOIN operacoes o ON o.id = l.operacao_id AND o.deleted_at IS NULL
+    GROUP BY s.mes
+    ORDER BY s.mes
+  `);
+  return r.rows as Array<{
+    mes: string; guincho: string; locacao: string; venda_ativo: string; avulso: string;
+  }>;
+}
+
+/** Custo por ativo (despesas pagas vinculadas via ativo_id ou manutenção) nos últimos N meses. */
+export async function custoPorAtivo(meses: number) {
+  const r = await db.execute(sql`
+    SELECT
+      a.id          AS ativo_id,
+      a.nome        AS ativo,
+      coalesce(sum(l.valor) FILTER (WHERE cf.nome = 'Manutenção'), 0)::numeric                               AS manutencao,
+      coalesce(sum(l.valor) FILTER (WHERE cf.nome IN ('Combustível','Abastecimento')), 0)::numeric           AS combustivel,
+      coalesce(sum(l.valor) FILTER (WHERE cf.nome NOT IN ('Manutenção','Combustível','Abastecimento')), 0)::numeric AS outros,
+      coalesce(sum(l.valor), 0)::numeric AS total
+    FROM ativos a
+    LEFT JOIN lancamentos l
+      ON l.deleted_at IS NULL
+      AND l.tipo = 'despesa'
+      AND l.status = 'pago'
+      AND l.data_pagamento >= (current_date - ${meses} * interval '1 month')::date
+      AND (
+        l.ativo_id = a.id
+        OR l.manutencao_id IN (
+          SELECT id FROM manutencoes WHERE ativo_id = a.id AND deleted_at IS NULL
+        )
+      )
+    LEFT JOIN categorias_financeiras cf ON cf.id = l.categoria_id
+    WHERE a.deleted_at IS NULL
+    GROUP BY a.id, a.nome
+    HAVING coalesce(sum(l.valor), 0) > 0
+    ORDER BY total DESC
+  `);
+  return r.rows as Array<{
+    ativo_id: string; ativo: string;
+    manutencao: string; combustivel: string; outros: string; total: string;
+  }>;
+}

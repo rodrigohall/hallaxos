@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
-  ListChecks, Link2,
+  ListChecks, Link2, ChevronDown, ChevronUp, Truck, Car, PackageMinus, Wrench, Fuel,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -303,6 +303,27 @@ export function Financeiro() {
     .filter((l) => l.status === "previsto")
     .reduce((s, l) => s + Number(l.valor), 0);
 
+  const [analisesAberto, setAnalisesAberto] = useState(false);
+  const [mesesAnalise, setMesesAnalise] = useState(3);
+
+  const { data: porTipo } = useQuery({
+    queryKey: ["financeiro/por-tipo", mesesAnalise],
+    queryFn: () =>
+      api.get<{ dados: Array<{ mes: string; guincho: string; locacao: string; venda_ativo: string; avulso: string }> }>(
+        `/financeiro/por-tipo?meses=${mesesAnalise}`
+      ).then((r) => r.dados),
+    enabled: analisesAberto,
+  });
+
+  const { data: custoAtivo } = useQuery({
+    queryKey: ["financeiro/custo-por-ativo", mesesAnalise],
+    queryFn: () =>
+      api.get<{ dados: Array<{ ativo_id: string; ativo: string; manutencao: string; combustivel: string; outros: string; total: string }> }>(
+        `/financeiro/custo-por-ativo?meses=${mesesAnalise}`
+      ).then((r) => r.dados),
+    enabled: analisesAberto,
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -330,6 +351,116 @@ export function Financeiro() {
           <Kpi key={c.id} rotulo={c.nome} valor={dinheiro(c.saldo)} icone={Wallet}
             tom={Number(c.saldo) >= 0 ? "neutro" : "erro"} detalhe="saldo derivado dos lançamentos" />
         ))}
+      </div>
+
+      {/* ── Painel de Análises ── */}
+      <div className="rounded-xl border border-borda bg-painel shadow-painel">
+        <button
+          onClick={() => setAnalisesAberto((v) => !v)}
+          className="flex w-full items-center justify-between px-5 py-3.5 text-left"
+        >
+          <span className="text-sm font-semibold text-texto">Análises financeiras</span>
+          <div className="flex items-center gap-2">
+            {([1, 3, 6, 12] as const).map((m) => (
+              <button
+                key={m}
+                onClick={(e) => { e.stopPropagation(); setMesesAnalise(m); if (!analisesAberto) setAnalisesAberto(true); }}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${mesesAnalise === m ? "bg-ouro/20 text-ouro" : "text-mudo hover:text-suave"}`}
+              >
+                {m === 1 ? "1m" : m === 12 ? "1a" : `${m}m`}
+              </button>
+            ))}
+            {analisesAberto
+              ? <ChevronUp className="h-4 w-4 text-mudo" />
+              : <ChevronDown className="h-4 w-4 text-mudo" />}
+          </div>
+        </button>
+
+        {analisesAberto && (
+          <div className="border-t border-borda px-5 pb-5 pt-4 space-y-6">
+
+            {/* Faturamento por tipo de operação */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-mudo">
+                Faturamento por tipo de operação (receitas pagas)
+              </p>
+              {!porTipo ? (
+                <p className="text-xs text-mudo">Carregando…</p>
+              ) : porTipo.length === 0 ? (
+                <p className="text-xs text-mudo">Sem dados no período.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[480px] text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-mudo">
+                        <th className="pb-2 font-medium">Mês</th>
+                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Truck className="h-3 w-3" /> Guincho</span></th>
+                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Car className="h-3 w-3" /> Locação</span></th>
+                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><PackageMinus className="h-3 w-3" /> Venda Ativo</span></th>
+                        <th className="pb-2 font-medium text-right">Avulso</th>
+                        <th className="pb-2 font-medium text-right text-texto">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-borda/50">
+                      {porTipo.map((row) => {
+                        const total = Number(row.guincho) + Number(row.locacao) + Number(row.venda_ativo) + Number(row.avulso);
+                        const mes = new Date(row.mes + "T12:00:00Z").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+                        return (
+                          <tr key={row.mes} className="hover:bg-elevado/50 transition-colors">
+                            <td className="py-2 font-medium text-texto capitalize">{mes}</td>
+                            <td className="py-2 text-right text-ok">{Number(row.guincho) > 0 ? dinheiro(row.guincho) : <span className="text-mudo">—</span>}</td>
+                            <td className="py-2 text-right text-ok">{Number(row.locacao) > 0 ? dinheiro(row.locacao) : <span className="text-mudo">—</span>}</td>
+                            <td className="py-2 text-right text-ok">{Number(row.venda_ativo) > 0 ? dinheiro(row.venda_ativo) : <span className="text-mudo">—</span>}</td>
+                            <td className="py-2 text-right text-suave">{Number(row.avulso) > 0 ? dinheiro(row.avulso) : <span className="text-mudo">—</span>}</td>
+                            <td className="py-2 text-right font-semibold text-texto">{total > 0 ? dinheiro(total) : <span className="text-mudo">—</span>}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Custo por ativo */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-mudo">
+                Custo por ativo (despesas pagas)
+              </p>
+              {!custoAtivo ? (
+                <p className="text-xs text-mudo">Carregando…</p>
+              ) : custoAtivo.length === 0 ? (
+                <p className="text-xs text-mudo">Sem despesas vinculadas a ativos no período.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[480px] text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-mudo">
+                        <th className="pb-2 font-medium">Ativo</th>
+                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Wrench className="h-3 w-3" /> Manutenção</span></th>
+                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Fuel className="h-3 w-3" /> Combustível</span></th>
+                        <th className="pb-2 font-medium text-right">Outros</th>
+                        <th className="pb-2 font-medium text-right text-erro">Total gasto</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-borda/50">
+                      {custoAtivo.map((row) => (
+                        <tr key={row.ativo_id} className="hover:bg-elevado/50 transition-colors">
+                          <td className="py-2 font-medium text-texto">{row.ativo}</td>
+                          <td className="py-2 text-right text-suave">{Number(row.manutencao) > 0 ? dinheiro(row.manutencao) : <span className="text-mudo">—</span>}</td>
+                          <td className="py-2 text-right text-suave">{Number(row.combustivel) > 0 ? dinheiro(row.combustivel) : <span className="text-mudo">—</span>}</td>
+                          <td className="py-2 text-right text-suave">{Number(row.outros) > 0 ? dinheiro(row.outros) : <span className="text-mudo">—</span>}</td>
+                          <td className="py-2 text-right font-semibold text-erro">{dinheiro(row.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5">

@@ -9,7 +9,7 @@ import {
   anularLancamento, cancelarLancamento, criarCategoriaFinanceira, criarConta,
   criarLancamento, editarLancamento, estornarLancamento, fluxoCaixa,
   listarCategoriasFinanceiras, listarContas, listarLancamentos, pagarLancamento,
-  pagarLancamentosLote, vincularLancamentos,
+  pagarLancamentosLote, vincularLancamentos, faturamentoPorTipo, custoPorAtivo,
 } from "../services/financeiro";
 import { dre, resultadoPorAtivo, planilhaPivot } from "../services/relatorios";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
@@ -139,5 +139,15 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
         statusFiltro: f.status,
       }),
     };
+  });
+
+  app.get("/financeiro/por-tipo", { preHandler: exigirPermissao("dashboard_financeiro", "ler") }, async (req) => {
+    const { meses } = z.object({ meses: z.coerce.number().int().min(1).max(24).default(6) }).parse(req.query);
+    return { dados: await faturamentoPorTipo(meses) };
+  });
+
+  app.get("/financeiro/custo-por-ativo", { preHandler: exigirPermissao("dashboard_financeiro", "ler") }, async (req) => {
+    const { meses } = z.object({ meses: z.coerce.number().int().min(1).max(24).default(3) }).parse(req.query);
+    return { dados: await custoPorAtivo(meses) };
   });
 }
