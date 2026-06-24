@@ -437,7 +437,7 @@ export function Financeiro() {
 
       <Modal aberto={novo} aoFechar={fecharNovo} titulo="Novo lançamento">
         <form onSubmit={criar} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Campo rotulo="Tipo">
               <Selecao value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
                 <option value="despesa">Despesa</option>
@@ -452,7 +452,7 @@ export function Financeiro() {
           <Campo rotulo="Descrição">
             <Entrada required value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
           </Campo>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Campo rotulo="Categoria">
               <Selecao required value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}>
                 <option value="">Escolha…</option>
@@ -516,7 +516,7 @@ export function Financeiro() {
             </label>
           )}
           {form.pago && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Campo rotulo="Forma de pagamento">
                 <Selecao value={form.forma_pagamento} onChange={(e) => setForm({ ...form, forma_pagamento: e.target.value })}>
                   {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
@@ -587,7 +587,7 @@ export function Financeiro() {
             <Campo rotulo="Descrição">
               <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />
             </Campo>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Campo rotulo="Valor (R$)">
                 <Entrada type="number" step="0.01" min="0.01" required value={formEd.valor}
                   onChange={(e) => setFormEd({ ...formEd, valor: e.target.value })} />

@@ -561,7 +561,8 @@ export function Dashboard() {
       {/* ── Linha 5: Fluxo de caixa ── */}
       {financeiro && (
         <Card titulo="Fluxo de caixa · últimos 7 dias" icone={Scale}>
-          <div className="grid grid-cols-7 gap-3">
+          <div className="overflow-x-auto -mx-1 px-1">
+          <div className="grid grid-cols-7 gap-3 min-w-[380px]">
             {financeiro.fluxo_caixa_7d.map((d) => {
               const receitas = Number(d.receitas);
               const despesas = Number(d.despesas);
@@ -618,6 +619,7 @@ export function Dashboard() {
                 </div>
               );
             })}
+          </div>
           </div>
           {/* Legenda */}
           <div className="mt-3 flex items-center gap-4 text-xs text-mudo">

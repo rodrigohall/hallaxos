@@ -196,7 +196,7 @@ export function PessoaForm() {
             <Campo rotulo="Bairro">
               <Entrada value={form.bairro} onChange={definir("bairro")} />
             </Campo>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Campo rotulo="Número">
                 <Entrada value={form.numero} onChange={definir("numero")} />
               </Campo>

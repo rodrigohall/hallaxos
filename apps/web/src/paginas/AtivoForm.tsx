@@ -192,7 +192,7 @@ export function AtivoForm() {
           <p className="mb-3 text-xs text-mudo">
             Placa obrigatória apenas quando o cadastro estiver completo — você pode salvar sem ela agora.
           </p>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             <Campo rotulo="Placa" erro={erros.placa}>
               <Entrada value={form.placa} onChange={definir("placa")} className="uppercase" maxLength={8} />
             </Campo>
@@ -233,7 +233,7 @@ export function AtivoForm() {
       )}
 
       <Card titulo="Valores e situação">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
           <Campo rotulo="Valor de compra (R$)" erro={erros.valor_aquisicao}>
             <Entrada type="number" step="0.01" value={form.valor_aquisicao} onChange={definir("valor_aquisicao")} />
           </Campo>

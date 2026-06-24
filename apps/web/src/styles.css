@@ -85,8 +85,19 @@ h1, h2, h3 {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes folha-subir {
+  from { opacity: 0; transform: translateY(48px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .animar-surgir { animation: surgir 0.25s var(--ease-suave) both; }
 .animar-deslizar { animation: deslizar-cima 0.3s var(--ease-suave) both; }
+.animar-folha { animation: folha-subir 0.32s var(--ease-suave) both; }
+
+/* Áreas seguras para notch/home bar do iOS */
+@utility safe-t { padding-top: env(safe-area-inset-top); }
+@utility safe-b { padding-bottom: env(safe-area-inset-bottom); }
+@utility safe-l { padding-left: env(safe-area-inset-left); }
+@utility safe-r { padding-right: env(safe-area-inset-right); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

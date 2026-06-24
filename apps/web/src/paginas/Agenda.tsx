@@ -469,7 +469,7 @@ function ModalNovo({ dia, aoFechar }: { dia: string | null; aoFechar: () => void
               <Campo rotulo="Descrição do lançamento">
                 <Entrada value={descLanc} onChange={(e) => setDescLanc(e.target.value)} placeholder={titulo || "Ex.: Conserto de pneu"} />
               </Campo>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Campo rotulo="Valor (R$)">
                   <Entrada type="number" step="0.01" min="0.01" value={valorLanc} onChange={(e) => setValorLanc(e.target.value)} />
                 </Campo>

@@ -34,18 +34,21 @@ export function Modal({
   if (!aberto) return null;
   return (
     <Fundo aoFechar={aoFechar}>
-      <div className="flex min-h-full items-end justify-center p-4 sm:items-center">
+      {/* Mobile: bottom sheet que sobe. sm+: modal centrado. */}
+      <div className="flex min-h-full items-end justify-center sm:items-center sm:p-4">
         <div
-          className={`animar-deslizar w-full ${largura} rounded-xl border border-borda bg-painel shadow-flutuante`}
+          className={`animar-folha w-full ${largura} rounded-t-2xl border border-borda bg-painel shadow-flutuante sm:rounded-xl sm:animar-deslizar`}
           onMouseDown={(e) => e.stopPropagation()}
         >
+          {/* Handle visual no topo (mobile only) */}
+          <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-borda-forte sm:hidden" />
           <header className="flex items-center justify-between border-b border-borda px-5 py-4">
             <h2 className="font-display text-sm font-bold">{titulo}</h2>
-            <button onClick={aoFechar} className="rounded-md p-1 text-mudo hover:bg-elevado hover:text-texto" aria-label="Fechar">
+            <button onClick={aoFechar} className="rounded-md p-1.5 text-mudo hover:bg-elevado hover:text-texto" aria-label="Fechar">
               <X className="h-4 w-4" />
             </button>
           </header>
-          <div className="p-5">{children}</div>
+          <div className="max-h-[80dvh] overflow-y-auto p-5 safe-b">{children}</div>
         </div>
       </div>
     </Fundo>
