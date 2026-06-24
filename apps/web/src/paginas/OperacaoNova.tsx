@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Truck, KeyRound, TrendingUp, ShoppingCart, MapPin, Clock, Tag, Percent } from "lucide-react";
 import { api, ApiError } from "../api";
@@ -38,6 +38,7 @@ const TIPOS: Array<{ tipo: Tipo; icone: typeof Truck; descricao: string }> = [
 export function OperacaoNova() {
   const navegar = useNavigate();
   const notificar = useToast();
+  const [params] = useSearchParams();
   const [tipo, setTipo] = useState<Tipo | null>(null);
   const [cliente, setCliente] = useState<ItemSeletor | null>(null);
   const [ativo, setAtivo] = useState<ItemSeletor | null>(null);
@@ -48,6 +49,20 @@ export function OperacaoNova() {
 
   const set = (k: string) => (e: { target: { value: string } }) =>
     setCampos((c) => ({ ...c, [k]: e.target.value }));
+
+  // Pré-preenchimento por URL: ?cliente_id=X pré-seleciona o cliente (B2).
+  const clienteIdParam = params.get("cliente_id");
+  const { data: clientePreFill } = useQuery({
+    queryKey: ["pessoa-prefill", clienteIdParam],
+    enabled: !!clienteIdParam && !cliente,
+    queryFn: () =>
+      api.get<{ dados: { id: string; nome: string; cpfCnpj: string } }>(`/pessoas/${clienteIdParam}`).then((r) => r.dados),
+  });
+  useEffect(() => {
+    if (clientePreFill && !cliente) {
+      setCliente({ id: clientePreFill.id, titulo: clientePreFill.nome, subtitulo: clientePreFill.cpfCnpj });
+    }
+  }, [clientePreFill, cliente]);
 
   // Endereço do cliente para atalho "Usar endereço do cliente" no guincho.
   const { data: clientePessoa } = useQuery({

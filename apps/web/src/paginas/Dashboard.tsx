@@ -45,7 +45,7 @@ interface DadosOperacional {
     id: string; codigo: string; cliente: string; ativo: string; data_inicio: string;
   }>;
   locacoes_atrasadas: number;
-  alertas: Array<{ tipo: string; texto: string }>;
+  alertas: Array<{ tipo: string; texto: string; entidade_id?: string; entidade_tipo?: string }>;
 }
 
 interface DadosFinanceiro {
@@ -244,12 +244,31 @@ export function Dashboard() {
                 {dinheiro(financeiro.contas_vencidas.total)}
               </li>
             )}
-            {data.alertas.map((a, i) => (
-              <li key={i} className="flex items-center gap-2 text-alerta">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                {a.texto}
-              </li>
-            ))}
+            {data.alertas.map((a, i) => {
+              const ROTA: Record<string, (id: string) => string> = {
+                pessoa: (id) => `/clientes/${id}`,
+                ativo: (id) => `/ativos/${id}`,
+                operacao: (id) => `/operacoes/${id}`,
+                manutencao: (id) => `/manutencoes/${id}`,
+              };
+              const rota = a.entidade_tipo && a.entidade_id
+                ? ROTA[a.entidade_tipo]?.(a.entidade_id)
+                : null;
+              return (
+                <li key={i} className="flex items-center gap-2 text-alerta">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-sm">{a.texto}</span>
+                  {rota && (
+                    <button
+                      onClick={() => navegar(rota)}
+                      className="shrink-0 rounded px-2 py-0.5 text-xs text-suave transition-colors hover:bg-elevado hover:text-ouro"
+                    >
+                      Ver →
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </Card>
       )}

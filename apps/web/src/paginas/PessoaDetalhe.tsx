@@ -1,13 +1,31 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PencilLine, Archive, IdCard, Gauge, History } from "lucide-react";
+import {
+  PencilLine, Archive, IdCard, Gauge, History, TrendingUp, Clock,
+  AlertCircle, Workflow, ChevronDown, Plus, DollarSign, ChevronRight, Sparkles,
+} from "lucide-react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import { useCopiloto } from "../componentes/Copiloto";
 import {
-  Botao, Card, Selo, Modal, Timeline, useToast, dataCurta,
-  SkeletonLinhas, type EventoTimeline,
+  Botao, Card, Selo, Modal, Timeline, useToast, dataCurta, dinheiro,
+  SkeletonLinhas, Lista, ListaLinha, type EventoTimeline,
 } from "../componentes/ui";
+
+interface LancamentoResumo {
+  id: string; tipo: string; descricao: string; valor: string; status: string;
+  data_vencimento: string; data_pagamento: string | null; categoria: string;
+}
+
+interface OperacaoResumo {
+  id: string; codigo: string; tipo: string; status: string;
+  data_inicio: string; ativo: string | null; ativo_id: string | null;
+}
+
+interface ResumoFinanceiro {
+  faturado: number; a_receber: number; vencido: number; qtd_operacoes: number;
+}
 
 interface Detalhe {
   id: string;
@@ -24,15 +42,32 @@ interface Detalhe {
   deletedAt: string | null;
   papeis: string[];
   contadores: { operacoes: number; lancamentos_pendentes: number };
+  resumoFinanceiro: ResumoFinanceiro | null;
+  operacoesRecentes: OperacaoResumo[];
+  lancamentosRecentes: LancamentoResumo[];
+}
+
+const LIMITE_LISTA = 5;
+
+const STATUS_TOM: Record<string, string> = {
+  ativa: "ok", em_andamento: "info", finalizada: "ok", cancelada: "erro",
+  reservada: "info", aguardando_entrega: "alerta",
+};
+
+function statusTom(s: string): string {
+  return STATUS_TOM[s] ?? "neutro";
 }
 
 export function PessoaDetalhe() {
   const { id } = useParams();
-  const { pode } = useAuth();
+  const { pode, copilotoAtivo } = useAuth();
   const navegar = useNavigate();
   const filaQueries = useQueryClient();
+  const { abrir: abrirCopiloto } = useCopiloto();
   const notificar = useToast();
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
+  const [verMaisOps, setVerMaisOps] = useState(false);
+  const [verMaisLanc, setVerMaisLanc] = useState(false);
 
   const { data: pessoa } = useQuery({
     queryKey: ["pessoa", id],
@@ -45,7 +80,7 @@ export function PessoaDetalhe() {
       api.get<{ dados: EventoTimeline[] }>(`/pessoas/${id}/timeline`).then((r) => r.dados),
   });
 
-  if (!pessoa) return <SkeletonLinhas linhas={6} />;
+  if (!pessoa) return <SkeletonLinhas linhas={8} />;
 
   const arquivar = async () => {
     try {
@@ -63,8 +98,15 @@ export function PessoaDetalhe() {
     }
   };
 
+  const rf = pessoa.resumoFinanceiro;
+  const ops = pessoa.operacoesRecentes ?? [];
+  const lancs = pessoa.lancamentosRecentes ?? [];
+  const opsVisiveis = verMaisOps ? ops : ops.slice(0, LIMITE_LISTA);
+  const lancsVisiveis = verMaisLanc ? lancs : lancs.slice(0, LIMITE_LISTA);
+
   return (
     <div className="space-y-4">
+      {/* Cabeçalho */}
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-lg font-bold">{pessoa.nome}</h1>
         {pessoa.papeis.map((p) => (
@@ -72,6 +114,17 @@ export function PessoaDetalhe() {
         ))}
         {pessoa.deletedAt && <Selo>arquivado</Selo>}
         <div className="ml-auto flex gap-2">
+          {copilotoAtivo && (
+            <Botao
+              variante="fantasma"
+              tamanho="sm"
+              onClick={() => abrirCopiloto(
+                `Resuma a situação atual do cliente ${pessoa.nome}: operações em andamento, saldo financeiro e pendências.`
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-ouro" /> Perguntar
+            </Botao>
+          )}
           {pode("pessoas", "editar") && !pessoa.deletedAt && (
             <Link to={`/clientes/${pessoa.id}/editar`}>
               <Botao variante="secundario" tamanho="sm">
@@ -88,6 +141,7 @@ export function PessoaDetalhe() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
+        {/* Coluna esquerda: dados */}
         <div className="space-y-4">
           <Card titulo="Dados" icone={IdCard}>
             <dl className="space-y-1.5 text-sm">
@@ -117,23 +171,162 @@ export function PessoaDetalhe() {
             </dl>
           </Card>
 
-          <Card titulo="Resumo" icone={Gauge}>
-            <div className="flex gap-6">
-              <div>
-                <p className="font-display text-2xl font-bold">{pessoa.contadores.operacoes}</p>
-                <p className="text-xs text-suave">operações</p>
+          {/* KPIs */}
+          {rf && (
+            <Card titulo="Resumo financeiro" icone={Gauge}>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-elevado px-3 py-2.5">
+                  <p className="flex items-center gap-1 text-xs text-suave">
+                    <TrendingUp className="h-3 w-3 text-ok" /> Faturado
+                  </p>
+                  <p className="font-display text-base font-bold text-ok">{dinheiro(rf.faturado)}</p>
+                </div>
+                <div className="rounded-lg bg-elevado px-3 py-2.5">
+                  <p className="flex items-center gap-1 text-xs text-suave">
+                    <Clock className="h-3 w-3 text-info" /> A receber
+                  </p>
+                  <p className="font-display text-base font-bold">{dinheiro(rf.a_receber)}</p>
+                </div>
+                <div className="rounded-lg bg-elevado px-3 py-2.5">
+                  <p className="flex items-center gap-1 text-xs text-suave">
+                    <AlertCircle className="h-3 w-3 text-erro" /> Vencido
+                  </p>
+                  <p className={`font-display text-base font-bold ${rf.vencido > 0 ? "text-erro" : "text-suave"}`}>
+                    {dinheiro(rf.vencido)}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-elevado px-3 py-2.5">
+                  <p className="flex items-center gap-1 text-xs text-suave">
+                    <Workflow className="h-3 w-3 text-ouro" /> Operações
+                  </p>
+                  <p className="font-display text-base font-bold text-ouro">{rf.qtd_operacoes}</p>
+                </div>
               </div>
+            </Card>
+          )}
+
+          {/* CTA rápido */}
+          {!pessoa.deletedAt && pode("operacoes", "criar") && (
+            <button
+              className="flex w-full items-center gap-3 rounded-lg border border-borda bg-painel p-3 text-left transition-all hover:border-ouro/40 hover:bg-elevado"
+              onClick={() => navegar(`/operacoes/nova?cliente_id=${pessoa.id}`)}
+            >
+              <Plus className="h-4 w-4 text-ouro" />
               <div>
-                <p className="font-display text-2xl font-bold">{pessoa.contadores.lancamentos_pendentes}</p>
-                <p className="text-xs text-suave">lançamentos pendentes</p>
+                <p className="text-sm font-medium">Nova operação</p>
+                <p className="text-xs text-suave">para este cliente</p>
               </div>
-            </div>
-          </Card>
+              <ChevronRight className="ml-auto h-4 w-4 text-mudo" />
+            </button>
+          )}
         </div>
 
-        <Card titulo="História completa" icone={History} className="lg:col-span-2">
-          {carregandoTimeline ? <SkeletonLinhas linhas={4} /> : <Timeline eventos={eventos ?? []} />}
-        </Card>
+        {/* Coluna direita: operações + lançamentos + timeline */}
+        <div className="space-y-4 lg:col-span-2">
+          {/* Operações */}
+          <Card titulo="Operações" icone={Workflow}>
+            {ops.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <Workflow className="h-8 w-8 text-mudo" />
+                <p className="text-sm text-suave">Nenhuma operação ainda</p>
+                {!pessoa.deletedAt && pode("operacoes", "criar") && (
+                  <Botao variante="secundario" tamanho="sm" onClick={() => navegar(`/operacoes/nova?cliente_id=${pessoa.id}`)}>
+                    <Plus className="h-3.5 w-3.5" /> Nova operação
+                  </Botao>
+                )}
+              </div>
+            ) : (
+              <>
+                <Lista>
+                  {opsVisiveis.map((op) => (
+                    <ListaLinha
+                      key={op.id}
+                      para={`/operacoes/${op.id}`}
+                      titulo={
+                        <span className="flex items-center gap-2">
+                          <span className="font-display text-xs font-bold text-ouro">{op.codigo}</span>
+                          <Selo>{op.tipo}</Selo>
+                          <Selo tom={statusTom(op.status)}>{op.status.replace(/_/g, " ")}</Selo>
+                        </span>
+                      }
+                      subtitulo={
+                        <span>
+                          {op.ativo ?? "Sem ativo"} · {dataCurta(op.data_inicio)}
+                        </span>
+                      }
+                    />
+                  ))}
+                </Lista>
+                {ops.length > LIMITE_LISTA && (
+                  <button
+                    onClick={() => setVerMaisOps((v) => !v)}
+                    className="mt-2 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisOps ? "rotate-180" : ""}`} />
+                    {verMaisOps ? "Ver menos" : `Ver mais ${ops.length - LIMITE_LISTA}`}
+                  </button>
+                )}
+              </>
+            )}
+          </Card>
+
+          {/* Lançamentos */}
+          <Card titulo="Financeiro" icone={DollarSign}>
+            {lancs.length === 0 ? (
+              <p className="text-sm text-suave">Nenhum lançamento vinculado a esta pessoa.</p>
+            ) : (
+              <>
+                <Lista>
+                  {lancsVisiveis.map((l) => {
+                    const vencido = l.status === "previsto" && new Date(l.data_vencimento) < new Date();
+                    return (
+                      <ListaLinha
+                        key={l.id}
+                        titulo={
+                          <span className="flex items-center gap-2">
+                            <span className={`font-semibold ${l.tipo === "receita" ? "text-ok" : "text-erro"}`}>
+                              {l.tipo === "receita" ? "+" : "-"}{dinheiro(Number(l.valor))}
+                            </span>
+                            <span className="truncate">{l.descricao}</span>
+                          </span>
+                        }
+                        subtitulo={
+                          <span className="flex gap-2">
+                            <span>{l.categoria}</span>
+                            <span>
+                              {l.status === "pago" && l.data_pagamento
+                                ? `Pago ${dataCurta(l.data_pagamento)}`
+                                : `Vence ${dataCurta(l.data_vencimento)}`}
+                            </span>
+                          </span>
+                        }
+                        direita={
+                          <Selo tom={l.status === "pago" ? "ok" : vencido ? "erro" : "info"}>
+                            {l.status === "pago" ? "pago" : vencido ? "vencido" : l.status}
+                          </Selo>
+                        }
+                      />
+                    );
+                  })}
+                </Lista>
+                {lancs.length > LIMITE_LISTA && (
+                  <button
+                    onClick={() => setVerMaisLanc((v) => !v)}
+                    className="mt-2 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
+                    {verMaisLanc ? "Ver menos" : `Ver mais ${lancs.length - LIMITE_LISTA}`}
+                  </button>
+                )}
+              </>
+            )}
+          </Card>
+
+          {/* Timeline */}
+          <Card titulo="História completa" icone={History} className="lg:col-span-2">
+            {carregandoTimeline ? <SkeletonLinhas linhas={4} /> : <Timeline eventos={eventos ?? []} />}
+          </Card>
+        </div>
       </div>
 
       <Modal

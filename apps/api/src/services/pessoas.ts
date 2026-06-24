@@ -107,14 +107,66 @@ export async function obterPessoa(id: string) {
   const [p] = await db.select().from(pessoas).where(eq(pessoas.id, id));
   if (!p) throw naoEncontrado("Pessoa");
   const papeis = (await papeisDe([id])).get(id) ?? [];
-  const [contadores] = (
+  const rows = (
     await db.execute(sql`
       SELECT
         (SELECT count(*)::int FROM operacoes WHERE cliente_id = ${id} AND deleted_at IS NULL) AS operacoes,
-        (SELECT count(*)::int FROM lancamentos WHERE pessoa_id = ${id} AND status = 'previsto' AND deleted_at IS NULL) AS lancamentos_pendentes
+        (SELECT count(*)::int FROM lancamentos WHERE pessoa_id = ${id} AND status = 'previsto' AND deleted_at IS NULL) AS lancamentos_pendentes,
+        -- KPIs financeiros desta pessoa
+        (SELECT json_build_object(
+          'faturado',     COALESCE(SUM(valor) FILTER (WHERE tipo='receita' AND status='pago'), 0),
+          'a_receber',    COALESCE(SUM(valor) FILTER (WHERE tipo='receita' AND status='previsto'
+                            AND deleted_at IS NULL), 0),
+          'vencido',      COALESCE(SUM(valor) FILTER (WHERE tipo='receita' AND status='previsto'
+                            AND data_vencimento < current_date AND deleted_at IS NULL), 0),
+          'qtd_operacoes', (SELECT count(*)::int FROM operacoes WHERE cliente_id = ${id} AND deleted_at IS NULL)
+        ) FROM lancamentos WHERE pessoa_id = ${id} AND deleted_at IS NULL AND status != 'cancelado'
+        ) AS resumo_financeiro,
+        -- Últimas 10 operações desta pessoa
+        (SELECT json_agg(row_to_json(o) ORDER BY o.data_inicio DESC) FROM (
+          SELECT op.id, op.codigo, op.tipo, op.status, op.data_inicio,
+                 (SELECT a.nome FROM ativos a
+                  JOIN operacao_ativos oa ON oa.ativo_id = a.id
+                  WHERE oa.operacao_id = op.id AND oa.papel = 'objeto' LIMIT 1) AS ativo,
+                 (SELECT a.id FROM ativos a
+                  JOIN operacao_ativos oa ON oa.ativo_id = a.id
+                  WHERE oa.operacao_id = op.id AND oa.papel = 'objeto' LIMIT 1) AS ativo_id
+          FROM operacoes op
+          WHERE op.cliente_id = ${id} AND op.deleted_at IS NULL
+          ORDER BY op.data_inicio DESC LIMIT 10
+        ) o) AS operacoes_recentes,
+        -- Últimos lançamentos vinculados a esta pessoa
+        (SELECT json_agg(row_to_json(l) ORDER BY l.data_vencimento DESC) FROM (
+          SELECT lc.id, lc.tipo, lc.descricao, lc.valor, lc.status,
+                 lc.data_vencimento, lc.data_pagamento,
+                 cf.nome AS categoria
+          FROM lancamentos lc
+          JOIN categorias_financeiras cf ON cf.id = lc.categoria_id
+          WHERE lc.pessoa_id = ${id} AND lc.deleted_at IS NULL AND lc.status != 'cancelado'
+          ORDER BY lc.data_vencimento DESC LIMIT 10
+        ) l) AS lancamentos_recentes
     `)
-  ).rows as [{ operacoes: number; lancamentos_pendentes: number }];
-  return { ...p, papeis, contadores };
+  ).rows as [Record<string, unknown>];
+  const contadores = {
+    operacoes: rows[0]!.operacoes as number,
+    lancamentos_pendentes: rows[0]!.lancamentos_pendentes as number,
+  };
+  return {
+    ...p,
+    papeis,
+    contadores,
+    resumoFinanceiro: rows[0]!.resumo_financeiro as {
+      faturado: number; a_receber: number; vencido: number; qtd_operacoes: number;
+    } | null,
+    operacoesRecentes: (rows[0]!.operacoes_recentes ?? []) as Array<{
+      id: string; codigo: string; tipo: string; status: string; data_inicio: string;
+      ativo: string | null; ativo_id: string | null;
+    }>,
+    lancamentosRecentes: (rows[0]!.lancamentos_recentes ?? []) as Array<{
+      id: string; tipo: string; descricao: string; valor: string; status: string;
+      data_vencimento: string; data_pagamento: string | null; categoria: string;
+    }>,
+  };
 }
 
 export async function criarPessoa(input: PessoaCriarInput, usuarioId: string) {

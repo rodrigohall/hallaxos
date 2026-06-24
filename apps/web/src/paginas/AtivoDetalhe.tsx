@@ -49,6 +49,7 @@ interface AtivoDetalheDados {
     data_vencimento: string; data_pagamento: string | null;
     origem: "direto" | "operacao" | "manutencao";
     operacaoId: string | null; operacaoCodigo: string | null;
+    manutencaoId: string | null;
   }>;
 }
 
@@ -366,8 +367,13 @@ export function AtivoDetalhe() {
                             >
                               {l.operacaoCodigo ?? "operação"}
                             </Link>
-                          ) : l.origem === "manutencao" ? (
-                            <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">manutenção</span>
+                          ) : l.origem === "manutencao" && l.manutencaoId ? (
+                            <Link
+                              to={`/manutencoes/${l.manutencaoId}`}
+                              className="rounded-full border border-borda px-1.5 py-px text-[10px] text-suave hover:border-ouro/60 hover:text-ouro-claro"
+                            >
+                              manutenção
+                            </Link>
                           ) : null}
                         </span>
                       }
