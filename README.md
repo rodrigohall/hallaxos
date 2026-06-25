@@ -108,51 +108,72 @@ Documentos vivos, sincronizados a cada sprint: [`CHANGELOG.md`](CHANGELOG.md) ·
 
 ## Status do projeto
 
-**Sprint 10 concluída — em produção (18/jun/2026).** As quatro abas principais
-foram completamente repaginadas:
+**Sprint 13 concluída — em produção (25/jun/2026).** Dashboard repaginado com mapa
+interativo, análises financeiras por tipo de operação e custo por ativo, melhorias
+mobile-first (iOS/Android) e vinculação automática de lançamentos avulsos.
 
-- **Dashboard**: relógio ao vivo, seletor de período nos KPIs financeiros
-  (hoje/semana/mês/ano/últimos 30d), frota clicável, aluguéis em andamento.
-  Bloco financeiro separado em `GET /dashboard/financeiro?periodo=X` (decisão #60)
-  — não recarrega tudo ao trocar de período.
-- **Ativos**: guard anti-duplicação (decisão #58) ao criar ativo já comprado,
-  campo de diária base, lucro presumido (decisão #59) e relatório de patrimônio.
-- **Operações**: filtro por tipo em botões grandes com ícone, CEP com autocomplete
-  nos campos de origem/destino do guincho (ViaCEP), auto-fill da diária e caução
-  ao selecionar ativo na locação, desconto R$/% e toggle retroativo.
-- **Manutenções**: kanban 3 colunas (em andamento · agendadas · concluídas),
-  contadores de dias por card, campo peças/material (`ALTER TABLE manutencoes ADD
-  COLUMN pecas text`, migration 0007).
+### O que está disponível hoje
 
-60 testes verdes. Deploy automático confirmado (run `27735492174`, `success`).
+| Área | Sprints |
+|------|---------|
+| Fundação: banco, auth argon2id, permissões, timeline imutável, busca global ⌘K | 1 |
+| Design system Hallax (tokens, componentes, PWA mobile) | 1.5, 13 |
+| Deploy VPS em um comando + CI/CD por push (GitHub Actions) | 1, 7 |
+| Clientes/Pessoas: CRUD, fichas 360°, operações/lançamentos vinculados | 1, 12 |
+| Ativos: veicular, categorias, fotos, FIPE, diária base, lucro presumido, relatório patrimônio | 2, 5, 10 |
+| Financeiro: lançamentos, parcelas 60×, estorno, anulação, pagamento em lote, planilha pivot | 3, 12 |
+| Relatórios: resultado/ROI por ativo, DRE, planilha pivotável com drill-down | 3, 12 |
+| Operações unificadas: Guincho · Locação · Venda · Compra (máquinas de estado, financeiro automático) | 4, 5, 10 |
+| Manutenções: kanban 3 colunas, contadores de dias, campo peças, custo por ativo | 6, 10, 13 |
+| Agenda: calendário derivado + compromissos, filtro por tipo, seletor de período | 6, 11 |
+| Confiança: backup automático, suíte de testes no CI, bloqueio progressivo de login | 7 |
+| Notificações, tags, favoritos, rate limiting, auditoria de negações | 8 |
+| Copiloto de IA Fase 1 (leitura) + Fase 2 (propor lançamento com confirmação) | 9 |
+| Dashboard financeiro por origem (guincho/locação/venda/manutenção/avulso) | 11 |
+| Ficha 360° em todas as entidades, navegação sem beco, copiloto contextual | 12 |
+| Dashboard hero: relógio giant, mapa Dourados-MS, mini-sparkline, KPIs clicáveis | 13 |
+| Análises financeiras: faturamento por tipo/mês, custo por ativo (manutenção/combustível) | 13 |
+| Mobile: bottom nav, bottom sheets, safe areas iOS, formulários responsivos | 13 |
+| 17 categorias financeiras padrão criadas no arranque (idempotente) | 13 |
 
-**Sprints anteriores em produção:** sistema operacional completo (login,
-permissões, clientes, ativos, operações unificadas, financeiro, relatórios,
-manutenções, agenda, busca global, timeline, notificações, tags, favoritos,
-copiloto de IA Fase 1+2, backup automático). Detalhes completos no
-[`CHANGELOG.md`](CHANGELOG.md).
+**Sprints anteriores em produção:** detalhes completos no [`CHANGELOG.md`](CHANGELOG.md).
 
-### Continuar o desenvolvimento (para uma nova sessão)
+### Continuar o desenvolvimento (nova sessão)
 
-- **Branch único e fonte da verdade:** `claude/stoic-shannon-d3fxpi`. É onde o
-  código vive **e** de onde o deploy automático sai (o workflow dispara em push
-  nesse branch). Desenvolva e dê push aqui. Os demais branches `claude/*` são
-  obsoletos — podem ser apagados na UI do GitHub (já estão contidos no histórico
-  deste).
-- **Último estado entregue:** Sprint 10 completa — 4 abas repaginadas + 3
-  correções de build/runtime. Veja o topo do [`CHANGELOG.md`](CHANGELOG.md).
-- **Operação/deploy do servidor:** leia o runbook
-  [`docs/operacao-vps.md`](docs/operacao-vps.md) — VPS Hostinger, fluxo de
-  deploy, o problema intermitente de SSH e como contornar (re-run ou aplicação
-  manual pelo terminal), e a recuperação do `.env`.
-- **Próximas tarefas conhecidas** (a pedir na próxima sessão): funcionalidades
-  novas a critério do dono do produto; copiloto Fase 2 com mais ações de escrita;
-  estabilização do timeout SSH do VPS (fail2ban/firewall Hostinger).
-- **`paginacaoSchema` max:** 200 (foi 100 até o Sprint 10 — manutenção kanban
-  precisava de `por_pagina=200`).
+- **Branch único e fonte da verdade:** `claude/stoic-shannon-d3fxpi`. O workflow
+  CI/CD dispara em push nesse branch. Desenvolva e dê push aqui. Os demais
+  branches `claude/*` são obsoletos.
 
-> **Fluxo de trabalho desta linha de desenvolvimento:** o dono do produto tem
-> acesso ao terminal do VPS (Hostinger) e topa rodar comandos colados quando o
-> deploy automático falha. Ao entregar algo, **dê push no branch acima** e
-> confirme o deploy; se o CI não conseguir publicar, forneça o comando manual
-> pronto para colar no terminal do VPS (ver runbook).
+- **Último commit entregue:** `ad49aee` — Sprint 13 completa (25/jun/2026).
+  Ver topo do [`CHANGELOG.md`](CHANGELOG.md) para o detalhe completo.
+
+- **Arquitetura:** leia os docs em ordem (`docs/01-visao-geral.md` → ...07).
+  A regra máxima — *toda informação existe apenas uma vez* — vale para tudo.
+  Nenhuma tabela nova sem decisão explícita registrada em `docs/decisoes.md`.
+
+- **Operação/deploy:** runbook em [`docs/operacao-vps.md`](docs/operacao-vps.md) —
+  VPS Hostinger, SSH intermitente, recuperação do `.env`.
+
+- **Próximas frentes sugeridas** (conforme apetite do dono do produto):
+  - Sprint 13 (pendente): componente `<Abas>` unificado (URL-sync), sidebar em
+    seções (Operação / Financeiro / Sistema), hub financeiro com abas internas —
+    ver [`docs/sprint13-plan.md`](docs/sprint13-plan.md).
+  - Copiloto Fase 3: ações de escrita guardrailadas (criar operação, fechar
+    manutenção) com confirmação humana.
+  - Estabilização SSH do VPS (mover para porta alta, ajustar fail2ban/firewall).
+  - Verificação visual em navegador real (ambiente remoto sem browser — validar
+    no `pnpm dev` local).
+
+- **Notas técnicas para o próximo desenvolvedor:**
+  - `paginacaoSchema` max: 200 (o kanban de manutenções usa `por_pagina=200`).
+  - `garantirCategoriasPadrao()` é idempotente — adicionar novas categorias ao
+    array em `apps/api/src/db/bootstrap.ts` é suficiente (sem migration).
+  - O `filter` CSS do mapa OpenStreetMap está em `Dashboard.tsx:MapaDourados` —
+    ajustar `hue-rotate` se quiser tons diferentes.
+  - Novos endpoints financeiros: `GET /financeiro/por-tipo` e
+    `GET /financeiro/custo-por-ativo` — gateados por `dashboard_financeiro:ler`.
+
+> **Fluxo de trabalho:** o dono do produto tem acesso ao terminal do VPS
+> (Hostinger) e topa rodar comandos colados quando o deploy automático falha.
+> Ao entregar algo, **dê push no branch acima** e confirme o deploy; se o CI
+> não publicar, forneça o comando manual pronto (ver runbook).

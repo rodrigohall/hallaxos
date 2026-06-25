@@ -1,5 +1,148 @@
 # Changelog
 
+## Sprint 13 — Dashboard repaginado, Mobile-first e Análises Financeiras (2026-06-25)
+
+Sem nova tabela, sem migration. Três blocos independentes entregues nesta sessão.
+
+### Dashboard — Centro de Comando repaginado
+
+- **Relógio hero**: `text-4xl font-extrabold text-ouro`, data por extenso embaixo,
+  posicionado no topo em destaque (antes era `text-3xl` num card menor).
+- **Card hero unificado**: relógio + resumo financeiro inline (receita / despesas /
+  resultado do período selecionado) + mini-barras de fluxo 7d — tudo num só card
+  com `bg-gradient-to-br` ouro/suave. Elimina a necessidade de rolar para ver os
+  números antes do horário.
+- **Mapa interativo de Dourados–MS** (OpenStreetMap embed): centralizado em
+  Dourados, Mato Grosso do Sul; `filter: invert(90%) hue-rotate(200deg)` para
+  integrar com o tema escuro; pulsante (badge animado) quando há guinchos na rua.
+  Sem dependência nova — iframe nativo.
+- **KPIs Receita e Despesas tornam-se botões**: clique em "Receita" navega para
+  `/financeiro?tipo=receita&status=pago`; "Despesas" para
+  `/financeiro?tipo=despesa&status=pago`. Drill-down imediato.
+- **Mini-sparkline de fluxo 7d no hero**: barras verde/vermelho proporcional à
+  maior barra da semana; hoje em destaque (cor sólida vs. semitransparente).
+- **Layout reorganizado**: mapa + agenda do dia lado a lado (md+), depois
+  guinchos + aluguéis, depois reservas + manutenções. Linha de frota mantida.
+- Bloco de fluxo de caixa separado removido (absorvido pelo mini-sparkline do hero).
+
+### Mobile-first (iOS/Android)
+
+- **Bottom navigation bar** fixa: 4 rotas primárias (Dashboard / Ativos /
+  Operações / Financeiro) + botão "Mais" que abre o restante do menu como
+  painel bottom-up. Só aparece em `md` — desktop mantém a sidebar original.
+- **Modais como bottom sheets** no iOS: `items-end justify-center sm:items-center`,
+  `rounded-t-2xl sm:rounded-xl`, handle visual (`h-1 w-10 bg-borda-forte`) —
+  experiência nativa no toque.
+- **Safe area insets**: utilitários `safe-t / safe-b / safe-l / safe-r` usando
+  `env(safe-area-inset-*)` no header e nos modais — respeita notch e home bar.
+- **PWA meta tags**: `viewport-fit=cover`, `apple-mobile-web-app-capable`,
+  `apple-mobile-web-app-status-bar-style: black-translucent`.
+- **Grids de formulário responsivos**: `grid grid-cols-1 gap-3 sm:grid-cols-2` em
+  todos os modais — antes eram `grid-cols-2` fixo (overflow no iPhone 375 px).
+- **Dashboard scroll fix**: fluxo de caixa 7d envolto em `overflow-x-auto` com
+  `min-w-[380px]` — sem mais corte no mobile.
+
+### Financeiro — Painel de Análises
+
+- **Painel "Análises financeiras"** colapsável (toggle) acima da lista de lançamentos.
+- **Seletor de período**: 1m / 3m / 6m / 1a — muda as duas tabelas abaixo.
+- **Tabela: Faturamento por tipo de operação** (receitas pagas, por mês):
+  colunas Guincho · Locação · Venda de Ativo · Avulso · Total — mostra `—`
+  onde não há lançamentos (sem zeros ocupando espaço).
+- **Tabela: Custo por ativo** (despesas pagas vinculadas via `ativo_id` ou
+  manutenção): colunas Manutenção · Combustível · Outros · Total gasto — só
+  ativos com despesas no período aparecem.
+
+### API — novos endpoints
+
+- `GET /financeiro/por-tipo?meses=6`: CTE com `generate_series` de meses,
+  agrupamento por `operacoes.tipo` (guincho/locacao/venda_ativo) + avulso
+  (sem `operacao_id` e sem `manutencao_id`). Filtro: `tipo='receita' AND status='pago'`.
+- `GET /financeiro/custo-por-ativo?meses=3`: agrupa despesas pagas por ativo
+  (via `ativo_id` direto ou `manutencoes.ativo_id` herdado), com FILTER por
+  categoria para separar manutenção, combustível/abastecimento e outros.
+- Ambos gateados por `exigirPermissao("dashboard_financeiro", "ler")`.
+
+### Vinculação automática de lançamentos avulsos
+
+- **`POST /lancamentos/vincular`** (admin only): detecta lançamentos sem `operacao_id`
+  nem `manutencao_id` que têm `pessoa_id` e encontra exatamente uma operação ou
+  manutenção com o mesmo cliente/fornecedor numa janela de ±1 dia (início) / +7 dias
+  — critério estrito para evitar falsos positivos.
+- **dry_run=true (padrão)**: devolve o preview (candidatos sem gravar). A UI mostra
+  quantos seriam vinculados e quais, exigindo confirmação.
+- **dry_run=false**: executa em transação, registrando evento na timeline de cada
+  lançamento e de cada operação/manutenção.
+- **UI no Financeiro**: ícone `Link2` no cabeçalho (admin), abre modal com preview
+  e botão "Vincular N lançamento(s)".
+
+### Bootstrap — categorias financeiras padrão
+
+- `garantirCategoriasPadrao()` em `apps/api/src/db/bootstrap.ts` — idempotente:
+  só cria as categorias que não existem ainda.
+- 17 categorias inseridas no arranque: Locação · Guincho · Venda de Ativos (receita)
+  + Manutenção · Combustível · Administrativo · Conta Fixa · Compras Gerais ·
+  Abastecimento · Lavagem · Taxas Detran · IPTU · Seguro · Multas · Peças e
+  Acessórios · Salários · Honorários (despesa).
+- Chamada inserida na cadeia de arranque: `garantirAdminInicial()` →
+  `garantirCategoriasPadrao()` → `verificarArmazenamento()` → `app.listen()`.
+
+---
+
+## Sprint 12 — Interligação e Experiência Visual (2026-06-24)
+
+Zero tabela nova, zero migração. Toda informação existia — Sprint 12 expõe,
+interliga e unifica visualmente.
+
+### Frente A — Ficha 360° de cada entidade
+
+- **Pessoa/Cliente**: adicionados KPIs (faturado / a receber / vencido), lista de
+  operações com filtro e paginação, lista de lançamentos vinculados, documentos,
+  comentários — ficha completa equivalente a `AtivoDetalhe`.
+- **Operação**: ativo objeto agora clicável (link para `/ativos/:id`); lançamentos
+  com ações inline (pagar/cancelar/estornar sem sair da tela).
+- **Manutenção**: fornecedor clicável; lançamentos com ações inline.
+- Alertas do dashboard agora incluem link "Ver →" que navega para a entidade
+  correspondente.
+
+### Frente B — Navegação sem beco sem saída
+
+- Botões "Pré-preencher rota" no guincho: ao abrir um guincho a partir de um
+  cliente, o endereço do cliente preenche automaticamente a origem.
+- Breadcrumbs em fichas de detalhe: `Ativos / AT-0001` clicável no topo.
+- Todos os `EstadoVazio` nas telas de lista ganharam CTA (`acao` + `rotuloAcao`).
+
+### Frente C — Copiloto contextual
+
+- Painel do copiloto detecta a página atual e injeta contexto automaticamente
+  ("estou vendo a operação OP-0023 — quais pagamentos estão em aberto?").
+- Perguntas contextuais sugeridas (chips) que mudam por tela.
+
+### Frente D — Ações em lote e atrito diário
+
+- **Pagamento em lote**: checkboxes nos lançamentos `previsto`, barra de ação
+  flutuante, `POST /lancamentos/pagar-lote` em transação com até 200 ids.
+- **Auditoria de acesso**: `GET /auditoria` (admin) com log de todos os eventos
+  de segurança (login, falha de login, 403, anulação).
+
+### Frente E — Polimento visual transversal
+
+- Animações de entrada por linha (`animationDelay` escalonado) em todas as listas.
+- `Selo` unificado com mapa central `status → cor` em todos os módulos.
+- Ícones de tipo padronizados em todas as listagens.
+
+### Frente F — Planilhas Financeiras pivotáveis ★
+
+- **`GET /relatorios/planilha`**: tabela pivot com linha/coluna/medida
+  configuráveis pelo usuário (categoria × mês × receita\_paga, conta × tipo ×
+  despesa\_paga, etc.), filtros por status/origem/conta/período.
+- **UI em `/relatorios?aba=planilha`**: seletores de linha/coluna/medida,
+  filtros avançados, tabela pivot com totais de linha e coluna, drill-down ao
+  clicar numa célula (abre lista de lançamentos do cruzamento).
+- Exportação para CSV da tabela atual.
+
+---
+
 ## Sprint 11 — Agenda estendida e Dashboard Financeiro por Origem (2026-06-23)
 
 Nenhuma tabela nova, nenhuma migração. Toda a informação já existia no núcleo —
