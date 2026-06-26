@@ -59,15 +59,15 @@
 
 ### P2 — páginas com zero navegação de saída
 
-- [ ] **D5 · Auditoria.tsx (0 links).** Auditar: cada registro de auditoria
-  referencia uma entidade (tipo+id) e/ou um usuário. Se o payload trouxer
-  `entidade_tipo`+`entidade_id`, linkar para a ficha correspondente
-  (`/clientes|ativos|operacoes|manutencoes/:id`). Se não trouxer id, `[~]`.
+- [x] **D5 · Auditoria.tsx (0 links).** Cada evento traz `entidadeTipo`+
+  `entidadeId`. O chip do tipo agora linka à ficha quando o tipo tem rota
+  (pessoa→/clientes, ativo, operacao, manutencao); tipos sem ficha
+  (lancamento/evento_agenda/documento) seguem como texto. Mapa `ROTA_ENTIDADE`.
 
-- [ ] **D6 · Relatorios.tsx — planilha pivot / DRE.** Conferir se células de
-  dimensão "ativo"/"cliente" podem virar drill-down clicável para a ficha.
-  Já existe drill-down interno (Sprint 12) — só estender p/ link de ficha quando
-  a dimensão for uma entidade com id. Se as células só têm rótulo (nome), `[~]`.
+- [~] **D6 · Relatorios.tsx — planilha pivot / DRE.** PULADO: as linhas do pivot
+  são chaveadas por **rótulo (nome)**, não por id — a API emite `COALESCE(a.nome…)`.
+  Linkar exigiria adivinhar id pelo nome (não confiável: "Sem ativo", homônimos)
+  ou mudar o backend. Fora de escopo do loop (sem inventar campo no backend).
 
 ### P3 — varredura final de cobertura
 
@@ -87,3 +87,6 @@
 - 2026-06-26 · D1–D4 · lote P1 · 4 becos resolvidos (Financeiro, Relatorios,
   ManutencaoDetalhe, OperacaoDetalhe) — entidades exibidas agora linkam à ficha;
   `pnpm --filter web build` verde.
+- 2026-06-26 · D5 · Auditoria · chip de entidade vira link à ficha (tipos com
+  rota); build verde.
+- 2026-06-26 · D6 · Relatorios pivot · pulado [~] — rows por rótulo, sem id.

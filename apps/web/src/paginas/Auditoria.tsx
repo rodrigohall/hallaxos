@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardList, User, Tag, CalendarDays } from "lucide-react";
 import { api } from "../api";
@@ -26,6 +27,13 @@ const COR_EVENTO: Record<string, string> = {
   status_alterado: "text-alerta bg-alerta/10", comentario_adicionado: "text-suave bg-elevado",
   documento_anexado: "text-suave bg-elevado", lancamento_gerado: "text-ouro bg-ouro/10",
   login: "text-suave bg-elevado", logout: "text-suave bg-elevado", login_falhou: "text-erro bg-erro/10",
+};
+
+const ROTA_ENTIDADE: Record<string, (id: string) => string> = {
+  pessoa: (id) => `/clientes/${id}`,
+  ativo: (id) => `/ativos/${id}`,
+  operacao: (id) => `/operacoes/${id}`,
+  manutencao: (id) => `/manutencoes/${id}`,
 };
 
 const TIPOS_ENTIDADE = [
@@ -134,16 +142,24 @@ export function Auditoria() {
           <EstadoVazio icone={ClipboardList} titulo="Nenhum evento encontrado" />
         ) : (
           <div className="divide-y divide-borda">
-            {data.dados.map((ev) => (
+            {data.dados.map((ev) => {
+              const rota = ev.entidadeId ? ROTA_ENTIDADE[ev.entidadeTipo]?.(ev.entidadeId) : undefined;
+              return (
               <div key={ev.id} className="flex items-start gap-3 px-4 py-3 hover:bg-fundo/50 transition-colors">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${COR_EVENTO[ev.evento] ?? "text-suave bg-elevado"}`}>
                       {ROTULO_EVENTO[ev.evento] ?? ev.evento}
                     </span>
-                    <span className="text-[11px] text-mudo rounded-full border border-borda px-1.5 py-px">
-                      {ev.entidadeTipo}
-                    </span>
+                    {rota ? (
+                      <Link to={rota} className="text-[11px] text-mudo rounded-full border border-borda px-1.5 py-px hover:text-ouro">
+                        {ev.entidadeTipo}
+                      </Link>
+                    ) : (
+                      <span className="text-[11px] text-mudo rounded-full border border-borda px-1.5 py-px">
+                        {ev.entidadeTipo}
+                      </span>
+                    )}
                     <p className="text-sm truncate flex-1">{ev.descricao}</p>
                   </div>
                   <div className="mt-0.5 flex items-center gap-3 text-xs text-suave">
@@ -158,7 +174,8 @@ export function Auditoria() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
