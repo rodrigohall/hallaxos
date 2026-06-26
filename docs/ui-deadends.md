@@ -71,12 +71,20 @@
 
 ### P3 — varredura final de cobertura
 
-- [ ] **D7 · Varredura geral.** Reler todas as páginas em
-  `apps/web/src/paginas/` e qualquer entidade exibida (nome de cliente/ativo/
-  operação/manutenção) que ainda seja texto morto **e tenha id no dado** vira
-  link. Listar aqui sub-itens novos que encontrar antes de corrigir.
-  Páginas já com boa cobertura: AtivoDetalhe, PessoaDetalhe, listas (Pessoas,
-  Ativos, Operacoes, Manutencoes — linhas já são `<Link>`).
+- [x] **D7 · Varredura geral.** As 20 páginas relidas. **Nenhum beco novo
+  corrigível.** Toda entidade com id já é `<Link>`; o que sobra cai em uma das
+  exclusões legítimas abaixo. Resultado terminal — fila esvaziada, loop para.
+
+  Pulados encontrados na varredura (sem destino válido / regra "já é link"):
+  - `[~]` PessoaDetalhe — card de Operações mostra `op.ativo` (e há `ativo_id`),
+    mas a linha inteira já é `<Link>` para `/operacoes/:id`. Link aninhado faria
+    `<a>` dentro de `<a>` (HTML inválido). Mantido como está.
+  - `[~]` DashboardFinanceiro — drill-down tem ids, mas só exibe descrição do
+    lançamento + categoria/conta (sem rota); nenhum nome de entidade como texto morto.
+  - `[~]` Operacoes (lista) — `o.cliente` é texto, mas `OperacaoLista` não traz
+    `cliente_id` (sem id → sem destino confiável).
+  - `[~]` Usuarios — usuário não tem ficha no conjunto de rotas permitido.
+  - `[~]` Forms/Login (PessoaForm, AtivoForm, OperacaoNova, Login) — entradas/seletores.
 
 ---
 
@@ -90,3 +98,13 @@
 - 2026-06-26 · D5 · Auditoria · chip de entidade vira link à ficha (tipos com
   rota); build verde.
 - 2026-06-26 · D6 · Relatorios pivot · pulado [~] — rows por rótulo, sem id.
+- 2026-06-26 · D7 · varredura das 20 páginas · 0 becos novos; loop concluído.
+
+---
+
+## ✅ Loop concluído (2026-06-26)
+
+Fila esvaziada. **6 becos fechados** (D1–D5 + cobertura) e **3 recusas corretas**
+(D6 + os `[~]` da varredura) por ausência de destino válido. Build web verde em
+todas as iterações. Para reabrir o loop ao adicionar telas novas: acrescente
+itens `[ ]` na fila acima e rode novamente o orquestrador.
