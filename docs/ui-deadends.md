@@ -45,23 +45,17 @@
 
 ### P1 — dados que pedem clique e têm destino claro
 
-- [ ] **D1 · Financeiro.tsx — tabela "Custo por ativo".** A célula `row.ativo`
-  (≈ linha 449) é texto morto, mas `row.ativo_id` está no `key` da `<tr>` (≈ 448).
-  Envolver o nome em `<Link to={`/ativos/${row.ativo_id}`} className="hover:text-ouro">`.
+- [x] **D1 · Financeiro.tsx — tabela "Custo por ativo".** Nome do ativo agora
+  linka para `/ativos/:id` (id já vinha em `row.ativo_id`). Import de `Link` add.
 
-- [ ] **D2 · Relatorios.tsx — "Resultado por ativo".** A linha do ativo
-  (≈ 297–301) mostra `codigo`+`nome` como texto. Verificar se `LinhaAtivo` traz
-  `ativoId`/`id`; se sim, linkar a célula para `/ativos/<id>`. Se o id não vier
-  do endpoint, marcar `[~]` (precisa de campo no backend — fora de escopo do loop).
+- [x] **D2 · Relatorios.tsx — "Resultado por ativo".** `LinhaAtivo` tem `id`;
+  célula codigo+nome agora linka para `/ativos/:id`. Import de `Link` add.
 
-- [ ] **D3 · ManutencaoDetalhe.tsx — bloco de detalhes `<dl>`.** "Ativo:"
-  (≈ linha 201) é texto morto embora o cabeçalho (≈ 166) já linke o ativo.
-  Tornar o valor de "Ativo:" um `<Link to={`/ativos/${m.ativo_id}`}>` para
-  consistência (cabeçalho e detalhe ambos clicáveis).
+- [x] **D3 · ManutencaoDetalhe.tsx — bloco de detalhes `<dl>`.** "Ativo:" no
+  bloco de dados agora linka para `/ativos/:id` (consistente com o cabeçalho).
 
-- [ ] **D4 · OperacaoDetalhe.tsx — bloco de detalhes `<dl>`.** "Cliente:"
-  (≈ linha 265) é texto morto embora o cabeçalho (≈ 227) já linke o cliente.
-  Tornar o valor clicável: `<Link to={`/clientes/${op.cliente.id}`}>`.
+- [x] **D4 · OperacaoDetalhe.tsx — bloco de detalhes `<dl>`.** "Cliente:" no
+  bloco de dados agora linka para `/clientes/:id` (consistente com o cabeçalho).
 
 ### P2 — páginas com zero navegação de saída
 
@@ -89,3 +83,7 @@
 ## Histórico (preenchido pelo loop)
 
 <!-- cada iteração adiciona: AAAA-MM-DD · Dn · commit <hash> · 1 linha -->
+
+- 2026-06-26 · D1–D4 · lote P1 · 4 becos resolvidos (Financeiro, Relatorios,
+  ManutencaoDetalhe, OperacaoDetalhe) — entidades exibidas agora linkam à ficha;
+  `pnpm --filter web build` verde.

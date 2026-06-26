@@ -262,7 +262,7 @@ export function OperacaoDetalhe() {
         <div className="space-y-4">
           <Card titulo="Dados" icone={Workflow}>
             <dl className="space-y-1.5 text-sm">
-              <div><dt className="inline text-suave">Cliente: </dt><dd className="inline">{op.cliente.nome}</dd></div>
+              <div><dt className="inline text-suave">Cliente: </dt><dd className="inline"><Link to={`/clientes/${op.cliente.id}`} className="hover:text-ouro">{op.cliente.nome}</Link></dd></div>
               <div><dt className="inline text-suave">Início: </dt><dd className="inline">{dataHora(op.dataInicio)}</dd></div>
               {op.dataFim && <div><dt className="inline text-suave">Encerrada: </dt><dd className="inline">{dataHora(op.dataFim)}</dd></div>}
               <div><dt className="inline text-suave">Valor: </dt><dd className="inline font-medium">{dinheiro(op.valorTotal)}</dd></div>

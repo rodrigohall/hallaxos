@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
@@ -446,7 +447,7 @@ export function Financeiro() {
                     <tbody className="divide-y divide-borda/50">
                       {custoAtivo.map((row) => (
                         <tr key={row.ativo_id} className="hover:bg-elevado/50 transition-colors">
-                          <td className="py-2 font-medium text-texto">{row.ativo}</td>
+                          <td className="py-2 font-medium text-texto"><Link to={`/ativos/${row.ativo_id}`} className="hover:text-ouro">{row.ativo}</Link></td>
                           <td className="py-2 text-right text-suave">{Number(row.manutencao) > 0 ? dinheiro(row.manutencao) : <span className="text-mudo">—</span>}</td>
                           <td className="py-2 text-right text-suave">{Number(row.combustivel) > 0 ? dinheiro(row.combustivel) : <span className="text-mudo">—</span>}</td>
                           <td className="py-2 text-right text-suave">{Number(row.outros) > 0 ? dinheiro(row.outros) : <span className="text-mudo">—</span>}</td>

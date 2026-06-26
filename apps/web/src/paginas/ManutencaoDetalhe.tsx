@@ -198,7 +198,7 @@ export function ManutencaoDetalhe() {
           <Card titulo="Dados" icone={Wrench}>
             <dl className="space-y-1.5 text-sm">
               <div><dt className="inline text-suave">Tipo: </dt><dd className="inline">{m.tipo}</dd></div>
-              <div><dt className="inline text-suave">Ativo: </dt><dd className="inline">{m.ativo_nome}</dd></div>
+              <div><dt className="inline text-suave">Ativo: </dt><dd className="inline"><Link to={`/ativos/${m.ativo_id}`} className="hover:text-ouro">{m.ativo_nome}</Link></dd></div>
               {m.fornecedor_nome && <div><dt className="inline text-suave">Fornecedor: </dt><dd className="inline">{m.fornecedor_nome}</dd></div>}
               {m.data_agendada && <div><dt className="inline text-suave">Agendada: </dt><dd className="inline">{dataCurta(m.data_agendada)}</dd></div>}
               {m.data_inicio && <div><dt className="inline text-suave">Iniciada: </dt><dd className="inline">{dataHora(m.data_inicio)}</dd></div>}

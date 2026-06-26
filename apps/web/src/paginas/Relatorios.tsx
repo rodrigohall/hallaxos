@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, CarFront, Download, TableProperties, ChevronRight } from "lucide-react";
 import {
@@ -297,8 +298,10 @@ export function Relatorios() {
               {ativos.map((a) => (
                 <tr key={a.id}>
                   <td className="py-2 pr-4">
-                    <span className="font-display text-xs font-bold text-ouro">{a.codigo}</span>{" "}
-                    {a.nome}
+                    <Link to={`/ativos/${a.id}`} className="hover:text-ouro">
+                      <span className="font-display text-xs font-bold text-ouro">{a.codigo}</span>{" "}
+                      {a.nome}
+                    </Link>
                   </td>
                   <td className="py-2 pr-4">
                     <Selo tom={a.status}>{a.status.replace(/_/g, " ")}</Selo>
