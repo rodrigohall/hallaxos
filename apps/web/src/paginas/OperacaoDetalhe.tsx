@@ -39,6 +39,50 @@ const ROTULO_FORMA: Record<string, string> = {
   cartao_debito: "Cartão de débito", boleto: "Boleto", transferencia: "Transferência",
 };
 
+// Endereço do guincho com facetas geográficas (Sprint 14 · B3): texto sempre;
+// vira link quando o usuário colou uma URL do Maps; e com coordenadas salvas
+// um clique abre o mini-mapa OSM (mesmo padrão do mapa do dashboard).
+function EnderecoGeo({ rotulo, endereco, link, lat, lng }: {
+  rotulo: string; endereco: string; link: string | null; lat: number | null; lng: number | null;
+}) {
+  const [mapaAberto, setMapaAberto] = useState(false);
+  const temCoords = lat != null && lng != null;
+  const d = 0.004; // ~400m de raio no enquadramento
+  return (
+    <div className="pt-1">
+      <div className="flex items-start gap-1.5">
+        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mudo" />
+        <span className="min-w-0">
+          <span className="text-suave">{rotulo}: </span>
+          {link ? (
+            <a href={link} target="_blank" rel="noreferrer" className="break-all text-ouro hover:underline">{endereco}</a>
+          ) : (
+            <span className="break-words">{endereco}</span>
+          )}
+          {temCoords && (
+            <button
+              type="button"
+              onClick={() => setMapaAberto((v) => !v)}
+              className="ml-2 inline-flex items-center gap-0.5 rounded border border-borda px-1.5 py-px text-[11px] text-suave hover:border-ouro/60 hover:text-ouro"
+            >
+              {mapaAberto ? "fechar mapa" : "ver mapa"}
+            </button>
+          )}
+        </span>
+      </div>
+      {temCoords && mapaAberto && (
+        <iframe
+          title={`Mapa — ${rotulo}`}
+          className="mt-2 h-48 w-full rounded-md border border-borda"
+          style={{ filter: "invert(90%) hue-rotate(200deg)" }}
+          loading="lazy"
+          src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng! - d}%2C${lat! - d}%2C${lng! + d}%2C${lat! + d}&layer=mapnik&marker=${lat}%2C${lng}`}
+        />
+      )}
+    </div>
+  );
+}
+
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 const LIMITE_LISTA = 5;
 
@@ -269,7 +313,20 @@ export function OperacaoDetalhe() {
 
               {op.tipo === "guincho" && (
                 <>
-                  <div className="flex items-start gap-1.5 pt-1"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mudo" /><span>{String(ext.origemEndereco ?? "")} → {String(ext.destinoEndereco ?? "")}</span></div>
+                  <EnderecoGeo
+                    rotulo="Origem"
+                    endereco={String(ext.origemEndereco ?? "")}
+                    link={ext.origemLink ? String(ext.origemLink) : null}
+                    lat={ext.origemLat != null ? Number(ext.origemLat) : null}
+                    lng={ext.origemLng != null ? Number(ext.origemLng) : null}
+                  />
+                  <EnderecoGeo
+                    rotulo="Destino"
+                    endereco={String(ext.destinoEndereco ?? "")}
+                    link={ext.destinoLink ? String(ext.destinoLink) : null}
+                    lat={ext.destinoLat != null ? Number(ext.destinoLat) : null}
+                    lng={ext.destinoLng != null ? Number(ext.destinoLng) : null}
+                  />
                   <div><dt className="inline text-suave">Veículo: </dt><dd className="inline">{String(ext.veiculoClienteDescricao ?? "")}{ext.veiculoClientePlaca ? ` · ${ext.veiculoClientePlaca}` : ""}</dd></div>
                   {ext.kmPercorrido != null && <div><dt className="inline text-suave">Km percorrido: </dt><dd className="inline">{String(ext.kmPercorrido)}</dd></div>}
                 </>

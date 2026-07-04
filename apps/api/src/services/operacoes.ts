@@ -290,6 +290,12 @@ export async function criarGuincho(input: GuinchoCriarInput, usuarioId: string) 
       motoristaId: input.motorista_id ?? null,
       origemEndereco: input.origem_endereco,
       destinoEndereco: input.destino_endereco,
+      origemLink: input.origem_link ?? null,
+      origemLat: input.origem_lat ?? null,
+      origemLng: input.origem_lng ?? null,
+      destinoLink: input.destino_link ?? null,
+      destinoLat: input.destino_lat ?? null,
+      destinoLng: input.destino_lng ?? null,
       veiculoClienteDescricao: input.veiculo_cliente_descricao,
       veiculoClientePlaca: input.veiculo_cliente_placa ?? null,
     });

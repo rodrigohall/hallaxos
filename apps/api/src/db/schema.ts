@@ -2,7 +2,7 @@
 // O DDL (fonte de verdade da estrutura) vive em src/db/migrations/*.sql.
 import {
   pgTable, uuid, text, boolean, timestamp, date, pgEnum, jsonb, primaryKey,
-  numeric, integer,
+  numeric, integer, doublePrecision,
 } from "drizzle-orm/pg-core";
 import {
   PAPEIS_USUARIO, TIPOS_PESSOA, PAPEIS_PESSOA, REFERENCIA_ENTIDADES, EVENTOS_TIMELINE,
@@ -155,6 +155,14 @@ export const operacoesGuincho = pgTable("operacoes_guincho", {
   motoristaId: uuid("motorista_id").references(() => pessoas.id),
   origemEndereco: text("origem_endereco").notNull(),
   destinoEndereco: text("destino_endereco").notNull(),
+  // Facetas geográficas do mesmo local (Sprint 14 · B3): link do Maps colado
+  // pelo usuário e coordenadas resolvidas — alimentam o mini-mapa do detalhe.
+  origemLink: text("origem_link"),
+  origemLat: doublePrecision("origem_lat"),
+  origemLng: doublePrecision("origem_lng"),
+  destinoLink: text("destino_link"),
+  destinoLat: doublePrecision("destino_lat"),
+  destinoLng: doublePrecision("destino_lng"),
   veiculoClienteDescricao: text("veiculo_cliente_descricao").notNull(),
   veiculoClientePlaca: text("veiculo_cliente_placa"),
   kmPercorrido: integer("km_percorrido"),

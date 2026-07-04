@@ -27,6 +27,14 @@ export const guinchoCriarSchema = z.object({
   motorista_id: z.string().uuid().nullish(),
   origem_endereco: z.string().trim().min(3, "Informe a origem"),
   destino_endereco: z.string().trim().min(3, "Informe o destino"),
+  // Endereços inteligentes (Sprint 14 · B3): link do Maps e/ou coordenadas
+  // detectadas no que o usuário colou — opcionais, texto livre segue valendo.
+  origem_link: z.string().url().nullish(),
+  origem_lat: z.coerce.number().min(-90).max(90).nullish(),
+  origem_lng: z.coerce.number().min(-180).max(180).nullish(),
+  destino_link: z.string().url().nullish(),
+  destino_lat: z.coerce.number().min(-90).max(90).nullish(),
+  destino_lng: z.coerce.number().min(-180).max(180).nullish(),
   veiculo_cliente_descricao: z.string().trim().min(2, "Descreva o veículo do cliente"),
   veiculo_cliente_placa: z.string().trim().optional(),
   valor_total: z.coerce.number().nonnegative().default(0),

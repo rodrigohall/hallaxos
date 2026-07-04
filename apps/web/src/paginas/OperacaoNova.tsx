@@ -28,6 +28,30 @@ function enderecoDe(p: Record<string, unknown> | undefined): string | null {
   return full.trim() ? full : null;
 }
 
+// ── Endereços inteligentes do guincho (B3) ──
+/** Extrai um par lat,lng de texto colado (coordenadas ou URL do Maps). */
+function extrairCoords(texto: string): { lat: number; lng: number } | null {
+  for (const re of [/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /@(-?\d+\.\d+),(-?\d+\.\d+)/, /(-?\d{1,3}\.\d{2,})\s*,\s*(-?\d{1,3}\.\d{2,})/]) {
+    const m = texto.match(re);
+    if (m) {
+      const lat = Number(m[1]), lng = Number(m[2]);
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+    }
+  }
+  return null;
+}
+
+/** É um link do Google Maps (inclui os curtos maps.app.goo.gl)? */
+function ehLinkMaps(texto: string): boolean {
+  if (!/^https?:\/\/\S+$/i.test(texto.trim())) return false;
+  try {
+    const h = new URL(texto.trim()).hostname;
+    return h === "maps.app.goo.gl" || h === "goo.gl" || (h.includes("google.com") && texto.includes("maps"));
+  } catch {
+    return false;
+  }
+}
+
 /** Agora no formato aceito por <input type="datetime-local"> (fuso do usuário). */
 function agoraLocal(): string {
   const d = new Date();
@@ -158,6 +182,46 @@ export function OperacaoNova() {
       ? Math.max(0, diariaSugerida * (1 - descontoRaw / 100))
       : Math.max(0, diariaSugerida - descontoRaw);
 
+  // B3: ao sair do campo de endereço, detecta coordenadas coladas ou link do
+  // Maps. Link curto é resolvido no backend; em falha, fica o link clicável.
+  const detectarGeo = async (lado: "origem" | "destino", valor: string) => {
+    const texto = valor.trim();
+    if (!texto) {
+      setCampos((c) => ({ ...c, [`${lado}_lat`]: "", [`${lado}_lng`]: "", [`${lado}_link`]: "" }));
+      return;
+    }
+    const direto = extrairCoords(texto);
+    if (direto) {
+      setCampos((c) => ({ ...c, [`${lado}_lat`]: String(direto.lat), [`${lado}_lng`]: String(direto.lng), [`${lado}_link`]: ehLinkMaps(texto) ? texto : "" }));
+      return;
+    }
+    if (ehLinkMaps(texto)) {
+      setCampos((c) => ({ ...c, [`${lado}_link`]: texto, [`${lado}_lat`]: "", [`${lado}_lng`]: "" }));
+      try {
+        const r = await api.get<{ dados: { lat: number | null; lng: number | null } }>(`/geo/resolver?url=${encodeURIComponent(texto)}`);
+        if (r.dados.lat != null && r.dados.lng != null) {
+          setCampos((c) => ({ ...c, [`${lado}_lat`]: String(r.dados.lat), [`${lado}_lng`]: String(r.dados.lng) }));
+        }
+      } catch {
+        // sem resolução — o link clicável já está salvo, segue sem mini-mapa
+      }
+      return;
+    }
+    // Texto comum: limpa marcações geográficas anteriores desse lado
+    setCampos((c) => ({ ...c, [`${lado}_lat`]: "", [`${lado}_lng`]: "", [`${lado}_link`]: "" }));
+  };
+
+  const ChipGeo = ({ lado }: { lado: "origem" | "destino" }) =>
+    campos[`${lado}_lat`] ? (
+      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-ouro/10 px-2 py-0.5 text-[11px] text-ouro">
+        <MapPin className="h-3 w-3" /> Coordenadas detectadas — mini-mapa no detalhe da operação
+      </span>
+    ) : campos[`${lado}_link`] ? (
+      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-elevado px-2 py-0.5 text-[11px] text-suave">
+        <MapPin className="h-3 w-3" /> Link do Maps salvo
+      </span>
+    ) : null;
+
   // Lookup CEP → ViaCEP (chama para campo `cep_origem` ou `cep_destino`).
   const buscarCep = async (cep: string, campoEndereco: "origem_endereco" | "destino_endereco") => {
     const limpo = cep.replace(/\D/g, "");
@@ -214,10 +278,10 @@ export function OperacaoNova() {
       let corpo: Record<string, unknown> = {
         cliente_id: cliente.id,
         observacoes: ou(campos.observacoes),
-        // Locação sempre envia o início (campo com horário na tela);
-        // demais tipos só quando marcados como retroativos.
+        // Locação e guincho sempre enviam o início (campo com horário na
+        // tela); venda/compra só quando marcadas como retroativas.
         data_inicio:
-          tipo === "locacao"
+          tipo === "locacao" || tipo === "guincho"
             ? paraIso(ou(campos.data_inicio))
             : retroativo
               ? paraIso(ou(campos.data_inicio))
@@ -231,6 +295,12 @@ export function OperacaoNova() {
           caminhao_id: ativo?.id ?? null,
           origem_endereco: campos.origem_endereco,
           destino_endereco: campos.destino_endereco,
+          origem_link: ou(campos.origem_link),
+          origem_lat: campos.origem_lat ? Number(campos.origem_lat) : undefined,
+          origem_lng: campos.origem_lng ? Number(campos.origem_lng) : undefined,
+          destino_link: ou(campos.destino_link),
+          destino_lat: campos.destino_lat ? Number(campos.destino_lat) : undefined,
+          destino_lng: campos.destino_lng ? Number(campos.destino_lng) : undefined,
           veiculo_cliente_descricao: campos.veiculo_cliente_descricao,
           veiculo_cliente_placa: ou(campos.veiculo_cliente_placa),
           valor_total: Number(campos.valor_total || 0),
@@ -283,8 +353,9 @@ export function OperacaoNova() {
             onClick={() => {
               setTipo(t.tipo);
               setAtivo(null);
-              // Locação nasce com início = agora (editável — cobre retroativo e futuro).
-              setCampos(t.tipo === "locacao" ? { data_inicio: agoraLocal() } : {});
+              // Locação e guincho nascem com início = agora (editável — cobre
+              // retroativo e agendamento futuro).
+              setCampos(t.tipo === "locacao" || t.tipo === "guincho" ? { data_inicio: agoraLocal() } : {});
               setRetroativo(false);
               setPendencias([]);
               ativoAnteriorId.current = null;
@@ -316,12 +387,15 @@ export function OperacaoNova() {
 
             {tipo === "guincho" && (
               <>
+                {/* B1: sem filtro de status — o caminhão guincho vive em
+                    "em uso interno" (é recurso da frota, não item de aluguel)
+                    e o filtro antigo `status=disponivel` escondia todos. */}
                 <Seletor
                   rotulo="Caminhão guincho (recurso) — opcional"
                   recurso="ativos"
                   selecionado={ativo}
                   aoSelecionar={setAtivo}
-                  filtro="status=disponivel&categoria_nome=Caminhão"
+                  filtro="categoria_nome=Caminhão"
                 />
 
                 {/* Origem */}
@@ -339,11 +413,13 @@ export function OperacaoNova() {
                       <Entrada
                         value={campos.origem_endereco ?? ""}
                         onChange={set("origem_endereco")}
-                        placeholder="Logradouro, bairro, cidade/UF"
+                        onBlur={(e) => detectarGeo("origem", e.target.value)}
+                        placeholder="Endereço, link do Maps ou coordenadas"
                         className="flex-1"
                       />
                     </div>
                     <BotaoEndereco visivel={!!enderecoCliente} ao={() => usarEndereco("origem_endereco")} />
+                    <ChipGeo lado="origem" />
                   </Campo>
                 </div>
 
@@ -362,11 +438,13 @@ export function OperacaoNova() {
                       <Entrada
                         value={campos.destino_endereco ?? ""}
                         onChange={set("destino_endereco")}
-                        placeholder="Logradouro, bairro, cidade/UF"
+                        onBlur={(e) => detectarGeo("destino", e.target.value)}
+                        placeholder="Endereço, link do Maps ou coordenadas"
                         className="flex-1"
                       />
                     </div>
                     <BotaoEndereco visivel={!!enderecoCliente} ao={() => usarEndereco("destino_endereco")} />
+                    <ChipGeo lado="destino" />
                   </Campo>
                 </div>
 
@@ -378,9 +456,30 @@ export function OperacaoNova() {
                     <Entrada value={campos.veiculo_cliente_placa ?? ""} onChange={set("veiculo_cliente_placa")} className="uppercase" />
                   </Campo>
                 </div>
-                <Campo rotulo="Valor do serviço (R$)" dica="Pode ser ajustado na conclusão.">
-                  <Entrada type="number" value={campos.valor_total ?? ""} onChange={set("valor_total")} />
-                </Campo>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Campo rotulo="Valor do serviço (R$)" dica="Pode ser ajustado na conclusão.">
+                    <Entrada type="number" value={campos.valor_total ?? ""} onChange={set("valor_total")} />
+                  </Campo>
+                  {/* B4: data da solicitação com horário + atalho de um clique */}
+                  <Campo rotulo="Data da solicitação">
+                    <div className="flex gap-2">
+                      <Entrada
+                        type="datetime-local"
+                        value={campos.data_inicio ?? ""}
+                        onChange={set("data_inicio")}
+                        className="flex-1"
+                      />
+                      <Botao
+                        variante="fantasma"
+                        tamanho="sm"
+                        onClick={() => setCampos((c) => ({ ...c, data_inicio: agoraLocal() }))}
+                        title="Preencher com a data e hora atuais"
+                      >
+                        <Clock className="h-3.5 w-3.5" /> HOJE
+                      </Botao>
+                    </div>
+                  </Campo>
+                </div>
               </>
             )}
 
@@ -478,8 +577,9 @@ export function OperacaoNova() {
               </>
             )}
 
-            {/* Retroativo toggle — locação não usa (o campo "Início da locação" já cobre) */}
-            {tipo !== "locacao" && (
+            {/* Retroativo toggle — locação e guincho não usam (os campos de
+                início/solicitação com horário já cobrem data passada) */}
+            {tipo !== "locacao" && tipo !== "guincho" && (
             <div className="rounded-md border border-borda bg-elevado/50 p-3">
               <label className="flex cursor-pointer items-center gap-2">
                 <input

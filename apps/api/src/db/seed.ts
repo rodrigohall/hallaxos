@@ -109,12 +109,15 @@ async function seed() {
       (${onix}, 'SQP7C12', 'Chevrolet', 'Onix LT', 2023, 2023, 'Branco', 'flex', 22100),
       (${guincho1}, 'QWE9F88', 'Mercedes-Benz', 'Accelo 1016', 2022, 2023, 'Branco', 'diesel', 98750)`);
 
+  // Índice no MESMO formato do reindexarAtivo (services/ativos.ts): título com
+  // placa e termos com marca/modelo — o formato antigo do seed deixava os
+  // guinchos fora da busca por marca/placa (pendência do Sprint 13).
   const ativosSeed = [
-    { id: corolla, nome: "Toyota Corolla XEi 2022", sub: "Ativo · alugado", placa: "RTX2B45" },
-    { id: onix, nome: "Chevrolet Onix LT 2023", sub: "Ativo · disponível", placa: "SQP7C12" },
-    { id: guincho1, nome: "Guincho Mercedes Accelo", sub: "Ativo · em uso interno", placa: "QWE9F88" },
-    { id: empilhadeira, nome: "Empilhadeira Yale 2.5t", sub: "Ativo · disponível", placa: null },
-    { id: camaElastica, nome: "Cama Elástica Profissional 4m", sub: "Ativo · disponível", placa: null },
+    { id: corolla, nome: "Toyota Corolla XEi 2022", sub: "Ativo · alugado", placa: "RTX2B45", marca: "Toyota", modelo: "Corolla XEi" },
+    { id: onix, nome: "Chevrolet Onix LT 2023", sub: "Ativo · disponível", placa: "SQP7C12", marca: "Chevrolet", modelo: "Onix LT" },
+    { id: guincho1, nome: "Guincho Mercedes Accelo", sub: "Ativo · em uso interno", placa: "QWE9F88", marca: "Mercedes-Benz", modelo: "Accelo 1016" },
+    { id: empilhadeira, nome: "Empilhadeira Yale 2.5t", sub: "Ativo · disponível", placa: null, marca: null, modelo: null },
+    { id: camaElastica, nome: "Cama Elástica Profissional 4m", sub: "Ativo · disponível", placa: null, marca: null, modelo: null },
   ];
   for (const a of ativosSeed) {
     await registrarEvento(db, {
@@ -124,9 +127,11 @@ async function seed() {
     const [{ codigo }] = (await db.execute(sql`SELECT codigo FROM ativos WHERE id = ${a.id}`))
       .rows as [{ codigo: string }];
     await indexar(db, {
-      entidadeTipo: "ativo", entidadeId: a.id, titulo: a.nome, subtitulo: `${a.sub} · ${codigo}`,
+      entidadeTipo: "ativo", entidadeId: a.id,
+      titulo: a.placa ? `${a.nome} · ${a.placa}` : a.nome,
+      subtitulo: `${a.sub} · ${codigo}`,
       // Placa é alfanumérica: entra nos termos de texto E (só dígitos) nos numéricos
-      termos: [a.nome, codigo, a.placa], termosNumericos: [codigo, a.placa],
+      termos: [a.nome, codigo, a.placa, a.marca, a.modelo], termosNumericos: [codigo, a.placa],
     });
   }
 

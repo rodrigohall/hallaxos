@@ -107,6 +107,41 @@ export default async function rotasSistema(app: FastifyInstance) {
     return { dados, meta: { total, pagina: q.pagina, por_pagina: q.por_pagina } };
   });
 
+  // Sprint 14 · B3: resolve um link do Google Maps em coordenadas. Links curtos
+  // (maps.app.goo.gl) não trazem lat/lng na URL — é preciso seguir o redirect
+  // no servidor e extrair da URL final. Só hosts do Maps são aceitos (anti-SSRF);
+  // em falha devolve lat/lng nulos e o front degrada para link clicável sem mapa.
+  app.get("/geo/resolver", { preHandler: exigirPermissao("operacoes", "criar") }, async (req) => {
+    const { url } = z.object({ url: z.string().url() }).parse(req.query);
+    const HOSTS_MAPS = new Set([
+      "maps.app.goo.gl", "goo.gl", "maps.google.com", "www.google.com",
+      "google.com", "maps.google.com.br", "www.google.com.br",
+    ]);
+    const origem = new URL(url);
+    if (!HOSTS_MAPS.has(origem.hostname)) {
+      return { dados: { lat: null, lng: null, url_final: null } };
+    }
+    const extrair = (u: string): { lat: number; lng: number } | null => {
+      // !3d<lat>!4d<lng> é a posição do marcador (mais precisa que o centro @)
+      for (const re of [/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /@(-?\d+\.\d+),(-?\d+\.\d+)/, /[?&]q(?:uery)?=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/]) {
+        const m = u.match(re);
+        if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+      }
+      return null;
+    };
+    try {
+      const controle = new AbortController();
+      const timer = setTimeout(() => controle.abort(), 8000);
+      const resp = await fetch(url, { redirect: "follow", signal: controle.signal });
+      clearTimeout(timer);
+      const final = resp.url ? decodeURIComponent(resp.url) : url;
+      const coords = extrair(final);
+      return { dados: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, url_final: resp.url ?? null } };
+    } catch {
+      return { dados: { lat: null, lng: null, url_final: null } };
+    }
+  });
+
   app.get("/saude", async () => ({ dados: { ok: true } }));
 
   // Versão em execução: o SHA do commit é carimbado na imagem no build (ver
