@@ -5,3 +5,5 @@ dist/
 .pgdata/
 .DS_Store
 dados/
+# Gerado pelo CI a cada deploy — nunca versionado
+apps/web/public/estado.txt

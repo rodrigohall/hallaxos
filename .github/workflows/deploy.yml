@@ -8,7 +8,7 @@ name: Deploy VPS
 
 on:
   push:
-    branches: [claude/stoic-shannon-d3fxpi]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -59,6 +59,30 @@ jobs:
     if: ${{ vars.DEPLOY_ATIVO != 'false' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Histórico raso mas suficiente para o `git log -15` do estado.txt.
+          fetch-depth: 15
+
+      # estado.txt: fonte de verdade externa do estado deployado, servida em
+      # http://<host>/estado.txt. Existe porque o cache do GitHub (raw/blobs)
+      # devolve versões velhas a consultas externas e quebra a retomada de
+      # sessões. Gerado aqui e enviado junto no rsync; o build do Vite copia
+      # apps/web/public/ para dist/, que o Caddy serve como estático (/srv).
+      # Conteúdo 100% público: commit, data, branch, sprint e git log — nada
+      # de dado de negócio.
+      - name: Gerar estado.txt
+        run: |
+          SHA_CURTO="$(echo '${{ github.sha }}' | cut -c1-7)"
+          SPRINT="$(sed -n 's/^## Sprint \([0-9][0-9]*\).*/\1/p' CHANGELOG.md | head -1)"
+          {
+            echo "commit: $SHA_CURTO"
+            echo "data_deploy: $(TZ=America/Campo_Grande date +%Y-%m-%dT%H:%M:%S%z)"
+            echo "branch: main"
+            echo "sprint_atual: ${SPRINT:-desconhecido}"
+            echo "ultimos_commits:"
+            git log --oneline -15
+          } > apps/web/public/estado.txt
+          cat apps/web/public/estado.txt
 
       - name: Preparar chave SSH
         run: |

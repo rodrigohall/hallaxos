@@ -17,7 +17,7 @@
 
 ## Como o deploy automático funciona
 
-1. Push no branch **`claude/stoic-shannon-d3fxpi`** dispara o workflow
+1. Push no branch **`main`** dispara o workflow
    **`.github/workflows/deploy.yml`** (GitHub Actions).
 2. Job **`verificar`**: typecheck + build + testes. Se algo quebra, **não chega
    ao VPS** (porta de qualidade).
@@ -101,7 +101,7 @@ estável quando alguns deploys seguidos passarem sem timeout.
   ```bash
   cd ~/hallaxos
   # baixar o(s) arquivo(s) alterado(s) — o ?$(date +%s) evita cache do GitHub
-  curl -fsSL "https://raw.githubusercontent.com/rodrigohall/hallaxos/claude/stoic-shannon-d3fxpi/apps/web/src/paginas/Financeiro.tsx?$(date +%s)" -o apps/web/src/paginas/Financeiro.tsx
+  curl -fsSL "https://raw.githubusercontent.com/rodrigohall/hallaxos/main/apps/web/src/paginas/Financeiro.tsx?$(date +%s)" -o apps/web/src/paginas/Financeiro.tsx
   docker compose -f docker-compose.prod.yml up -d --build web
   ```
   Para mudança de **backend**, baixe os arquivos de `apps/api/...` (e
