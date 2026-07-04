@@ -17,7 +17,8 @@ const base = {
   cliente_id: z.string().uuid("Escolha o cliente"),
   observacoes: z.string().trim().optional(),
   // Data de início opcional (retroativo): registra a operação com a data real.
-  data_inicio: z.string().date().nullish(),
+  // Aceita data simples ou data+hora (locação/guincho registram o horário).
+  data_inicio: z.string().datetime({ offset: true }).or(z.string().datetime({ local: true })).or(z.string().date()).nullish(),
 };
 
 export const guinchoCriarSchema = z.object({
@@ -38,7 +39,8 @@ export const locacaoCriarSchema = z.object({
   condutor_id: z.string().uuid().nullish(),
   valor_diaria: z.coerce.number().positive("Informe o valor da diária"),
   caucao: z.coerce.number().nonnegative().default(0),
-  data_devolucao_prevista: z.string().datetime({ offset: true }).or(z.string().date()),
+  data_devolucao_prevista: z.string().datetime({ offset: true }).or(z.string().datetime({ local: true })).or(z.string().date()),
+  km_saida: z.coerce.number().int().nonnegative().nullish(),
 });
 export type LocacaoCriarInput = z.infer<typeof locacaoCriarSchema>;
 

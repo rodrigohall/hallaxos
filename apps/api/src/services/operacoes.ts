@@ -243,9 +243,10 @@ export function proximasTransicoes(tipo: TipoOperacao, status: StatusOperacao): 
 }
 
 // ─────────────────────────── Criação ───────────────────────────
-/** Converte uma data simples (YYYY-MM-DD) em timestamp ao meio-dia UTC, ou null. */
+/** Converte data simples (YYYY-MM-DD, vira meio-dia UTC) ou data+hora em Date, ou null. */
 function dataDe(d?: string | null): Date | null {
-  return d ? new Date(d + "T12:00:00Z") : null;
+  if (!d) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + "T12:00:00Z") : new Date(d);
 }
 
 async function inserirNucleo(
@@ -313,6 +314,7 @@ export async function criarLocacao(input: LocacaoCriarInput, usuarioId: string) 
       valorDiaria: input.valor_diaria.toFixed(2),
       caucao: input.caucao.toFixed(2),
       dataDevolucaoPrevista: new Date(input.data_devolucao_prevista),
+      kmSaida: input.km_saida ?? null,
     });
     await vincularAtivo(tx, op.id, input.ativo_id, "objeto");
     if (input.condutor_id) await garantirPapel(tx, input.condutor_id, "motorista");

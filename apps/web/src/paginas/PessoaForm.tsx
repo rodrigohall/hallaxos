@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../api";
 import { Botao, Campo, Card, Entrada, Selecao, Chip, useToast } from "../componentes/ui";
@@ -16,6 +16,10 @@ type Formulario = typeof VAZIO;
 export function PessoaForm() {
   const { id } = useParams();
   const navegar = useNavigate();
+  const [params] = useSearchParams();
+  // Cadastro rápido a partir de outro formulário (ex.: Nova operação): ao
+  // salvar, volta para a rota de origem com o novo cliente pré-selecionado.
+  const retorno = params.get("retorno");
   const filaQueries = useQueryClient();
   const notificar = useToast();
   const [form, setForm] = useState<Formulario>(VAZIO);
@@ -102,7 +106,12 @@ export function PessoaForm() {
         titulo: id ? "Cadastro atualizado" : "Cadastro criado",
         descricao: "A alteração já está na timeline.",
       });
-      navegar(`/clientes/${dados.id}`);
+      if (!id && retorno && retorno.startsWith("/")) {
+        const sep = retorno.includes("?") ? "&" : "?";
+        navegar(`${retorno}${sep}cliente_id=${dados.id}`);
+      } else {
+        navegar(`/clientes/${dados.id}`);
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.detalhes) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, KeyRound, TrendingUp, ShoppingCart, MapPin, Clock, Tag, Percent } from "lucide-react";
+import { Truck, KeyRound, TrendingUp, ShoppingCart, MapPin, Clock, Tag, Percent, UserPlus, AlertCircle } from "lucide-react";
 import { api, ApiError } from "../api";
 import {
   Botao, Card, Campo, Entrada, AreaTexto, useToast,
@@ -28,6 +28,32 @@ function enderecoDe(p: Record<string, unknown> | undefined): string | null {
   return full.trim() ? full : null;
 }
 
+/** Agora no formato aceito por <input type="datetime-local"> (fuso do usuário). */
+function agoraLocal(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** Converte valor de datetime-local (fuso do usuário) em ISO com offset; datas puras passam direto. */
+function paraIso(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+// Rascunho do formulário: sobrevive ao desvio "Novo cliente" (A3/B2) sem
+// duplicar dado — só estado de UI, apagado ao restaurar.
+const CHAVE_RASCUNHO = "operacao-nova-rascunho";
+interface Rascunho {
+  tipo: Tipo | null;
+  ativo: ItemSeletor | null;
+  campos: Record<string, string>;
+  retroativo: boolean;
+  descontoTipo: DescontoTipo;
+}
+
 const TIPOS: Array<{ tipo: Tipo; icone: typeof Truck; descricao: string }> = [
   { tipo: "guincho", icone: Truck, descricao: "Acionamento de guincho da origem ao destino." },
   { tipo: "locacao", icone: KeyRound, descricao: "Aluguel de um veículo da frota a um cliente." },
@@ -46,9 +72,39 @@ export function OperacaoNova() {
   const [retroativo, setRetroativo] = useState(false);
   const [descontoTipo, setDescontoTipo] = useState<DescontoTipo>("R$");
   const [enviando, setEnviando] = useState(false);
+  // Validação visível (A1): nunca deixar o botão "morto" sem explicação.
+  const [pendencias, setPendencias] = useState<string[]>([]);
 
   const set = (k: string) => (e: { target: { value: string } }) =>
     setCampos((c) => ({ ...c, [k]: e.target.value }));
+
+  // Restaura o rascunho salvo antes do desvio para "Novo cliente" (A3/B2).
+  const rascunhoRestaurado = useRef(false);
+  useEffect(() => {
+    if (rascunhoRestaurado.current) return;
+    rascunhoRestaurado.current = true;
+    const bruto = sessionStorage.getItem(CHAVE_RASCUNHO);
+    if (!bruto) return;
+    sessionStorage.removeItem(CHAVE_RASCUNHO);
+    try {
+      const r = JSON.parse(bruto) as Rascunho;
+      setTipo(r.tipo);
+      setAtivo(r.ativo);
+      setCampos(r.campos ?? {});
+      setRetroativo(r.retroativo ?? false);
+      setDescontoTipo(r.descontoTipo ?? "R$");
+      // Evita que o efeito de pré-preenchimento do ativo sobrescreva os campos restaurados.
+      if (r.ativo) ativoAnteriorId.current = r.ativo.id;
+    } catch {
+      // rascunho corrompido — segue com formulário limpo
+    }
+  }, []);
+
+  const irParaNovoCliente = () => {
+    const r: Rascunho = { tipo, ativo, campos, retroativo, descontoTipo };
+    sessionStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(r));
+    navegar("/clientes/novo?retorno=/operacoes/nova");
+  };
 
   // Pré-preenchimento por URL: ?cliente_id=X pré-seleciona o cliente (B2).
   const clienteIdParam = params.get("cliente_id");
@@ -117,15 +173,55 @@ export function OperacaoNova() {
     }
   };
 
+  // Lista o que falta para criar — mostrada na tela (nunca validação silenciosa).
+  const pendenciasDe = (): string[] => {
+    const falta: string[] = [];
+    if (!tipo) falta.push("Escolha o tipo de operação");
+    if (!cliente) falta.push("Selecione o cliente");
+    if (tipo === "guincho") {
+      if (!campos.origem_endereco) falta.push("Informe o endereço de origem");
+      if (!campos.destino_endereco) falta.push("Informe o endereço de destino");
+      if (!campos.veiculo_cliente_descricao) falta.push("Descreva o veículo do cliente");
+    }
+    if (tipo === "locacao") {
+      if (!ativo) falta.push("Selecione o veículo");
+      if (!(Number(campos.valor_diaria_base) > 0)) falta.push("Informe o valor da diária");
+      if (!campos.data_devolucao_prevista) falta.push("Informe a data de devolução prevista");
+    }
+    if (tipo === "venda" || tipo === "compra") {
+      if (!ativo) falta.push("Selecione o ativo");
+      if (!(Number(campos.valor_total) > 0)) falta.push(`Informe o valor da ${tipo}`);
+    }
+    return falta;
+  };
+
+  // Depois do primeiro aviso, a lista de pendências atualiza em tempo real.
+  useEffect(() => {
+    if (pendencias.length > 0) setPendencias(pendenciasDe());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campos, cliente, ativo, tipo]);
+
   const enviar = async () => {
-    if (!tipo || !cliente) return;
+    const falta = pendenciasDe();
+    setPendencias(falta);
+    if (falta.length > 0 || !tipo || !cliente) {
+      notificar({ tipo: "erro", titulo: "Faltam informações", descricao: falta[0] });
+      return;
+    }
     setEnviando(true);
     try {
       const ou = (v: string | undefined) => (v === "" || v === undefined ? undefined : v);
       let corpo: Record<string, unknown> = {
         cliente_id: cliente.id,
         observacoes: ou(campos.observacoes),
-        data_inicio: retroativo ? ou(campos.data_inicio) : undefined,
+        // Locação sempre envia o início (campo com horário na tela);
+        // demais tipos só quando marcados como retroativos.
+        data_inicio:
+          tipo === "locacao"
+            ? paraIso(ou(campos.data_inicio))
+            : retroativo
+              ? paraIso(ou(campos.data_inicio))
+              : undefined,
       };
       let url = "";
       if (tipo === "guincho") {
@@ -144,9 +240,10 @@ export function OperacaoNova() {
         corpo = {
           ...corpo,
           ativo_id: ativo?.id,
-          valor_diaria: diariaSugerida > 0 ? diariaNaEfetiva : Number(campos.valor_diaria_base || 0),
+          valor_diaria: diariaNaEfetiva,
           caucao: Number(campos.caucao || 0),
-          data_devolucao_prevista: campos.data_devolucao_prevista,
+          data_devolucao_prevista: paraIso(campos.data_devolucao_prevista),
+          km_saida: campos.km_saida ? Number(campos.km_saida) : undefined,
         };
       } else {
         url = `/operacoes/${tipo}`;
@@ -174,12 +271,6 @@ export function OperacaoNova() {
       </button>
     ) : null;
 
-  const podeEnviar =
-    !!tipo && !!cliente &&
-    (tipo !== "guincho" || (!!campos.origem_endereco && !!campos.destino_endereco && !!campos.veiculo_cliente_descricao)) &&
-    (tipo !== "locacao" || (!!ativo && (diariaSugerida > 0 || !!campos.valor_diaria_base) && !!campos.data_devolucao_prevista)) &&
-    ((tipo !== "venda" && tipo !== "compra") || (!!ativo && !!campos.valor_total));
-
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="font-display text-lg font-bold">Nova operação</h1>
@@ -192,8 +283,10 @@ export function OperacaoNova() {
             onClick={() => {
               setTipo(t.tipo);
               setAtivo(null);
-              setCampos({});
+              // Locação nasce com início = agora (editável — cobre retroativo e futuro).
+              setCampos(t.tipo === "locacao" ? { data_inicio: agoraLocal() } : {});
               setRetroativo(false);
+              setPendencias([]);
               ativoAnteriorId.current = null;
             }}
             className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
@@ -210,7 +303,16 @@ export function OperacaoNova() {
         <Card>
           <p className="mb-4 text-sm text-suave">{TIPOS.find((t) => t.tipo === tipo)!.descricao}</p>
           <div className="space-y-4">
-            <Seletor rotulo="Cliente" recurso="pessoas" selecionado={cliente} aoSelecionar={setCliente} />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Seletor rotulo="Cliente" recurso="pessoas" selecionado={cliente} aoSelecionar={setCliente} />
+              </div>
+              {!cliente && (
+                <Botao variante="fantasma" tamanho="sm" onClick={irParaNovoCliente} title="Cadastrar cliente novo sem perder este formulário">
+                  <UserPlus className="h-4 w-4" /> Novo cliente
+                </Botao>
+              )}
+            </div>
 
             {tipo === "guincho" && (
               <>
@@ -298,6 +400,20 @@ export function OperacaoNova() {
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
+                  {/* A1: o valor da diária agora é um campo VISÍVEL — antes só existia
+                      por auto-preenchimento e travava o botão sem explicação quando
+                      o ativo não tinha diária cadastrada. */}
+                  <Campo rotulo="Valor da diária (R$)" dica={ativoDet?.valorDiaria ? "Pré-preenchida pela diária base do ativo — editável" : undefined}>
+                    <Entrada
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={campos.valor_diaria_base ?? ""}
+                      onChange={set("valor_diaria_base")}
+                      placeholder="0,00"
+                    />
+                  </Campo>
+
                   {/* Desconto com toggle R$ / % */}
                   <Campo rotulo="Desconto na diária" dica={diariaSugerida > 0 ? `Diária final: ${diariaNaEfetiva.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : undefined}>
                     <div className="flex gap-1">
@@ -321,15 +437,25 @@ export function OperacaoNova() {
                       />
                     </div>
                   </Campo>
+                </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
                   <Campo rotulo="Caução (R$)" dica="Auto-sugerida como 5% do FIPE — editável">
                     <Entrada type="number" step="0.01" value={campos.caucao ?? ""} onChange={set("caucao")} />
                   </Campo>
+                  <Campo rotulo="Quilometragem inicial (opcional)">
+                    <Entrada type="number" min="0" value={campos.km_saida ?? ""} onChange={set("km_saida")} placeholder="Km no painel na retirada" />
+                  </Campo>
                 </div>
 
-                <Campo rotulo="Devolução prevista">
-                  <Entrada type="date" value={campos.data_devolucao_prevista ?? ""} onChange={set("data_devolucao_prevista")} />
-                </Campo>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Campo rotulo="Início da locação" dica="Data passada registra retroativo; futura agenda a reserva.">
+                    <Entrada type="datetime-local" value={campos.data_inicio ?? ""} onChange={set("data_inicio")} />
+                  </Campo>
+                  <Campo rotulo="Devolução prevista">
+                    <Entrada type="datetime-local" value={campos.data_devolucao_prevista ?? ""} onChange={set("data_devolucao_prevista")} />
+                  </Campo>
+                </div>
               </>
             )}
 
@@ -352,7 +478,8 @@ export function OperacaoNova() {
               </>
             )}
 
-            {/* Retroativo toggle */}
+            {/* Retroativo toggle — locação não usa (o campo "Início da locação" já cobre) */}
+            {tipo !== "locacao" && (
             <div className="rounded-md border border-borda bg-elevado/50 p-3">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -378,20 +505,29 @@ export function OperacaoNova() {
                 </div>
               )}
             </div>
+            )}
 
             <Campo rotulo="Observações (opcional)">
               <AreaTexto value={campos.observacoes ?? ""} onChange={set("observacoes")} />
             </Campo>
 
+            {/* A1: validação sempre visível — o botão nunca falha em silêncio. */}
+            {pendencias.length > 0 && (
+              <div className="rounded-md border border-erro/40 bg-erro/5 p-3">
+                <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-erro">
+                  <AlertCircle className="h-4 w-4" /> Para criar a operação, falta:
+                </p>
+                <ul className="list-disc space-y-0.5 pl-6 text-sm text-erro/90">
+                  {pendencias.map((p) => <li key={p}>{p}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Botao variante="fantasma" onClick={() => navegar("/operacoes")}>Cancelar</Botao>
-              <Botao onClick={enviar} carregando={enviando} disabled={!podeEnviar || enviando}>
+              <Botao onClick={enviar} carregando={enviando} disabled={enviando}>
                 Criar operação
               </Botao>
             </div>
-            {(tipo === "locacao" || tipo === "venda" || tipo === "compra") && !ativo && (
-              <p className="text-right text-xs text-mudo">Selecione o ativo para continuar.</p>
-            )}
           </div>
         </Card>
       )}
