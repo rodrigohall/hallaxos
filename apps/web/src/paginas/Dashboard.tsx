@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {
   TrendingUp, TrendingDown, Scale, CalendarClock, Truck, Wrench,
   AlertTriangle, KeyRound, CarFront, CheckCircle2, Clock, Car,
-  BarChart3, ChevronRight, MapPin,
+  ChevronRight, MapPin,
 } from "lucide-react";
 import { api } from "../api";
 import {
@@ -436,22 +436,21 @@ export function Dashboard() {
       {/* ── Frota ── */}
       {data.patrimonio && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel">
-            <div className="flex items-center gap-2 text-mudo">
-              <CarFront className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Patrimônio</span>
+          <button
+            onClick={() => nav("/ativos?aba=relatorio")}
+            className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel text-left transition-all hover:border-ouro/40 group"
+          >
+            <div className="flex items-center justify-between gap-2 text-mudo">
+              <div className="flex items-center gap-2">
+                <CarFront className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wider">Patrimônio</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <p className="mt-2 font-display text-2xl font-bold text-ouro">{data.patrimonio.total}</p>
             <p className="mt-1 text-xs text-mudo">{dinheiro(data.patrimonio.valor_patrimonial)} em ativos (FIPE)</p>
-            <button
-              disabled
-              className="mt-3 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-mudo border border-borda disabled:opacity-40 cursor-not-allowed"
-              title="Em breve"
-            >
-              <BarChart3 className="h-3 w-3" />
-              Relatório — Em breve
-            </button>
-          </div>
+            <p className="mt-1 text-xs text-mudo">Ver relatório →</p>
+          </button>
 
           <button
             onClick={() => nav("/ativos?status=disponivel")}
