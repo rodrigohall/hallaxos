@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, KeyRound, TrendingUp, ShoppingCart, MapPin, Clock, Tag, Percent, UserPlus, AlertCircle } from "lucide-react";
+import { MapPin, Clock, Tag, Percent, UserPlus, AlertCircle } from "lucide-react";
 import { api, ApiError } from "../api";
 import {
-  Botao, Card, Campo, Entrada, AreaTexto, useToast,
+  Botao, Caixa, Card, Campo, CampoMarcado, Entrada, AreaTexto, Selo, useToast,
 } from "../componentes/ui";
 import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
-import { ROTULO_TIPO } from "../operacoes/rotulos";
+import { SeletorTipoOperacao } from "../operacoes/SeletorTipo";
 
 type Tipo = "guincho" | "locacao" | "venda" | "compra";
 type DescontoTipo = "R$" | "%";
@@ -78,11 +78,12 @@ interface Rascunho {
   descontoTipo: DescontoTipo;
 }
 
-const TIPOS: Array<{ tipo: Tipo; icone: typeof Truck; descricao: string }> = [
-  { tipo: "guincho", icone: Truck, descricao: "Acionamento de guincho da origem ao destino." },
-  { tipo: "locacao", icone: KeyRound, descricao: "Aluguel de um veículo da frota a um cliente." },
-  { tipo: "venda", icone: TrendingUp, descricao: "Venda de um ativo do patrimônio." },
-  { tipo: "compra", icone: ShoppingCart, descricao: "Compra de um ativo para o patrimônio." },
+// Ícone por tipo vem do SeletorTipoOperacao (fonte única).
+const TIPOS: Array<{ tipo: Tipo; descricao: string }> = [
+  { tipo: "guincho", descricao: "Acionamento de guincho da origem ao destino." },
+  { tipo: "locacao", descricao: "Aluguel de um veículo da frota a um cliente." },
+  { tipo: "venda", descricao: "Venda de um ativo do patrimônio." },
+  { tipo: "compra", descricao: "Compra de um ativo para o patrimônio." },
 ];
 
 export function OperacaoNova() {
@@ -236,12 +237,16 @@ export function OperacaoNova() {
 
   const ChipGeo = ({ lado }: { lado: "origem" | "destino" }) =>
     campos[`${lado}_lat`] ? (
-      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-ouro/10 px-2 py-0.5 text-[11px] text-ouro">
-        <MapPin className="h-3 w-3" /> Coordenadas detectadas — mini-mapa no detalhe da operação
+      <span className="mt-1 inline-flex">
+        <Selo tom="ouro">
+          <MapPin className="mr-1 h-3 w-3" /> Coordenadas detectadas — mini-mapa no detalhe da operação
+        </Selo>
       </span>
     ) : campos[`${lado}_link`] ? (
-      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-elevado px-2 py-0.5 text-[11px] text-suave">
-        <MapPin className="h-3 w-3" /> Link do Maps salvo
+      <span className="mt-1 inline-flex">
+        <Selo>
+          <MapPin className="mr-1 h-3 w-3" /> Link do Maps salvo
+        </Selo>
       </span>
     ) : null;
 
@@ -359,40 +364,31 @@ export function OperacaoNova() {
 
   const BotaoEndereco = ({ visivel, ao }: { visivel: boolean; ao: () => void }) =>
     visivel ? (
-      <button type="button" onClick={ao} className="mt-1 inline-flex items-center gap-1 text-xs text-ouro hover:underline">
+      <Botao variante="link" tamanho="xs" className="mt-1" onClick={ao}>
         <MapPin className="h-3 w-3" /> Usar endereço do cliente
-      </button>
+      </Botao>
     ) : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="font-display text-lg font-bold">Nova operação</h1>
 
-      {/* Passo 1: escolher o tipo */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {TIPOS.map((t) => (
-          <button
-            key={t.tipo}
-            onClick={() => {
-              setTipo(t.tipo);
-              // E4: mantém o ativo vindo da ficha (?ativo_id=) ao escolher o tipo
-              setAtivo(ativoPrefill.current);
-              // Locação e guincho nascem com início = agora (editável — cobre
-              // retroativo e agendamento futuro).
-              setCampos(t.tipo === "locacao" || t.tipo === "guincho" ? { data_inicio: agoraLocal() } : {});
-              setRetroativo(false);
-              setPendencias([]);
-              ativoAnteriorId.current = null;
-            }}
-            className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
-              tipo === t.tipo ? "border-ouro bg-ouro/5 text-ouro" : "border-borda text-suave hover:border-borda-forte hover:text-texto"
-            }`}
-          >
-            <t.icone className="h-5 w-5" />
-            <span className="text-sm font-medium">{ROTULO_TIPO[t.tipo]}</span>
-          </button>
-        ))}
-      </div>
+      {/* Passo 1: escolher o tipo — a mesma peça visual do filtro da lista */}
+      <SeletorTipoOperacao
+        tipos={TIPOS.map((t) => t.tipo)}
+        valor={tipo}
+        aoTrocar={(novoTipo) => {
+          setTipo(novoTipo as Tipo);
+          // E4: mantém o ativo vindo da ficha (?ativo_id=) ao escolher o tipo
+          setAtivo(ativoPrefill.current);
+          // Locação e guincho nascem com início = agora (editável — cobre
+          // retroativo e agendamento futuro).
+          setCampos(novoTipo === "locacao" || novoTipo === "guincho" ? { data_inicio: agoraLocal() } : {});
+          setRetroativo(false);
+          setPendencias([]);
+          ativoAnteriorId.current = null;
+        }}
+      />
 
       {tipo && (
         <Card>
@@ -511,14 +507,14 @@ export function OperacaoNova() {
                 <Seletor rotulo="Veículo" recurso="ativos" selecionado={ativo} aoSelecionar={setAtivo} filtro="status=disponivel" />
 
                 {ativo && diariaSugerida > 0 && (
-                  <div className="rounded-md border border-borda bg-elevado px-3 py-2 text-xs text-suave">
+                  <Caixa tom="ouro" className="text-xs text-suave">
                     <span className="font-medium text-texto">Diária sugerida:</span>{" "}
                     <span className="font-display text-ouro">
                       {diariaSugerida.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </span>
                     {" "}— FIPE 5%:{" "}
                     <span className="text-texto">{Number(campos.caucao || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-                  </div>
+                  </Caixa>
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -542,7 +538,7 @@ export function OperacaoNova() {
                       <button
                         type="button"
                         onClick={() => setDescontoTipo(descontoTipo === "R$" ? "%" : "R$")}
-                        className="flex items-center gap-0.5 rounded border border-borda px-2 text-xs font-medium text-suave hover:border-borda-forte"
+                        className="flex items-center gap-0.5 rounded-md border border-borda px-2.5 text-xs font-medium text-suave transition-colors duration-150 hover:border-borda-forte hover:text-texto"
                         title="Alternar entre R$ e %"
                       >
                         {descontoTipo === "R$" ? <Tag className="h-3 w-3" /> : <Percent className="h-3 w-3" />}
@@ -603,19 +599,13 @@ export function OperacaoNova() {
             {/* Retroativo toggle — locação e guincho não usam (os campos de
                 início/solicitação com horário já cobrem data passada) */}
             {tipo !== "locacao" && tipo !== "guincho" && (
-            <div className="rounded-md border border-borda bg-elevado/50 p-3">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={retroativo}
-                  onChange={(e) => setRetroativo(e.target.checked)}
-                  className="h-4 w-4 rounded border-borda-forte accent-ouro"
-                />
-                <span className="flex items-center gap-1.5 text-sm text-suave">
+            <Caixa>
+              <CampoMarcado marcado={retroativo} aoTrocar={setRetroativo}>
+                <span className="flex items-center gap-1.5 text-suave">
                   <Clock className="h-3.5 w-3.5" />
                   Registrar como retroativo (data passada)
                 </span>
-              </label>
+              </CampoMarcado>
               {retroativo && (
                 <div className="mt-3">
                   <Campo rotulo="Data de início">
@@ -627,7 +617,7 @@ export function OperacaoNova() {
                   </Campo>
                 </div>
               )}
-            </div>
+            </Caixa>
             )}
 
             <Campo rotulo="Observações (opcional)">
@@ -636,14 +626,11 @@ export function OperacaoNova() {
 
             {/* A1: validação sempre visível — o botão nunca falha em silêncio. */}
             {pendencias.length > 0 && (
-              <div className="rounded-md border border-erro/40 bg-erro/5 p-3">
-                <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-erro">
-                  <AlertCircle className="h-4 w-4" /> Para criar a operação, falta:
-                </p>
+              <Caixa tom="erro" icone={AlertCircle} titulo={<span className="text-erro">Para criar a operação, falta:</span>} className="[&_svg]:text-erro">
                 <ul className="list-disc space-y-0.5 pl-6 text-sm text-erro/90">
                   {pendencias.map((p) => <li key={p}>{p}</li>)}
                 </ul>
-              </div>
+              </Caixa>
             )}
             <div className="flex justify-end gap-2">
               <Botao variante="fantasma" onClick={() => navegar("/operacoes")}>Cancelar</Botao>

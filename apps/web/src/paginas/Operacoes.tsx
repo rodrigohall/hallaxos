@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Workflow, AlertTriangle, Truck, KeyRound, TrendingUp, ShoppingCart } from "lucide-react";
+import { Plus, Workflow, AlertTriangle, Truck } from "lucide-react";
 import { TIPOS_OPERACAO } from "@hallaxos/shared";
 import { api } from "../api";
 import { useAuth } from "../auth";
@@ -9,7 +9,8 @@ import {
   Botao, Card, Chip, Entrada, Selo, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   dinheiro, dataCurta,
 } from "../componentes/ui";
-import { ROTULO_TIPO, ROTULO_STATUS_OP } from "../operacoes/rotulos";
+import { ROTULO_STATUS_OP } from "../operacoes/rotulos";
+import { SeletorTipoOperacao, TIPO_ICONE } from "../operacoes/SeletorTipo";
 
 interface OperacaoLista {
   id: string;
@@ -21,13 +22,6 @@ interface OperacaoLista {
   dataInicio: string;
   atrasada: boolean;
 }
-
-const TIPO_ICONE: Record<string, typeof Truck> = {
-  guincho: Truck,
-  locacao: KeyRound,
-  venda: TrendingUp,
-  compra: ShoppingCart,
-};
 
 export function Operacoes() {
   const [busca, setBusca] = useState("");
@@ -65,27 +59,12 @@ export function Operacoes() {
         onChange={(e) => setBusca(e.target.value)}
       />
 
-      {/* Type filter buttons */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {TIPOS_OPERACAO.map((t) => {
-          const Icone = TIPO_ICONE[t] ?? Workflow;
-          return (
-            <button
-              key={t}
-              onClick={() => setTipo(tipo === t ? null : t)}
-              className={
-                `flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ` +
-                (tipo === t
-                  ? "border-ouro bg-ouro/5 text-ouro"
-                  : "border-borda text-suave hover:border-borda-forte hover:text-texto")
-              }
-            >
-              <Icone className="h-4 w-4 shrink-0" />
-              {ROTULO_TIPO[t] ?? t}
-            </button>
-          );
-        })}
-      </div>
+      {/* Filtro por tipo — a mesma peça visual do passo 1 de Nova Operação */}
+      <SeletorTipoOperacao
+        tipos={TIPOS_OPERACAO}
+        valor={tipo}
+        aoTrocar={(t) => setTipo(tipo === t ? null : t)}
+      />
 
       {/* Situation chips */}
       <div className="flex flex-wrap gap-1.5">
