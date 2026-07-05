@@ -411,15 +411,14 @@ export function OperacaoNova() {
 
             {tipo === "guincho" && (
               <>
-                {/* B1: sem filtro de status — o caminhão guincho vive em
-                    "em uso interno" (é recurso da frota, não item de aluguel)
-                    e o filtro antigo `status=disponivel` escondia todos. */}
+                {/* Sem filtro nenhum — mesmo seletor de ativos da locação
+                    (padronizado). O filtro por categoria escondia o caminhão
+                    quando o nome da categoria não batia exatamente. */}
                 <Seletor
                   rotulo="Caminhão guincho (recurso) — opcional"
                   recurso="ativos"
                   selecionado={ativo}
                   aoSelecionar={setAtivo}
-                  filtro="categoria_nome=Caminhão"
                 />
 
                 {/* Origem */}
