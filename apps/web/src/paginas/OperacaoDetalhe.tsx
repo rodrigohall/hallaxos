@@ -1,11 +1,11 @@
 // A página da operação: estado atual, transições nomeadas, ativos, financeiro
 // e história completa. O front solicita transições; o back decide (doc 03).
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   History, Workflow, CircleDollarSign, User, Package, MapPin, ArrowRight, Pencil,
-  Sparkles, CheckCircle, ChevronDown,
+  Sparkles, CheckCircle, ChevronDown, Link2, Plus,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
@@ -18,6 +18,7 @@ import {
 } from "../componentes/ui";
 import { Comentarios } from "../componentes/Comentarios";
 import { Documentos } from "../componentes/Anexos";
+import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
 import { ROTULO_TIPO, ROTULO_STATUS_OP, ACAO_TRANSICAO } from "../operacoes/rotulos";
 
 interface OperacaoDetalhe {
@@ -107,6 +108,7 @@ export function OperacaoDetalhe() {
   const { id } = useParams();
   const { usuario, copilotoAtivo } = useAuth();
   const { abrir: abrirCopiloto } = useCopiloto();
+  const navegar = useNavigate();
   const fila = useQueryClient();
   const notificar = useToast();
   const [transicao, setTransicao] = useState<string | null>(null);
@@ -128,6 +130,10 @@ export function OperacaoDetalhe() {
   const [dataBase, setDataBase] = useState(hojeISO());
   const [vencimentos, setVencimentos] = useState<string[]>([hojeISO()]);
   const [verMaisLanc, setVerMaisLanc] = useState(false);
+  // Sprint 14 · D1 — linkar ativo à operação já lançada
+  const [linkandoAtivo, setLinkandoAtivo] = useState(false);
+  const [ativoLink, setAtivoLink] = useState<ItemSeletor | null>(null);
+  const [linkEnviando, setLinkEnviando] = useState(false);
   const [pagandoLanc, setPagandoLanc] = useState<{ id: string; descricao: string; valor: string } | null>(null);
   const [pagForma, setPagForma] = useState("");
   const [pagData, setPagData] = useState(hojeISO());
@@ -178,6 +184,22 @@ export function OperacaoDetalhe() {
     fila.invalidateQueries({ queryKey: ["operacoes"] });
     fila.invalidateQueries({ queryKey: ["ativo"] });
     fila.invalidateQueries({ queryKey: ["dashboard"] });
+  };
+
+  const confirmarLinkAtivo = async () => {
+    if (!ativoLink) return;
+    setLinkEnviando(true);
+    try {
+      await api.post(`/operacoes/${id}/ativos`, { ativo_id: ativoLink.id });
+      notificar({ tipo: "ok", titulo: "Ativo vinculado", descricao: "Lançamentos da operação herdaram o vínculo." });
+      setLinkandoAtivo(false);
+      setAtivoLink(null);
+      invalidar();
+    } catch (e) {
+      notificar({ tipo: "erro", titulo: "Não foi possível vincular", descricao: e instanceof ApiError ? e.message : undefined });
+    } finally {
+      setLinkEnviando(false);
+    }
   };
 
   const confirmarTransicao = async () => {
@@ -288,7 +310,8 @@ export function OperacaoDetalhe() {
       {/* Transições nomeadas */}
       {podeTransicionar && op.proximasTransicoes.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {op.proximasTransicoes.map((t) => (
+          {/* Sprint 14 · D3: cancelar operação é ação de admin */}
+          {op.proximasTransicoes.filter((t) => t !== "cancelada" || usuario?.papel === "admin").map((t) => (
             <Botao
               key={t}
               variante={t === "cancelada" ? "perigo" : "primario"}
@@ -368,6 +391,28 @@ export function OperacaoDetalhe() {
                 ))}
               </Lista>
             )}
+            {podeTransicionar && (
+              <div className="mt-3">
+                {!linkandoAtivo ? (
+                  <Botao variante="fantasma" tamanho="sm" onClick={() => setLinkandoAtivo(true)}>
+                    <Link2 className="h-3.5 w-3.5" /> Linkar ativo
+                  </Botao>
+                ) : (
+                  <div className="space-y-2 rounded-md border border-borda bg-elevado/40 p-3">
+                    <Seletor rotulo="Ativo a vincular" recurso="ativos" selecionado={ativoLink} aoSelecionar={setAtivoLink} />
+                    <p className="text-xs text-mudo">
+                      Os lançamentos desta operação sem ativo herdam o vínculo automaticamente.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                      <Botao variante="fantasma" tamanho="sm" onClick={() => { setLinkandoAtivo(false); setAtivoLink(null); }}>Cancelar</Botao>
+                      <Botao tamanho="sm" onClick={confirmarLinkAtivo} carregando={linkEnviando} disabled={!ativoLink || linkEnviando}>
+                        Vincular
+                      </Botao>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
 
           <Documentos entidadeTipo="operacao" entidadeId={op.id} />
@@ -388,6 +433,7 @@ export function OperacaoDetalhe() {
                   {(verMaisLanc ? op.lancamentos : op.lancamentos.slice(0, LIMITE_LISTA)).map((l) => (
                     <ListaLinha
                       key={l.id}
+                      para={`/financeiro?lancamento=${l.id}`}
                       titulo={l.descricao}
                       subtitulo={l.data_pagamento ? `pago em ${dataCurta(l.data_pagamento)}` : `vence ${dataCurta(l.data_vencimento)} · ${l.status}`}
                       direita={
@@ -397,7 +443,7 @@ export function OperacaoDetalhe() {
                           </span>
                           {l.status === "previsto" && podeTransicionar && (
                             <button
-                              onClick={() => { setPagandoLanc({ id: l.id, descricao: l.descricao, valor: l.valor }); setPagData(hojeISO()); setPagForma(""); setPagConta(""); }}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPagandoLanc({ id: l.id, descricao: l.descricao, valor: l.valor }); setPagData(hojeISO()); setPagForma(""); setPagConta(""); }}
                               title="Registrar pagamento"
                               className="text-mudo hover:text-ok transition-colors"
                             >
@@ -420,6 +466,19 @@ export function OperacaoDetalhe() {
                 )}
               </>
             )}
+            {/* Sprint 14 · D2: novo lançamento já pré-vinculado à operação (e ao ativo dela) */}
+            <div className="mt-3">
+              <Botao
+                variante="fantasma"
+                tamanho="sm"
+                onClick={() => {
+                  const objeto = op.ativos.find((a) => a.papel === "objeto") ?? op.ativos[0];
+                  navegar(`/financeiro?novo=1&operacao_id=${op.id}${objeto ? `&ativo_id=${objeto.id}` : ""}`);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" /> Novo lançamento
+              </Botao>
+            </div>
           </Card>
         </div>
       </div>
@@ -430,7 +489,9 @@ export function OperacaoDetalhe() {
           <div className="space-y-4">
             {transicao === "cancelada" ? (
               <p className="text-sm text-suave">
-                Cancelar libera o ativo e cancela os lançamentos previstos. Lançamentos já pagos não somem (estorno é manual).
+                Cancelar libera o ativo, anula os lançamentos pendentes e estorna automaticamente
+                os já pagos (contrapartida — dinheiro nunca some). Nada é apagado: o motivo,
+                quem cancelou e quando ficam registrados na timeline.
               </p>
             ) : (
               <p className="text-sm text-suave">
@@ -504,12 +565,22 @@ export function OperacaoDetalhe() {
                 <AreaTexto value={justificativa} onChange={(e) => setJustificativa(e.target.value)} placeholder="Obrigatória para sobrepor CNH vencida (admin)." />
               </Campo>
             )}
+            {transicao === "cancelada" && (
+              <Campo rotulo="Motivo do cancelamento (obrigatório)">
+                <AreaTexto
+                  value={justificativa}
+                  onChange={(e) => setJustificativa(e.target.value)}
+                  placeholder="Ex.: cliente desistiu; operação lançada em duplicidade…"
+                />
+              </Campo>
+            )}
             <div className="flex justify-end gap-2">
               <Botao variante="fantasma" onClick={fecharModal}>Voltar</Botao>
               <Botao
                 variante={transicao === "cancelada" ? "perigo" : "primario"}
                 onClick={confirmarTransicao}
                 carregando={enviando}
+                disabled={enviando || (transicao === "cancelada" && justificativa.trim().length < 3)}
               >
                 {ACAO_TRANSICAO[transicao] ?? "Confirmar"}
               </Botao>

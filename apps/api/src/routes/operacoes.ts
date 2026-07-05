@@ -7,7 +7,7 @@ import {
 } from "@hallaxos/shared";
 import {
   listarOperacoes, obterOperacao, criarGuincho, criarLocacao, criarVenda,
-  criarCompra, transicionar, previaFinanceira, editarOperacao,
+  criarCompra, transicionar, previaFinanceira, editarOperacao, linkarAtivoOperacao,
 } from "../services/operacoes";
 import { listarTimeline } from "../services/timeline";
 import { db } from "../db/client";
@@ -75,6 +75,15 @@ export default async function rotasOperacoes(app: FastifyInstance) {
   app.get("/operacoes/:id/previa-financeira", { preHandler: exigirPermissao("operacoes", "ler") }, async (req) => {
     const { id } = params.parse(req.params);
     return { dados: await previaFinanceira(id) };
+  });
+
+  // Sprint 14 · D1 — Linkar ativo à operação: um clique, dois vínculos
+  // (operação↔ativo e lancamentos.ativo_id herdado), zero duplicação.
+  app.post("/operacoes/:id/ativos", { preHandler: exigirPermissao("operacoes", "editar") }, async (req, reply) => {
+    const { id } = params.parse(req.params);
+    const { ativo_id } = z.object({ ativo_id: idSchema }).parse(req.body);
+    reply.code(201);
+    return { dados: await linkarAtivoOperacao(id, ativo_id, exigirLogin(req).id) };
   });
 
   // Transição de estado nomeada (o front solicita; o back decide — doc 03)

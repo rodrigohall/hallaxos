@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Plus, CircleDollarSign, CheckCircle2, Undo2, XCircle, TrendingUp, TrendingDown, Ban, Pencil,
@@ -43,8 +43,17 @@ export function Financeiro() {
   const ehAdmin = usuario?.papel === "admin";
   const fila = useQueryClient();
   const notificar = useToast();
-  const [status, setStatus] = useState<string | null>("previsto");
-  const [tipo, setTipo] = useState<string | null>(null);
+  // Sprint 14: a página aceita filtros por URL — deep-links vindos do
+  // dashboard (?tipo=&status=), do detalhe de ativo (?ativo_id=) e do detalhe
+  // de operação/lançamento (?lancamento=, ?novo=1&operacao_id=&ativo_id=).
+  const [params, setParams] = useSearchParams();
+  // Com ?novo=1, ativo_id é pré-vínculo do modal (não filtro da lista).
+  const ativoFiltro = params.get("novo") === "1" ? null : params.get("ativo_id");
+  const lancamentoFiltro = params.get("lancamento");
+  const [status, setStatus] = useState<string | null>(
+    lancamentoFiltro ? null : params.get("status") ?? "previsto"
+  );
+  const [tipo, setTipo] = useState<string | null>(params.get("tipo"));
   const [novo, setNovo] = useState(false);
   const [form, setForm] = useState({ ...VAZIO });
   const [erro, setErro] = useState("");
@@ -154,12 +163,40 @@ export function Financeiro() {
     queryFn: () => api.get<{ dados: Categoria[] }>("/categorias-financeiras").then((r) => r.dados),
   });
   const { data, isLoading } = useQuery({
-    queryKey: ["lancamentos", status, tipo],
+    queryKey: ["lancamentos", status, tipo, ativoFiltro, lancamentoFiltro],
     queryFn: () =>
       api.get<{ dados: Lancamento[]; meta: { total: number } }>(
-        `/lancamentos?por_pagina=50${status ? `&status=${status}` : ""}${tipo ? `&tipo=${tipo}` : ""}`
+        // Deep-link de um lançamento ignora os demais filtros — o alvo pode
+        // estar em qualquer status/tipo.
+        lancamentoFiltro
+          ? `/lancamentos?por_pagina=50&lancamento_id=${lancamentoFiltro}`
+          : `/lancamentos?por_pagina=50${status ? `&status=${status}` : ""}${tipo ? `&tipo=${tipo}` : ""}${ativoFiltro ? `&ativo_id=${ativoFiltro}` : ""}`
       ),
   });
+
+  // ?novo=1: abre o modal de novo lançamento já pré-vinculado à operação e/ou
+  // ao ativo indicados na URL (Sprint 14 · D2/E) — títulos vêm das fichas.
+  const novoParamTratado = useRef(false);
+  useEffect(() => {
+    if (novoParamTratado.current || params.get("novo") !== "1") return;
+    novoParamTratado.current = true;
+    const opId = params.get("operacao_id");
+    const atId = params.get("ativo_id");
+    if (opId) {
+      api.get<{ dados: { id: string; codigo: string } }>(`/operacoes/${opId}`)
+        .then((r) => setOrigemVinc({ tipo: "operacao", id: r.dados.id, titulo: r.dados.codigo }))
+        .catch(() => {});
+    }
+    if (atId) {
+      api.get<{ dados: { id: string; nome: string } }>(`/ativos/${atId}`)
+        .then((r) => setAtivoVinc({ id: r.dados.id, titulo: r.dados.nome }))
+        .catch(() => {});
+    }
+    setNovo(true);
+    // Limpa a URL para o modal não reabrir em refresh/navegação
+    setParams((p) => { p.delete("novo"); p.delete("operacao_id"); p.delete("ativo_id"); return p; }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const invalidar = () => {
     fila.invalidateQueries({ queryKey: ["lancamentos"] });
@@ -463,6 +500,26 @@ export function Financeiro() {
           </div>
         )}
       </div>
+
+      {/* Filtros ativos vindos de deep-link (Sprint 14) — sempre com saída visível */}
+      {(lancamentoFiltro || ativoFiltro) && (
+        <div className="flex items-center gap-2 rounded-lg border border-ouro/30 bg-ouro/5 px-4 py-2 text-sm">
+          <Link2 className="h-4 w-4 shrink-0 text-ouro" />
+          <span className="flex-1 text-suave">
+            {lancamentoFiltro ? "Exibindo um lançamento específico." : "Exibindo lançamentos do ativo (diretos, da operação ou herdados de manutenção)."}
+          </span>
+          <button
+            type="button"
+            className="shrink-0 text-ouro hover:underline"
+            onClick={() => {
+              setParams((p) => { p.delete("lancamento"); p.delete("ativo_id"); p.delete("tipo"); p.delete("status"); return p; }, { replace: true });
+              setStatus("previsto");
+            }}
+          >
+            ver todos
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {FILTROS.map((s) => (

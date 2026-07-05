@@ -71,6 +71,9 @@ export const lancamentoFiltrosSchema = z.object({
   // Filtro por intervalo de datas — usado pelo drill-down da Planilha.
   de: z.string().date().optional(),
   ate: z.string().date().optional(),
+  // Sprint 14: lançamentos de um ativo (E1) e deep-link de um lançamento (D2/E5).
+  ativo_id: z.string().uuid().optional(),
+  lancamento_id: z.string().uuid().optional(),
 });
 
 export const contaCriarSchema = z.object({

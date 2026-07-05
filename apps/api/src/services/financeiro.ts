@@ -3,7 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type {
   LancamentoCriarInput, LancamentoEditarInput, LancamentoPagarInput,
 } from "@hallaxos/shared";
-import { db } from "../db/client";
+import { db, type DbConn } from "../db/client";
 import { lancamentos, contas, categoriasFinanceiras, pessoas } from "../db/schema";
 import { novoId } from "../lib/ids";
 import { conflito, naoEncontrado, regraNegocio, semPermissao } from "../lib/erros";
@@ -25,10 +25,19 @@ async function indexarLancamento(conn: typeof db, l: Lancamento) {
 export async function listarLancamentos(opts: {
   tipo?: string; status?: string; categoriaId?: string; contaId?: string;
   pessoaId?: string; busca?: string; operacaoTipo?: string; pagina: number; porPagina: number;
-  de?: string; ate?: string;
+  de?: string; ate?: string; ativoId?: string; lancamentoId?: string;
 }) {
   const filtros = [isNull(lancamentos.deletedAt)];
   if (opts.tipo) filtros.push(eq(lancamentos.tipo, opts.tipo as never));
+  // Sprint 14: deep-link para um lançamento específico (D2/E5) e lista de
+  // receitas/custos de um ativo (E1) — via direto (ativo_id) ou herdado da
+  // manutenção do ativo.
+  if (opts.lancamentoId) filtros.push(eq(lancamentos.id, opts.lancamentoId));
+  if (opts.ativoId) {
+    filtros.push(sql`(${lancamentos.ativoId} = ${opts.ativoId}
+      OR ${lancamentos.manutencaoId} IN (SELECT id FROM manutencoes WHERE ativo_id = ${opts.ativoId})
+      OR ${lancamentos.operacaoId} IN (SELECT operacao_id FROM operacao_ativos WHERE ativo_id = ${opts.ativoId}))`);
+  }
   if (opts.status === "vencido") {
     filtros.push(eq(lancamentos.status, "previsto"), sql`${lancamentos.dataVencimento} < current_date`);
   } else if (opts.status) {
@@ -368,36 +377,49 @@ export async function anularLancamento(id: string, motivo: string, usuarioId: st
 export async function estornarLancamento(id: string, motivo: string, usuarioId: string) {
   const atual = await obter(id);
   if (atual.status !== "pago") throw conflito("Só lançamentos pagos podem ser estornados.");
+  return db.transaction(async (tx) => estornarDentroDe(tx, atual, motivo, usuarioId));
+}
+
+/** Núcleo do estorno dentro de uma transação já aberta — usado pelo estorno
+ *  manual e pelo cancelamento de operação (Sprint 14 · D3), que estorna os
+ *  pagos em lote na mesma transação do cancelamento. */
+export async function estornarDentroDe(
+  tx: DbConn,
+  atual: Pick<
+    typeof lancamentos.$inferSelect,
+    "id" | "tipo" | "descricao" | "categoriaId" | "contaId" | "pessoaId" | "valor" | "formaPagamento"
+  >,
+  motivo: string,
+  usuarioId: string
+) {
   const hoje = new Date().toISOString().slice(0, 10);
-  return db.transaction(async (tx) => {
-    const estornoId = novoId();
-    const [estorno] = await tx
-      .insert(lancamentos)
-      .values({
-        id: estornoId,
-        tipo: atual.tipo === "receita" ? "despesa" : "receita",
-        descricao: `Estorno: ${atual.descricao}`,
-        categoriaId: atual.categoriaId,
-        contaId: atual.contaId,
-        pessoaId: atual.pessoaId,
-        valor: atual.valor,
-        dataVencimento: hoje,
-        dataPagamento: hoje,
-        status: "pago",
-        formaPagamento: atual.formaPagamento,
-      })
-      .returning();
-    for (const [entidadeId, descricao] of [
-      [id, `Estornado: ${motivo}`],
-      [estornoId, `Estorno de "${atual.descricao}" criado`],
-    ] as const) {
-      await registrarEvento(tx, {
-        entidadeTipo: "lancamento", entidadeId, evento: "status_alterado", descricao, usuarioId,
-      });
-    }
-    await indexarLancamento(tx as never, estorno!);
-    return estorno!;
-  });
+  const estornoId = novoId();
+  const [estorno] = await tx
+    .insert(lancamentos)
+    .values({
+      id: estornoId,
+      tipo: atual.tipo === "receita" ? "despesa" : "receita",
+      descricao: `Estorno: ${atual.descricao}`,
+      categoriaId: atual.categoriaId,
+      contaId: atual.contaId,
+      pessoaId: atual.pessoaId,
+      valor: atual.valor,
+      dataVencimento: hoje,
+      dataPagamento: hoje,
+      status: "pago",
+      formaPagamento: atual.formaPagamento,
+    })
+    .returning();
+  for (const [entidadeId, descricao] of [
+    [atual.id, `Estornado: ${motivo}`],
+    [estornoId, `Estorno de "${atual.descricao}" criado`],
+  ] as const) {
+    await registrarEvento(tx, {
+      entidadeTipo: "lancamento", entidadeId, evento: "status_alterado", descricao, usuarioId,
+    });
+  }
+  await indexarLancamento(tx as never, estorno!);
+  return estorno!;
 }
 
 /** Contas com saldo derivado — nunca armazenado (doc 02). */

@@ -19,6 +19,7 @@ import { registrarEvento } from "./timeline";
 import { indexar } from "./busca";
 import { garantirPapel } from "./pessoas";
 import { gerarLancamentosOrigem } from "./origemFinanceira";
+import { estornarDentroDe } from "./financeiro";
 
 // ── Máquina de estados por tipo (doc 03 §1) ──
 const FLUXO: Record<TipoOperacao, { estados: StatusOperacao[]; inicial: StatusOperacao }> = {
@@ -276,6 +277,44 @@ async function vincularAtivo(tx: DbConn, operacaoId: string, ativoId: string, pa
   await tx.insert(operacaoAtivos).values({ operacaoId, ativoId, papel });
 }
 
+/** Sprint 14 · D1 — Linkar ativo a uma operação já lançada: um clique, dois
+ *  vínculos coerentes. Além do vínculo operação↔ativo, os lançamentos da
+ *  operação ainda sem ativo ganham o mesmo ativo_id (migration 0004) —
+ *  interligação pura, zero duplicação. */
+export async function linkarAtivoOperacao(id: string, ativoId: string, usuarioId: string) {
+  const [op] = await db.select().from(operacoes).where(and(eq(operacoes.id, id), isNull(operacoes.deletedAt)));
+  if (!op) throw naoEncontrado("Operação");
+  const ativo = await exigirAtivoLivre(ativoId);
+
+  const vinculos = (
+    await db.execute(sql`SELECT ativo_id, papel FROM operacao_ativos WHERE operacao_id = ${id}`)
+  ).rows as Array<{ ativo_id: string; papel: string }>;
+  if (vinculos.some((v) => v.ativo_id === ativoId)) {
+    throw conflito(`${ativo.nome} já está vinculado a esta operação.`);
+  }
+  // Sem objeto ainda → entra como objeto; senão como recurso adicional.
+  const papel = vinculos.some((v) => v.papel === "objeto") ? "recurso" : "objeto";
+
+  await db.transaction(async (tx) => {
+    await vincularAtivo(tx, id, ativoId, papel);
+    const atualizados = await tx
+      .update(lancamentos)
+      .set({ ativoId })
+      .where(and(eq(lancamentos.operacaoId, id), isNull(lancamentos.ativoId), isNull(lancamentos.deletedAt)))
+      .returning({ id: lancamentos.id });
+    await registrarEvento(tx, {
+      entidadeTipo: "operacao", entidadeId: id, evento: "atualizado",
+      descricao: `Ativo ${ativo.nome} vinculado à operação ${op.codigo} (${papel})${atualizados.length ? ` — ${atualizados.length} lançamento(s) herdaram o vínculo` : ""}`,
+      usuarioId,
+    });
+    await registrarEvento(tx, {
+      entidadeTipo: "ativo", entidadeId: ativoId, evento: "atualizado",
+      descricao: `${ativo.nome} vinculado à operação ${op.codigo}`, usuarioId,
+    });
+  });
+  return obterOperacao(id);
+}
+
 async function exigirAtivoLivre(ativoId: string) {
   const [a] = await db.select().from(ativos).where(and(eq(ativos.id, ativoId), isNull(ativos.deletedAt)));
   if (!a) throw naoEncontrado("Ativo");
@@ -417,6 +456,13 @@ export async function transicionar(
   if (!permitidas.includes(destino)) {
     throw conflito(`Transição inválida: ${ROTULOS_STATUS[op.status]} → ${ROTULOS_STATUS[destino]}.`);
   }
+  // Sprint 14 · D3 — cancelamento é admin-only e sempre com motivo: muda
+  // estado e registra quem/quando/por quê; nunca apaga dados.
+  const motivoCancel = input.justificativa?.trim();
+  if (destino === "cancelada") {
+    if (usuario.papel !== "admin") throw semPermissao();
+    if (!motivoCancel) throw regraNegocio("Informe o motivo do cancelamento.");
+  }
 
   // Ativos da operação por papel
   const vinculos = (
@@ -431,7 +477,16 @@ export async function transicionar(
     if (TERMINAIS.has(destino)) mudancasOp.dataFim = input.data ? new Date(input.data) : new Date();
 
     if (destino === "cancelada") {
+      // Pendentes são anulados; pagos são estornados (contrapartida) — o
+      // dinheiro que entrou/saiu de verdade nunca some (doc 03 regra 6).
       await cancelarLancamentosPrevistos(tx, id, usuario.id);
+      const pagos = await tx
+        .select()
+        .from(lancamentos)
+        .where(and(eq(lancamentos.operacaoId, id), eq(lancamentos.status, "pago"), isNull(lancamentos.deletedAt)));
+      for (const l of pagos) {
+        await estornarDentroDe(tx, l, `cancelamento da operação ${op.codigo} — ${motivoCancel}`, usuario.id);
+      }
       // Devolve ativos bloqueados ao estado disponível
       for (const v of vinculos) {
         const [a] = await tx.select().from(ativos).where(eq(ativos.id, v.ativo_id));
@@ -446,8 +501,12 @@ export async function transicionar(
     await tx.update(operacoes).set(mudancasOp).where(eq(operacoes.id, id));
     await registrarEvento(tx, {
       entidadeTipo: "operacao", entidadeId: id, evento: "status_alterado",
-      descricao: `Operação ${op.codigo}: ${ROTULOS_STATUS[op.status]} → ${ROTULOS_STATUS[destino]}`,
-      dados: { de: op.status, para: destino }, usuarioId: usuario.id,
+      descricao:
+        destino === "cancelada"
+          ? `Operação ${op.codigo} cancelada — motivo: ${motivoCancel}`
+          : `Operação ${op.codigo}: ${ROTULOS_STATUS[op.status]} → ${ROTULOS_STATUS[destino]}`,
+      dados: destino === "cancelada" ? { de: op.status, para: destino, motivo: motivoCancel } : { de: op.status, para: destino },
+      usuarioId: usuario.id,
     });
   });
   // Lido após o commit para refletir o estado final (e não a transação aberta)
