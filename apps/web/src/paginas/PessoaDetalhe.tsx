@@ -9,8 +9,8 @@ import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import { useCopiloto } from "../componentes/Copiloto";
 import {
-  Botao, Card, Selo, Modal, Timeline, useToast, dataCurta, dinheiro,
-  SkeletonLinhas, Lista, ListaLinha, type EventoTimeline,
+  Botao, Card, Kpi, Selo, Modal, Timeline, VerMais, EstadoVazio, useToast,
+  dataCurta, dinheiro, SkeletonLinhas, Lista, ListaLinha, type EventoTimeline,
 } from "../componentes/ui";
 
 interface LancamentoResumo {
@@ -48,15 +48,6 @@ interface Detalhe {
 }
 
 const LIMITE_LISTA = 5;
-
-const STATUS_TOM: Record<string, string> = {
-  ativa: "ok", em_andamento: "info", finalizada: "ok", cancelada: "erro",
-  reservada: "info", aguardando_entrega: "alerta",
-};
-
-function statusTom(s: string): string {
-  return STATUS_TOM[s] ?? "neutro";
-}
 
 export function PessoaDetalhe() {
   const { id } = useParams();
@@ -140,6 +131,22 @@ export function PessoaDetalhe() {
         </div>
       </div>
 
+      {/* KPIs — mesma grade da ficha 360° de Ativo */}
+      {rf && (
+        <div className="animar-cascata grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Kpi rotulo="Faturado" valor={dinheiro(rf.faturado)} icone={TrendingUp} tom="ok" />
+          <Kpi rotulo="A receber" valor={dinheiro(rf.a_receber)} icone={Clock} />
+          <Kpi
+            rotulo="Vencido"
+            valor={dinheiro(rf.vencido)}
+            icone={AlertCircle}
+            tom={rf.vencido > 0 ? "erro" : "neutro"}
+            className={rf.vencido > 0 ? "border-erro/25" : ""}
+          />
+          <Kpi rotulo="Operações" valor={rf.qtd_operacoes} icone={Workflow} tom="ouro" />
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Coluna esquerda: dados */}
         <div className="space-y-4">
@@ -171,44 +178,10 @@ export function PessoaDetalhe() {
             </dl>
           </Card>
 
-          {/* KPIs */}
-          {rf && (
-            <Card titulo="Resumo financeiro" icone={Gauge}>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-elevado px-3 py-2.5">
-                  <p className="flex items-center gap-1 text-xs text-suave">
-                    <TrendingUp className="h-3 w-3 text-ok" /> Faturado
-                  </p>
-                  <p className="font-display text-base font-bold text-ok">{dinheiro(rf.faturado)}</p>
-                </div>
-                <div className="rounded-lg bg-elevado px-3 py-2.5">
-                  <p className="flex items-center gap-1 text-xs text-suave">
-                    <Clock className="h-3 w-3 text-info" /> A receber
-                  </p>
-                  <p className="font-display text-base font-bold">{dinheiro(rf.a_receber)}</p>
-                </div>
-                <div className="rounded-lg bg-elevado px-3 py-2.5">
-                  <p className="flex items-center gap-1 text-xs text-suave">
-                    <AlertCircle className="h-3 w-3 text-erro" /> Vencido
-                  </p>
-                  <p className={`font-display text-base font-bold ${rf.vencido > 0 ? "text-erro" : "text-suave"}`}>
-                    {dinheiro(rf.vencido)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-elevado px-3 py-2.5">
-                  <p className="flex items-center gap-1 text-xs text-suave">
-                    <Workflow className="h-3 w-3 text-ouro" /> Operações
-                  </p>
-                  <p className="font-display text-base font-bold text-ouro">{rf.qtd_operacoes}</p>
-                </div>
-              </div>
-            </Card>
-          )}
-
           {/* CTA rápido */}
           {!pessoa.deletedAt && pode("operacoes", "criar") && (
             <button
-              className="flex w-full items-center gap-3 rounded-lg border border-borda bg-painel p-3 text-left transition-all hover:border-ouro/40 hover:bg-elevado"
+              className="animar-surgir superficie elevar flex w-full items-center gap-3 rounded-lg border border-borda p-4 text-left shadow-painel"
               onClick={() => navegar(`/operacoes/nova?cliente_id=${pessoa.id}`)}
             >
               <Plus className="h-4 w-4 text-ouro" />
@@ -226,15 +199,17 @@ export function PessoaDetalhe() {
           {/* Operações */}
           <Card titulo="Operações" icone={Workflow}>
             {ops.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <Workflow className="h-8 w-8 text-mudo" />
-                <p className="text-sm text-suave">Nenhuma operação ainda</p>
-                {!pessoa.deletedAt && pode("operacoes", "criar") && (
-                  <Botao variante="secundario" tamanho="sm" onClick={() => navegar(`/operacoes/nova?cliente_id=${pessoa.id}`)}>
-                    <Plus className="h-3.5 w-3.5" /> Nova operação
-                  </Botao>
-                )}
-              </div>
+              <EstadoVazio
+                icone={Workflow}
+                titulo="Nenhuma operação ainda"
+                acao={
+                  !pessoa.deletedAt && pode("operacoes", "criar") && (
+                    <Botao variante="secundario" tamanho="sm" onClick={() => navegar(`/operacoes/nova?cliente_id=${pessoa.id}`)}>
+                      <Plus className="h-3.5 w-3.5" /> Nova operação
+                    </Botao>
+                  )
+                }
+              />
             ) : (
               <>
                 <Lista>
@@ -246,7 +221,7 @@ export function PessoaDetalhe() {
                         <span className="flex items-center gap-2">
                           <span className="font-display text-xs font-bold text-ouro">{op.codigo}</span>
                           <Selo>{op.tipo}</Selo>
-                          <Selo tom={statusTom(op.status)}>{op.status.replace(/_/g, " ")}</Selo>
+                          <Selo tom={op.status}>{op.status.replace(/_/g, " ")}</Selo>
                         </span>
                       }
                       subtitulo={
@@ -258,13 +233,11 @@ export function PessoaDetalhe() {
                   ))}
                 </Lista>
                 {ops.length > LIMITE_LISTA && (
-                  <button
-                    onClick={() => setVerMaisOps((v) => !v)}
-                    className="mt-2 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisOps ? "rotate-180" : ""}`} />
-                    {verMaisOps ? "Ver menos" : `Ver mais ${ops.length - LIMITE_LISTA}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisOps}
+                    aoAlternar={() => setVerMaisOps((v) => !v)}
+                    rotulo={`Ver mais ${ops.length - LIMITE_LISTA}`}
+                  />
                 )}
               </>
             )}
@@ -273,7 +246,7 @@ export function PessoaDetalhe() {
           {/* Lançamentos */}
           <Card titulo="Financeiro" icone={DollarSign}>
             {lancs.length === 0 ? (
-              <p className="text-sm text-suave">Nenhum lançamento vinculado a esta pessoa.</p>
+              <EstadoVazio icone={DollarSign} titulo="Nenhum lançamento" descricao="Nada vinculado a esta pessoa ainda." />
             ) : (
               <>
                 <Lista>
@@ -310,13 +283,11 @@ export function PessoaDetalhe() {
                   })}
                 </Lista>
                 {lancs.length > LIMITE_LISTA && (
-                  <button
-                    onClick={() => setVerMaisLanc((v) => !v)}
-                    className="mt-2 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
-                    {verMaisLanc ? "Ver menos" : `Ver mais ${lancs.length - LIMITE_LISTA}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisLanc}
+                    aoAlternar={() => setVerMaisLanc((v) => !v)}
+                    rotulo={`Ver mais ${lancs.length - LIMITE_LISTA}`}
+                  />
                 )}
               </>
             )}

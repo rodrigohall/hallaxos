@@ -5,7 +5,7 @@ import { Plus, CarFront, BarChart3, Table2, SlidersHorizontal } from "lucide-rea
 import { STATUS_ATIVO } from "@hallaxos/shared";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Botao, Card, Chip, Entrada, Selecao, Selo, SkeletonLinhas, EstadoVazio, dinheiro } from "../componentes/ui";
+import { Abas, Botao, Card, Chip, Entrada, Selecao, Selo, SkeletonLinhas, EstadoVazio, dinheiro } from "../componentes/ui";
 import { RelatorioPatrimonio } from "./RelatorioPatrimonio";
 
 interface AtivoLista {
@@ -82,47 +82,27 @@ export function Ativos() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-borda pb-px">
-        {ABAS.map((a) => {
-          const Icone = a.icone;
-          return (
-            <button
-              key={a.id}
-              onClick={() => mudarAba(a.id)}
-              className={
-                `flex items-center gap-1.5 rounded-t px-3 py-2 text-sm font-medium transition-colors ` +
-                (aba === a.id
-                  ? "border-b-2 border-ouro text-ouro"
-                  : "text-mudo hover:text-suave")
-              }
-            >
-              <Icone className="h-3.5 w-3.5" />
-              {a.rotulo}
-              {a.breve && (
-                <span className="rounded bg-borda px-1 py-px text-[9px] font-bold text-mudo uppercase tracking-wider">
-                  Em breve
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <Abas
+        abas={ABAS.map((a) => ({
+          id: a.id,
+          rotulo: a.rotulo,
+          icone: a.icone,
+          selo: a.breve ? <Selo>em breve</Selo> : undefined,
+        }))}
+        ativa={aba}
+        aoTrocar={(id) => mudarAba(id as Aba)}
+      />
 
       {/* Conteúdo da aba */}
       {aba === "relatorio" && <RelatorioPatrimonio categorias={categorias ?? []} />}
 
       {aba === "fipe" && (
         <Card>
-          <div className="flex flex-col items-center gap-4 py-12 text-center">
-            <Table2 className="h-12 w-12 text-mudo opacity-40" />
-            <div>
-              <h2 className="font-display text-base font-bold text-suave">Tabela FIPE</h2>
-              <p className="mt-1 text-sm text-mudo">
-                Integração com fonte externa de FIPE e atualização em massa dos ativos.
-                <br />Em desenvolvimento para um próximo sprint.
-              </p>
-            </div>
-          </div>
+          <EstadoVazio
+            icone={Table2}
+            titulo="Tabela FIPE"
+            descricao="Integração com fonte externa de FIPE e atualização em massa dos ativos. Em desenvolvimento para um próximo sprint."
+          />
         </Card>
       )}
 
@@ -216,13 +196,12 @@ export function Ativos() {
             </Card>
           ) : (
             <>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {data.dados.map((a, i) => (
+              <div className="animar-cascata grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {data.dados.map((a) => (
                   <Link
                     key={a.id}
                     to={`/ativos/${a.id}`}
-                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                    className="animar-surgir group overflow-hidden rounded-lg border border-borda bg-painel shadow-painel transition-all hover:border-borda-forte hover:shadow-flutuante"
+                    className="animar-surgir superficie elevar group overflow-hidden rounded-lg border border-borda shadow-painel"
                   >
                     <div className="flex aspect-[16/7] items-center justify-center bg-elevado/60 overflow-hidden">
                       {a.fotoPrincipal ? (
@@ -236,7 +215,7 @@ export function Ativos() {
                         <CarFront className="h-8 w-8 text-mudo" />
                       )}
                     </div>
-                    <div className="space-y-1 p-3">
+                    <div className="space-y-1 p-4">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium group-hover:text-ouro transition-colors">
                           {a.nome}
