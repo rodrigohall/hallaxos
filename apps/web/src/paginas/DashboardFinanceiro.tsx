@@ -14,8 +14,8 @@ import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
-  Botao, Card, Campo, Entrada, Selecao, Modal, SkeletonLinhas,
-  EstadoVazio, ListaLinha, Selo, dinheiro, dataCurta, useToast,
+  Botao, BotaoIcone, Caixa, Card, Campo, Entrada, Selecao, Modal, Segmentado,
+  Skeleton, SkeletonLinhas, EstadoVazio, Selo, dinheiro, dataCurta, useToast,
 } from "../componentes/ui";
 
 // ─────────────────────────────── Tipos ────────────────────────────────────
@@ -292,44 +292,39 @@ export function DashboardFinanceiro() {
           <p className="text-sm text-suave">Dois cortes do mesmo dado: por conta e por origem.</p>
         </div>
         {/* Seletor de período */}
-        <div className="ml-auto flex flex-wrap items-center gap-1 rounded-lg border border-borda bg-painel p-1">
-          {PERIODOS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriodo(p.id)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors
-                ${periodo === p.id ? "bg-ouro text-navy font-bold" : "text-suave hover:bg-elevado"}`}
-            >
-              {p.rotulo}
-            </button>
-          ))}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Segmentado
+            opcoes={[...PERIODOS, { id: "custom" as const, rotulo: "Personalizado" }].map((p) => ({
+              id: p.id,
+              rotulo: p.rotulo,
+            }))}
+            valor={periodo}
+            aoTrocar={(v) => setPeriodo(v as Periodo | "custom")}
+          />
           {/* Sprint 14 · F1 — intervalo de data X a data Y */}
-          <button
-            onClick={() => setPeriodo("custom")}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors
-              ${periodo === "custom" ? "bg-ouro text-navy font-bold" : "text-suave hover:bg-elevado"}`}
-          >
-            Personalizado
-          </button>
           {periodo === "custom" && (
-            <span className="flex items-center gap-1 pl-1">
-              <input
-                type="date"
-                value={deCustom}
-                max={ateCustom || undefined}
-                onChange={(e) => setDeCustom(e.target.value)}
-                className="rounded-md border border-borda bg-fundo px-2 py-1 text-xs text-texto"
-                aria-label="Data inicial"
-              />
+            <span className="animar-surgir flex items-center gap-1.5">
+              <span className="w-34">
+                <Entrada
+                  type="date"
+                  value={deCustom}
+                  max={ateCustom || undefined}
+                  onChange={(e) => setDeCustom(e.target.value)}
+                  className="h-8 px-2 text-xs"
+                  aria-label="Data inicial"
+                />
+              </span>
               <span className="text-xs text-mudo">a</span>
-              <input
-                type="date"
-                value={ateCustom}
-                min={deCustom || undefined}
-                onChange={(e) => setAteCustom(e.target.value)}
-                className="rounded-md border border-borda bg-fundo px-2 py-1 text-xs text-texto"
-                aria-label="Data final"
-              />
+              <span className="w-34">
+                <Entrada
+                  type="date"
+                  value={ateCustom}
+                  min={deCustom || undefined}
+                  onChange={(e) => setAteCustom(e.target.value)}
+                  className="h-8 px-2 text-xs"
+                  aria-label="Data final"
+                />
+              </span>
             </span>
           )}
         </div>
@@ -341,9 +336,11 @@ export function DashboardFinanceiro() {
           <Wallet className="h-3.5 w-3.5" /> Por conta — onde o dinheiro está
         </h2>
         {loadContas ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><SkeletonLinhas linhas={4} /></div>
-        ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
+          </div>
+        ) : (
+          <div className="animar-cascata grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <CaixaConta
                 key={i}
@@ -371,28 +368,29 @@ export function DashboardFinanceiro() {
             <BarChart3 className="h-3.5 w-3.5" /> Por origem — de onde veio
           </h2>
           {/* Alternador de indicador */}
-          <div className="ml-auto flex flex-wrap gap-1">
-            {INDICADORES.map((ind) => (
-              <button
-                key={ind.id}
-                onClick={() => setIndicador(ind.id)}
-                className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors
-                  ${indicador === ind.id
-                    ? "bg-ouro/20 text-ouro font-bold"
-                    : "text-suave hover:bg-elevado"}`}
-              >
-                <ind.icone className="h-3 w-3" />
-                {ind.rotulo}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            className="ml-auto flex-wrap"
+            opcoes={INDICADORES.map((ind) => ({
+              id: ind.id,
+              rotulo: (
+                <span className="flex items-center gap-1">
+                  <ind.icone className="h-3 w-3" />
+                  {ind.rotulo}
+                </span>
+              ),
+            }))}
+            valor={indicador}
+            aoTrocar={setIndicador}
+          />
         </div>
 
         {loadOrigem ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3"><SkeletonLinhas linhas={6} /></div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+          </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="animar-cascata grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {ORIGENS.map((origem) => {
                 const dados = porOrigem?.tipos[origem.id];
                 const valor = dados ? dados[indicador] : 0;
@@ -412,7 +410,7 @@ export function DashboardFinanceiro() {
 
             {/* Totais */}
             {porOrigem && (
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 rounded-lg border border-borda bg-fundo/50 p-3">
+              <div className="animar-surgir mt-3 grid grid-cols-2 gap-2 rounded-md border border-borda bg-elevado/50 p-3 sm:grid-cols-4">
                 <Total rotulo="Receita paga" valor={porOrigem.total.receita_paga} tom="ok" />
                 <Total rotulo="Despesa paga" valor={porOrigem.total.despesa_paga} tom="erro" />
                 <Total rotulo="Líquido" valor={porOrigem.total.liquido} tom={porOrigem.total.liquido >= 0 ? "ok" : "erro"} />
@@ -430,14 +428,12 @@ export function DashboardFinanceiro() {
       {drill && (
         <section className="animar-surgir">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-suave">
               {drill.tipo === "conta" && `Lançamentos — ${drill.nome}`}
               {drill.tipo === "origem" && `Lançamentos — ${drill.rotulo}`}
               {drill.tipo === "ativo" && `Lançamentos — ${drill.nome}`}
             </h3>
-            <button onClick={() => setDrill(null)} className="ml-auto text-suave hover:text-texto">
-              <X className="h-4 w-4" />
-            </button>
+            <BotaoIcone rotulo="Fechar" icone={X} tamanho="sm" className="ml-auto" onClick={() => setDrill(null)} />
           </div>
           {loadDrill ? (
             <SkeletonLinhas linhas={5} />
@@ -526,9 +522,9 @@ export function DashboardFinanceiro() {
         {editarLanc && (
           <form onSubmit={salvarEdicao} className="space-y-4">
             {editarLanc.temOrigem && (
-              <p className="rounded-md border border-info/25 bg-info/10 px-3 py-2 text-xs text-suave">
+              <Caixa tom="info" className="text-xs text-suave">
                 Lançamento gerado por uma operação/manutenção. Editar aqui corrige o valor sem desfazer o vínculo.
-              </p>
+              </Caixa>
             )}
             <Campo rotulo="Descrição">
               <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />
@@ -645,42 +641,41 @@ function CaixaConta({
 
   return (
     <div
-      className={`rounded-lg border bg-painel p-4 shadow-painel transition-all
+      className={`animar-surgir superficie rounded-lg border p-4 shadow-painel
         ${ativa ? "border-ouro ring-1 ring-ouro/30" : "border-borda"}
-        ${conta ? "cursor-pointer hover:border-ouro/50" : ""}`}
+        ${conta ? "elevar cursor-pointer" : ""}`}
       onClick={() => { if (conta) aoAbrir(conta.id, conta.nome); }}
     >
       {!conta ? (
         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-          <p className="text-xs text-mudo">Caixa {indice + 1} — Escolha uma conta</p>
+          <div className="flex items-center gap-2 text-mudo">
+            <Wallet className="h-4 w-4" />
+            <span className="text-xs font-medium uppercase tracking-wider">Caixa {indice + 1}</span>
+          </div>
           <Selecao value="" onChange={(e) => aoEscolher(e.target.value)}>
-            <option value="">Selecionar…</option>
+            <option value="">Escolha uma conta…</option>
             {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </Selecao>
         </div>
       ) : (
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-xs text-mudo truncate">{conta.nome}</p>
-              <p className="font-display text-xl font-bold text-texto mt-0.5">
-                {dinheiro(Number(conta.saldo))}
-              </p>
-            </div>
-            <button
+        <div>
+          <div className="flex items-center gap-2 text-mudo">
+            <Wallet className="h-4 w-4 shrink-0" />
+            <span className="truncate text-xs font-medium uppercase tracking-wider">{conta.nome}</span>
+            <BotaoIcone
+              rotulo="Trocar conta"
+              icone={ChevronDown}
+              tamanho="sm"
+              className="-my-1 ml-auto"
               onClick={(e) => { e.stopPropagation(); aoEscolher(""); }}
-              className="shrink-0 rounded p-1 text-mudo hover:text-suave hover:bg-elevado"
-              title="Trocar conta"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
+            />
           </div>
-          <div className="text-xs text-suave space-y-0.5">
-            <p className="text-[11px] text-mudo capitalize">Saldo atual</p>
-          </div>
-          {ativa && (
-            <p className="text-[10px] text-ouro font-medium">Ver lançamentos ↓</p>
-          )}
+          <p className="mt-2 font-display text-2xl font-bold text-texto">
+            {dinheiro(Number(conta.saldo))}
+          </p>
+          <p className={`mt-1 text-xs ${ativa ? "font-medium text-ouro" : "text-mudo"}`}>
+            {ativa ? "Ver lançamentos ↓" : "saldo atual"}
+          </p>
         </div>
       )}
     </div>
@@ -700,19 +695,19 @@ function CaixaOrigem({
   return (
     <button
       onClick={aoAbrir}
-      className={`rounded-lg border bg-painel p-3 shadow-painel text-left transition-all
-        ${ativa ? "border-ouro ring-1 ring-ouro/30" : "border-borda hover:border-ouro/40"}`}
+      className={`animar-surgir superficie elevar rounded-lg border p-4 text-left shadow-painel
+        ${ativa ? "border-ouro ring-1 ring-ouro/30" : "border-borda"}`}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <origem.icone className="h-4 w-4 text-suave" />
-        <span className="text-xs font-medium text-suave">{origem.rotulo}</span>
+      <div className="flex items-center gap-2 text-mudo">
+        <origem.icone className="h-4 w-4" />
+        <span className="text-xs font-medium uppercase tracking-wider">{origem.rotulo}</span>
       </div>
-      <p className={`font-display text-lg font-bold
+      <p className={`mt-2 font-display text-xl font-bold
         ${negativo ? "text-erro" : indicador.tom === "ok" ? "text-ok" : indicador.tom === "erro" ? "text-erro" : indicador.tom === "ouro" ? "text-ouro" : "text-texto"}`}>
         {dinheiro(Math.abs(valor))}
-        {negativo && <span className="text-xs ml-1">↓</span>}
+        {negativo && <span className="ml-1 text-xs">↓</span>}
       </p>
-      <p className="text-[10px] text-mudo mt-1">{indicador.rotulo}</p>
+      <p className="mt-1 text-xs text-mudo">{indicador.rotulo}</p>
     </button>
   );
 }
@@ -721,8 +716,8 @@ function Total({ rotulo, valor, tom }: { rotulo: string; valor: number; tom: "ok
   const cor = { ok: "text-ok", erro: "text-erro", ouro: "text-ouro" }[tom];
   return (
     <div>
-      <p className="text-[10px] text-mudo">{rotulo}</p>
-      <p className={`text-sm font-bold ${cor}`}>{dinheiro(valor)}</p>
+      <p className="text-xs text-mudo">{rotulo}</p>
+      <p className={`text-sm font-semibold ${cor}`}>{dinheiro(valor)}</p>
     </div>
   );
 }
@@ -770,7 +765,7 @@ function ListaDrillDown({
         const vencido = l.status === "previsto" && new Date(l.dataVencimento) < new Date();
         const origem = mostrarOrigem ? (l as unknown as { origem?: string }).origem : undefined;
         return (
-          <div key={l.id} className="flex items-start gap-2 rounded-lg border border-borda bg-painel p-3 hover:bg-elevado/30 transition-colors">
+          <div key={l.id} className="superficie flex items-start gap-2 rounded-md border border-borda p-3 transition-colors hover:border-borda-forte">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-sm font-medium ${l.tipo === "receita" ? "text-ok" : "text-erro"}`}>
@@ -780,9 +775,7 @@ function ListaDrillDown({
                 <Selo tom={l.status === "pago" ? "ok" : vencido ? "erro" : "info"}>
                   {l.status === "pago" ? "Pago" : vencido ? "Vencido" : l.status === "cancelado" ? "Anulado" : "Previsto"}
                 </Selo>
-                {origem && (
-                  <span className="text-[10px] text-suave border border-borda rounded px-1">{origem}</span>
-                )}
+                {origem && <Selo>{origem}</Selo>}
               </div>
               <div className="flex flex-wrap gap-x-3 mt-1 text-xs text-mudo">
                 <span>{l.categoria}</span>
@@ -797,33 +790,15 @@ function ListaDrillDown({
               </div>
             </div>
             {/* Ações */}
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex shrink-0 items-center gap-1">
               {podeEditar && l.status !== "cancelado" && (
-                <button
-                  onClick={() => aoEditar(l)}
-                  className="rounded p-1.5 text-mudo hover:text-texto hover:bg-elevado transition-colors"
-                  title="Editar"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
+                <BotaoIcone rotulo="Editar" icone={Pencil} tamanho="sm" onClick={() => aoEditar(l)} />
               )}
               {!l.ativoId && podeEditar && (
-                <button
-                  onClick={() => aoLinkar(l)}
-                  className="rounded p-1.5 text-mudo hover:text-ouro hover:bg-ouro/10 transition-colors"
-                  title="Vincular ao ativo"
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                </button>
+                <BotaoIcone rotulo="Vincular ao ativo" icone={Link2} tamanho="sm" tom="ouro" onClick={() => aoLinkar(l)} />
               )}
               {ehAdmin && l.status !== "cancelado" && (
-                <button
-                  onClick={() => anular(l)}
-                  className="rounded p-1.5 text-mudo hover:text-erro hover:bg-erro/10 transition-colors"
-                  title="Anular"
-                >
-                  <Ban className="h-3.5 w-3.5" />
-                </button>
+                <BotaoIcone rotulo="Anular" icone={Ban} tamanho="sm" tom="erro" onClick={() => anular(l)} />
               )}
             </div>
           </div>

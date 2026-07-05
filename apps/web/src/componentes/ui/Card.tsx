@@ -32,7 +32,7 @@ export function Card({
 /** Indicador-chave do dashboard: número grande, leitura em 1 segundo.
  *  Com `para`, vira link com lift no hover e chevron que acende. */
 export function Kpi({
-  rotulo, valor, icone: Icone, tom = "neutro", detalhe, para, atraso, children, className = "",
+  rotulo, valor, icone: Icone, tom = "neutro", detalhe, para, acao, atraso, children, className = "",
 }: {
   rotulo: string;
   valor: ReactNode;
@@ -40,6 +40,7 @@ export function Kpi({
   tom?: "neutro" | "ok" | "erro" | "ouro" | "alerta" | "info";
   detalhe?: string;
   para?: string;
+  acao?: ReactNode;
   atraso?: number;
   children?: ReactNode;
   className?: string;
@@ -60,6 +61,7 @@ export function Kpi({
         {para && (
           <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
         )}
+        {!para && acao && <span className="ml-auto">{acao}</span>}
       </div>
       <p className={`mt-2 font-display text-2xl font-bold ${cores[tom]}`}>{valor}</p>
       {detalhe && <p className="mt-1 text-xs text-mudo">{detalhe}</p>}
