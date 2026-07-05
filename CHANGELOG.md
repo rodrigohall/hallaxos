@@ -92,6 +92,15 @@ Fase 1 entregou as frentes A–F abaixo. Migrations 0008 e 0009.
   `?de=&ate=` (precedência sobre o período nomeado; intervalo invertido é
   normalizado). Compõe com os drill-downs existentes.
 
+### Ajustes pós-entrega (mesma sessão, validados pelo Rodrigo)
+
+- Seletor de caminhão do guincho **sem filtro nenhum** — mesmo seletor de
+  ativos da locação (o filtro por categoria dependia do nome exato e escondia
+  o caminhão em produção).
+- KPI **Patrimônio** do dashboard virou botão clicável → relatório de
+  patrimônio (`/ativos?aba=relatorio`); removido o "Relatório — Em breve"
+  que ficou para trás (o relatório existe desde o Sprint 10).
+
 ### Fase 0 — Organização do repositório
 
 - `main` é o branch oficial: deploy dispara em push no `main`

@@ -58,7 +58,7 @@
 | Índice de busca de produção no formato antigo | Seed corrigido no Sprint 14; falta rodar 1× no VPS: `docker compose -f docker-compose.prod.yml exec api pnpm busca:reindexar` | Ação única no VPS |
 | Tipos de manutenção: só criação via UI | Renomear/desativar tipo ainda exige SQL (`ON UPDATE CASCADE` propaga rename); registro de tipo não entra na timeline (não é entidade referenciável) | Sprint futuro |
 | Instalar `react-leaflet` para mapa com marcadores custom | Bash classifier bloqueou instalação nos dois tries; mapas usam iframe OSM com filter CSS (dashboard + mini-mapa guincho) | Sprint futuro |
-| Branches antigos no remoto | Deleção bloqueada no ambiente remoto (proxy 403); apagar manualmente no GitHub: `event-hall-*`, `hallaxos-dev-status-*`, `stoic-shannon-*` (após trocar default p/ `main`), `admiring-*`, `inspiring-*`, `test-coverage-*`, `zealous-mayer-*` | Rodrigo (2 min) |
+| Branches antigos no remoto | Default já é `main` ✅; deleção segue bloqueada p/ sessões remotas (proxy 403). Apagar manualmente no GitHub: `event-hall-*` (doc resgatado), `hallaxos-dev-status-*`, `stoic-shannon-*`, `hallaxos-repo-sprint14-*` (sessão Sprint 14, mergeado), `admiring-*`, `inspiring-*`, `test-coverage-*`, `zealous-mayer-*` | Rodrigo (2 min) |
 
 ## Roadmap — próximos sprints sugeridos
 
