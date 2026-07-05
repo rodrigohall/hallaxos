@@ -6,7 +6,7 @@ import { STATUS_MANUTENCAO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
-  Botao, Card, Modal, Campo, Entrada, Selecao, AreaTexto,
+  Botao, Caixa, Card, Modal, Campo, CampoMarcado, Entrada, Selecao, AreaTexto,
   Selo, SkeletonLinhas, EstadoVazio, useToast, dataCurta,
 } from "../componentes/ui";
 import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
@@ -66,7 +66,7 @@ function CardManutencao({ m }: { m: ManutencaoLista }) {
   return (
     <Link
       to={`/manutencoes/${m.id}`}
-      className="animar-surgir block rounded-lg border border-borda bg-painel p-3 shadow-painel hover:border-borda-forte hover:shadow-flutuante transition-all"
+      className="animar-surgir superficie elevar block rounded-lg border border-borda p-4 shadow-painel"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug">{m.descricao}</p>
@@ -157,9 +157,9 @@ export function Manutencoes() {
       {isLoading ? (
         <SkeletonLinhas linhas={4} />
       ) : todas.length === 0 ? (
-        <div className="rounded-lg border border-borda bg-painel p-8">
+        <Card>
           <EstadoVazio icone={Wrench} titulo="Nenhuma manutenção" descricao="Agende a manutenção de um ativo para começar." />
-        </div>
+        </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           {COLUNAS.map((col) => {
@@ -168,17 +168,17 @@ export function Manutencoes() {
               <div key={col.titulo} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Icone className={`h-4 w-4 ${col.cor}`} />
-                  <h2 className={`text-sm font-semibold ${col.cor}`}>{col.titulo}</h2>
-                  <span className="ml-auto rounded-full bg-elevado px-2 py-0.5 text-xs font-medium text-mudo">
-                    {col.items.length}{"extras" in col && col.extras > 0 ? `+${col.extras}` : ""}
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-suave">{col.titulo}</h2>
+                  <span className="ml-auto">
+                    <Selo>{col.items.length}{"extras" in col && col.extras > 0 ? `+${col.extras}` : ""}</Selo>
                   </span>
                 </div>
                 {col.items.length === 0 ? (
-                  <div className="rounded-lg border border-borda bg-painel/50 py-6 text-center">
+                  <div className="rounded-lg border border-dashed border-borda py-4 text-center">
                     <p className="text-xs text-mudo">Nenhuma</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="animar-cascata space-y-2">
                     {col.items.map((m) => <CardManutencao key={m.id} m={m} />)}
                     {"extras" in col && col.extras > 0 && (
                       <p className="text-center text-xs text-mudo">
@@ -237,9 +237,9 @@ export function SeletorTipoManutencao({ valor, aoMudar }: { valor: string; aoMud
         {(tipos ?? []).map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
       </Selecao>
       {!criando ? (
-        <button type="button" onClick={() => setCriando(true)} className="mt-1 text-xs text-ouro hover:underline">
+        <Botao variante="link" tamanho="xs" className="mt-1" onClick={() => setCriando(true)}>
           + Novo tipo
-        </button>
+        </Botao>
       ) : (
         <div className="mt-2 flex gap-2">
           <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder='Ex.: "Compra de Peças"' className="flex-1" />
@@ -309,18 +309,12 @@ function ModalNova({ aoFechar, ativoInicial = null }: { aoFechar: () => void; at
         </div>
 
         {/* C2 — lançamento retroativo: manutenção que já aconteceu */}
-        <div className="rounded-md border border-borda bg-elevado/50 p-3">
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={retroativa}
-              onChange={(e) => setRetroativa(e.target.checked)}
-              className="h-4 w-4 rounded border-borda-forte accent-ouro"
-            />
-            <span className="flex items-center gap-1.5 text-sm text-suave">
+        <Caixa>
+          <CampoMarcado marcado={retroativa} aoTrocar={setRetroativa}>
+            <span className="flex items-center gap-1.5 text-suave">
               <Clock className="h-3.5 w-3.5" /> Já realizada (lançamento retroativo)
             </span>
-          </label>
+          </CampoMarcado>
           {retroativa && (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <Campo rotulo="Início (opcional)">
@@ -337,7 +331,7 @@ function ModalNova({ aoFechar, ativoInicial = null }: { aoFechar: () => void; at
               </Campo>
             </div>
           )}
-        </div>
+        </Caixa>
         <Campo rotulo="Descrição do serviço">
           <Entrada value={campos.descricao ?? ""} onChange={set("descricao")} placeholder="Ex.: Revisão dos 30 mil km, troca de óleo" />
         </Campo>
@@ -353,9 +347,9 @@ function ModalNova({ aoFechar, ativoInicial = null }: { aoFechar: () => void; at
             filtro="papel=oficina"
           />
           {!fornecedor && !criandoOficina && (
-            <button type="button" onClick={() => setCriandoOficina(true)} className="mt-1 text-xs text-ouro hover:underline">
+            <Botao variante="link" tamanho="xs" className="mt-1" onClick={() => setCriandoOficina(true)}>
               + cadastrar oficina
-            </button>
+            </Botao>
           )}
           {criandoOficina && (
             <NovaOficinaInline
@@ -402,7 +396,7 @@ function NovaOficinaInline({
   };
 
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-borda bg-elevado/40 p-3">
+    <Caixa className="mt-2 space-y-2">
       <Campo rotulo="Nome da oficina">
         <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Auto Center Silva" />
       </Campo>
@@ -415,6 +409,6 @@ function NovaOficinaInline({
           Cadastrar
         </Botao>
       </div>
-    </div>
+    </Caixa>
   );
 }
