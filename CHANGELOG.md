@@ -1,5 +1,108 @@
 # Changelog
 
+## Sprint 14 — Usabilidade e Interligação (2026-07-05)
+
+Sessão dupla: Fase 0 organizou o repositório (main como branch oficial,
+deploy no main, estado.txt público, CLAUDE.md, merge dos fixes "sem becos");
+Fase 1 entregou as frentes A–F abaixo. Migrations 0008 e 0009.
+
+### Frente A — Nova Operação · Locação
+
+- **A1 (bug crítico corrigido)**: o botão "Criar Operação" ficava morto sem
+  explicação. Causa raiz: o formulário exigia `valor_diaria_base` para
+  habilitar o botão, mas **não havia input para o campo** — ele só se
+  preenchia sozinho se o ativo tivesse diária cadastrada. Agora o valor da
+  diária é um campo visível (pré-preenchido pela diária base do ativo) e o
+  botão **nunca falha em silêncio**: ao faltar algo, a tela lista as
+  pendências e atualiza em tempo real.
+- **A2**: início da locação com **data+hora** (cobre retroativo e reserva
+  futura), devolução prevista com horário (`datetime-local`) e
+  **quilometragem inicial** (`km_saida` — coluna já existia, sem migration).
+- **A3**: botão **"Novo cliente"** ao lado do seletor — salva rascunho do
+  formulário em `sessionStorage`, abre o cadastro com `?retorno=` e volta
+  com o cliente novo selecionado e o formulário restaurado.
+
+### Frente B — Nova Operação · Guincho
+
+- **B1 (bug corrigido)**: o seletor de caminhão filtrava `status=disponivel`,
+  mas o guincho vive em `em_uso_interno` — nunca aparecia. Filtro agora é só
+  por categoria. O seed também passou a indexar ativos no formato atual
+  (título com placa, termos com marca/modelo) — era a pendência "estilo
+  antigo"; em produção, rodar `busca:reindexar` uma vez.
+- **B3 — endereços inteligentes**: colar **coordenadas** (`lat, lng`) ou
+  **link do Google Maps** no campo de origem/destino detecta e salva as
+  facetas geográficas (migration 0008: `*_link`, `*_lat`, `*_lng` em
+  `operacoes_guincho`). Link curto `maps.app.goo.gl` é resolvido no backend
+  (`GET /geo/resolver`: allowlist de hosts do Maps, segue o redirect e extrai
+  lat/lng; em falha degrada para link clicável sem mapa). No detalhe da
+  operação, origem/destino viram link e **"ver mapa" abre mini-mapa OSM
+  embed** (padrão do dashboard, sem dependência nova). Texto livre e
+  CEP/auto-fill intactos.
+- **B4**: campo **"Data da solicitação"** com data+hora e botão **HOJE** que
+  preenche o agora em um clique.
+
+### Frente C — Nova Manutenção
+
+- **C1 — tipos customizáveis**: o enum fixo virou a tabela
+  `manutencao_tipos` (padrão das categorias financeiras). Migration 0009
+  cria o registro com os 4 tipos padrão, converte `manutencoes.tipo` para
+  `text` com **FK por chave natural** (`nome`, `ON UPDATE CASCADE` —
+  renomear propaga sem duplicar dado) e derruba o enum. Bootstrap garante os
+  padrão de forma idempotente. `GET/POST /manutencoes/tipos` + seletor com
+  **"+ Novo tipo"** inline na criação e na edição.
+- **C2 — lançamento retroativo**: checkbox "Já realizada" na criação — a
+  manutenção nasce **concluída** com datas passadas, o custo vira despesa
+  vinculada (mesmo mecanismo da conclusão normal; reflete na agenda derivada
+  e nos custos do ativo) e o status do ativo não é tocado.
+
+### Frente D — Detalhe de Operação
+
+- **D1 — "Linkar ativo"**: `POST /operacoes/:id/ativos` vincula o ativo
+  (objeto se não houver, senão recurso) e os lançamentos da operação sem
+  ativo **herdam `lancamentos.ativo_id` na mesma transação** (encanamento da
+  migration 0004). Timeline na operação e no ativo.
+- **D2**: lançamentos da operação viram links (`/financeiro?lancamento=id`)
+  e botão **"Novo lançamento"** abre o Financeiro com operação e ativo já
+  pré-vinculados (`?novo=1&operacao_id=&ativo_id=`). O Financeiro agora lê
+  filtros da URL (`?tipo=`, `?status=`, `?ativo_id=`, `?lancamento=`) — de
+  quebra os KPIs do dashboard do Sprint 13, que já apontavam para cá,
+  passam a filtrar de verdade. Banner "ver todos" sempre dá saída visível.
+- **D3 — Cancelar operação**: **admin-only, motivo obrigatório**. Pendentes
+  são anulados; pagos são **estornados automaticamente** (contrapartida na
+  mesma transação). Ativos voltam a disponível; timeline registra
+  quem/quando/por quê. Nada é apagado.
+
+### Frente E — Detalhe de Ativo
+
+- **E1**: KPIs Receita/Custos acumulados viram links → Financeiro filtrado
+  por todos os lançamentos do ativo (diretos, da operação ou herdados de
+  manutenção). Lucro Líquido e Lucro Presumido intactos.
+- **E2**: chip discreto **"Comprado por R$X"** no cabeçalho, derivado da
+  operação de compra vinculada (fonte única; `valor_aquisicao` como fallback
+  de ativos antigos). Clicável → abre a operação de compra.
+- **E3/E4**: botões **"Nova manutenção"** e **"Nova operação"** nas caixas
+  da ficha, com o ativo já pré-selecionado (o prefill sobrevive à escolha do
+  tipo de operação).
+- **E5**: lançamentos do histórico financeiro clicáveis (deep-link).
+
+### Frente F — Dashboard Financeiro
+
+- **F1**: botão **"Personalizado"** com intervalo de data X a Y. Endpoints
+  `/dashboard/financeiro` e `/dashboard/financeiro/por-origem` aceitam
+  `?de=&ate=` (precedência sobre o período nomeado; intervalo invertido é
+  normalizado). Compõe com os drill-downs existentes.
+
+### Fase 0 — Organização do repositório
+
+- `main` é o branch oficial: deploy dispara em push no `main`
+  (`deploy.yml`), branches de sessão são efêmeros.
+- **`estado.txt`**: a cada deploy o CI gera `apps/web/public/estado.txt`
+  (commit, data, branch, sprint, últimos 15 commits), servido pelo Caddy em
+  `http://2.25.200.8/estado.txt` — fonte de verdade externa do estado
+  deployado (o cache do GitHub engana consultas externas).
+- `CLAUDE.md` criado com as regras permanentes de sessão.
+- Merge dos fixes "sem becos" (lotes P1/P2 + playbook `docs/loop-sem-becos.md`).
+
 ## Sprint 13 — Dashboard repaginado, Mobile-first e Análises Financeiras (2026-06-25)
 
 Sem nova tabela, sem migration. Três blocos independentes entregues nesta sessão.

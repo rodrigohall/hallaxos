@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 13 — Dashboard/Mobile/Análises
-> Financeiras — 2026-06-25, conferida contra o código.
+> assumida — não esquecimento. Última revisão: Sprint 14 — Usabilidade e
+> Interligação — 2026-07-05, conferida contra o código.
 
 ## Estado atual — o que está em produção
 
@@ -28,6 +28,13 @@
 | Mobile-first: bottom nav, bottom sheets, safe areas iOS, grids responsivos | ✅ Sprint 13 |
 | 17 categorias financeiras padrão no arranque (idempotente, sem migration) | ✅ Sprint 13 |
 | Auto-vincular lançamentos avulsos a operações/manutenções (dry_run + confirmação) | ✅ Sprint 13 |
+| Repo organizado: `main` oficial, deploy no main, `estado.txt` público, `CLAUDE.md` | ✅ Sprint 14 |
+| Locação: botão Criar corrigido (validação visível), diária/início+hora/devolução+hora/km inicial | ✅ Sprint 14 |
+| Guincho: seletor de caminhão corrigido, endereços com Maps/coords + mini-mapa OSM, data solicitação + HOJE | ✅ Sprint 14 |
+| Manutenções: tipos customizáveis (tabela + "+ Novo tipo") e lançamento retroativo já-concluído | ✅ Sprint 14 |
+| Operação: linkar ativo (vínculo duplo), financeiro clicável/pré-vinculado, cancelar admin c/ estorno | ✅ Sprint 14 |
+| Ativo: KPIs clicáveis, chip preço de compra, atalhos nova operação/manutenção, histórico clicável | ✅ Sprint 14 |
+| Dashboard financeiro: período customizado (de/até); Financeiro lê filtros da URL (deep-links) | ✅ Sprint 14 |
 
 ## Pendências em aberto
 
@@ -48,8 +55,10 @@
 ### Técnico (dívida pequena)
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| Seed cria guinchos no estilo antigo | Novos indexam certo; `busca:reindexar` resolve | Sprint futuro |
-| Instalar `react-leaflet` para mapa com marcadores custom | Bash classifier bloqueou instalação nos dois tries; mapa atual usa iframe OSM com filter CSS | Sprint futuro |
+| Índice de busca de produção no formato antigo | Seed corrigido no Sprint 14; falta rodar 1× no VPS: `docker compose -f docker-compose.prod.yml exec api pnpm busca:reindexar` | Ação única no VPS |
+| Tipos de manutenção: só criação via UI | Renomear/desativar tipo ainda exige SQL (`ON UPDATE CASCADE` propaga rename); registro de tipo não entra na timeline (não é entidade referenciável) | Sprint futuro |
+| Instalar `react-leaflet` para mapa com marcadores custom | Bash classifier bloqueou instalação nos dois tries; mapas usam iframe OSM com filter CSS (dashboard + mini-mapa guincho) | Sprint futuro |
+| Branches antigos no remoto | Deleção bloqueada no ambiente remoto (proxy 403); apagar manualmente no GitHub: `event-hall-*`, `hallaxos-dev-status-*`, `stoic-shannon-*` (após trocar default p/ `main`), `admiring-*`, `inspiring-*`, `test-coverage-*`, `zealous-mayer-*` | Rodrigo (2 min) |
 
 ## Roadmap — próximos sprints sugeridos
 
@@ -73,9 +82,10 @@ Redirects de `/dashboard-financeiro` e `/relatorios` preservam bookmarks.
 Atalhos de teclado (`g a` → Ativos, `g f` → Financeiro, `/` foca busca),
 persistir filtros por sessão (`sessionStorage`), contadores nas abas.
 
-### Sprint 14 e além
+### Sprint 15 e além
 
 - Copiloto Fase 3: escrever com confirmação humana (criar operação, fechar manutenção).
 - Mapa com Leaflet + marcadores gold (quando o Bash classifier liberar o `pnpm add`).
 - Estabilização SSH do VPS (mover para porta alta, afrouxar fail2ban).
 - Notificações push (PWA ServiceWorker) para guinchos iniciados fora do horário.
+- Gestão de tipos de manutenção na UI (renomear/desativar).
