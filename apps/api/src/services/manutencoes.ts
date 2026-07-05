@@ -7,7 +7,7 @@ import type {
   StatusManutencao,
 } from "@hallaxos/shared";
 import { db, type DbConn } from "../db/client";
-import { manutencoes, ativos, ativosVeiculos } from "../db/schema";
+import { manutencoes, manutencaoTipos, ativos, ativosVeiculos } from "../db/schema";
 import { novoId } from "../lib/ids";
 import { conflito, naoEncontrado, regraNegocio } from "../lib/erros";
 import { registrarEvento } from "./timeline";
@@ -89,27 +89,80 @@ export async function obterManutencao(id: string) {
   return { ...m, lancamentos: lancs, proximasTransicoes: proximasTransicoesManutencao(m.status as StatusManutencao) };
 }
 
+// ── Tipos customizáveis (Sprint 14 · C1) ──
+export async function listarTiposManutencao() {
+  return db.select().from(manutencaoTipos).orderBy(manutencaoTipos.nome);
+}
+
+export async function criarTipoManutencao(nome: string, usuarioId: string) {
+  const limpo = nome.trim();
+  const [existente] = await db.select().from(manutencaoTipos)
+    .where(sql`lower(${manutencaoTipos.nome}) = lower(${limpo})`);
+  if (existente) throw conflito(`O tipo "${existente.nome}" já existe.`);
+  const [criado] = await db.insert(manutencaoTipos).values({ nome: limpo }).returning();
+  // O registro de tipos não é entidade da timeline; a criação fica auditável
+  // pelo evento da primeira manutenção que usar o tipo (descricao inclui o tipo).
+  void usuarioId;
+  return criado!;
+}
+
+async function exigirTipoManutencao(tipo: string) {
+  const [t] = await db.select().from(manutencaoTipos).where(eq(manutencaoTipos.nome, tipo));
+  if (!t) throw regraNegocio(`Tipo de manutenção "${tipo}" não existe — cadastre-o em "+ Novo tipo".`);
+  return t;
+}
+
 export async function criarManutencao(input: ManutencaoCriarInput, usuarioId: string) {
   const [ativo] = await db.select().from(ativos).where(and(eq(ativos.id, input.ativo_id), isNull(ativos.deletedAt)));
   if (!ativo) throw naoEncontrado("Ativo");
+  await exigirTipoManutencao(input.tipo);
+
+  // Sprint 14 · C2 — retroativo: com data_conclusao no corpo, a manutenção já
+  // aconteceu. Nasce concluída (datas passadas), o custo vira despesa vinculada
+  // (mesmo mecanismo da conclusão normal) e o status do ativo NÃO é tocado —
+  // o veículo não está na oficina agora, o registro é histórico.
+  const retroativa = !!input.data_conclusao;
+  if (retroativa && input.data_agendada && input.data_conclusao! < input.data_agendada) {
+    throw regraNegocio("A conclusão retroativa não pode ser anterior à data agendada.");
+  }
 
   const id = novoId();
   return db.transaction(async (tx) => {
     const [criada] = await tx.insert(manutencoes).values({
       id,
       ativoId: input.ativo_id,
-      tipo: input.tipo as never,
-      status: "agendada",
+      tipo: input.tipo,
+      status: retroativa ? "concluida" : "agendada",
       descricao: input.descricao,
       fornecedorId: input.fornecedor_id ?? null,
       dataAgendada: input.data_agendada ?? null,
+      dataInicio: retroativa
+        ? new Date((input.data_inicio ?? input.data_conclusao!) + "T12:00:00Z")
+        : null,
+      dataConclusao: retroativa ? new Date(input.data_conclusao! + "T12:00:00Z") : null,
+      kmNoMomento: retroativa ? input.km_no_momento ?? null : null,
       observacoes: input.observacoes ?? null,
       pecas: input.pecas ?? null,
     }).returning();
     if (input.fornecedor_id) await garantirPapel(tx, input.fornecedor_id, "fornecedor");
+    if (retroativa && input.custo && input.custo > 0) {
+      await gerarLancamentosOrigem(tx, {
+        origem: { manutencaoId: id },
+        entidade: { tipo: "manutencao", id },
+        clienteId: input.fornecedor_id ?? null,
+        tipo: "despesa",
+        categoriaNome: "Manutenção",
+        descricao: `Manutenção: ${input.descricao}`,
+        valor: input.custo,
+        parcelas: input.parcelas ?? 1,
+      }, usuarioId);
+    }
     await registrarEvento(tx, {
       entidadeTipo: "manutencao", entidadeId: id, evento: "criado",
-      descricao: `Manutenção (${input.tipo}) agendada para ${ativo.nome}`, usuarioId,
+      descricao: retroativa
+        ? `Manutenção (${input.tipo}) registrada retroativamente para ${ativo.nome} — concluída em ${input.data_conclusao}`
+        : `Manutenção (${input.tipo}) agendada para ${ativo.nome}`,
+      usuarioId,
     });
     return criada!;
   });
@@ -124,7 +177,10 @@ export async function editarManutencao(id: string, input: ManutencaoEditarInput,
   if (m.status === "cancelada") throw regraNegocio("Uma manutenção cancelada não pode ser editada.");
 
   const mud: Record<string, unknown> = {};
-  if (input.tipo) mud.tipo = input.tipo;
+  if (input.tipo) {
+    await exigirTipoManutencao(input.tipo);
+    mud.tipo = input.tipo;
+  }
   if (input.descricao) mud.descricao = input.descricao;
   if (input.fornecedor_id !== undefined) mud.fornecedorId = input.fornecedor_id;
   if (input.data_agendada !== undefined) mud.dataAgendada = input.data_agendada;

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { History, Wrench, CircleDollarSign, Play, CheckCircle2, XCircle, Pencil, CheckCircle, ChevronDown } from "lucide-react";
-import { TIPOS_MANUTENCAO, FORMAS_PAGAMENTO } from "@hallaxos/shared";
+import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
+import { SeletorTipoManutencao } from "./Manutencoes";
 import { useAuth } from "../auth";
 import {
   Botao, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto, Timeline, useToast,
@@ -352,9 +353,7 @@ export function ManutencaoDetalhe() {
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo rotulo="Tipo">
-              <Selecao value={ed.tipo} onChange={(e) => setEd({ ...ed, tipo: e.target.value })}>
-                {TIPOS_MANUTENCAO.map((t) => <option key={t} value={t}>{t}</option>)}
-              </Selecao>
+              <SeletorTipoManutencao valor={ed.tipo} aoMudar={(t) => setEd({ ...ed, tipo: t })} />
             </Campo>
             <Campo rotulo="Km no momento">
               <Entrada type="number" value={ed.km_no_momento} onChange={(e) => setEd({ ...ed, km_no_momento: e.target.value })} />

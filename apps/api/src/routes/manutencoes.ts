@@ -3,10 +3,12 @@ import { z } from "zod";
 import {
   idSchema, paginacaoSchema, manutencaoCriarSchema, manutencaoEditarSchema,
   manutencaoConcluirSchema, manutencaoFiltrosSchema, manutencaoIniciarSchema,
+  manutencaoTipoCriarSchema,
 } from "@hallaxos/shared";
 import {
   listarManutencoes, obterManutencao, criarManutencao, editarManutencao,
   iniciarManutencao, concluirManutencao, cancelarManutencao,
+  listarTiposManutencao, criarTipoManutencao,
 } from "../services/manutencoes";
 import { listarTimeline } from "../services/timeline";
 import { db } from "../db/client";
@@ -23,6 +25,18 @@ export default async function rotasManutencoes(app: FastifyInstance) {
       pagina, porPagina: por_pagina,
     });
     return { dados, meta: { total, pagina, por_pagina } };
+  });
+
+  // Tipos customizáveis (Sprint 14 · C1): registro consultado pelos seletores;
+  // quem pode criar manutenção pode criar tipo (criação inline no formulário).
+  app.get("/manutencoes/tipos", { preHandler: exigirPermissao("manutencoes", "ler") }, async () => ({
+    dados: await listarTiposManutencao(),
+  }));
+
+  app.post("/manutencoes/tipos", { preHandler: exigirPermissao("manutencoes", "criar") }, async (req, reply) => {
+    const { nome } = manutencaoTipoCriarSchema.parse(req.body);
+    reply.code(201);
+    return { dados: await criarTipoManutencao(nome, exigirLogin(req).id) };
   });
 
   app.get("/manutencoes/:id", { preHandler: exigirPermissao("manutencoes", "ler") }, async (req) => {

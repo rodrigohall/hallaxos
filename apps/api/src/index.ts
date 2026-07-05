@@ -2,7 +2,7 @@ import { mkdir, access, constants } from "node:fs/promises";
 import { criarApp } from "./app";
 import { config } from "./config";
 import { limparSessoesExpiradas } from "./services/auth";
-import { garantirAdminInicial, garantirCategoriasPadrao } from "./db/bootstrap";
+import { garantirAdminInicial, garantirCategoriasPadrao, garantirTiposManutencaoPadrao } from "./db/bootstrap";
 import { verificarPrazos } from "./services/notificacoes";
 import { jobReferenciasOrfas } from "./services/integridade";
 
@@ -25,6 +25,7 @@ async function verificarArmazenamento() {
 
 garantirAdminInicial()
   .then(() => garantirCategoriasPadrao())
+  .then(() => garantirTiposManutencaoPadrao())
   .then(() => verificarArmazenamento())
   .then(() => app.listen({ port: config.porta, host: "0.0.0.0" }))
   .then(() => {

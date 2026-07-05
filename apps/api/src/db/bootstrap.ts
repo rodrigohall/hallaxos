@@ -3,7 +3,8 @@
 // Nunca roda de novo (idempotente por construção).
 import { eq } from "drizzle-orm";
 import { db } from "./client";
-import { usuarios, categoriasFinanceiras } from "./schema";
+import { usuarios, categoriasFinanceiras, manutencaoTipos } from "./schema";
+import { TIPOS_MANUTENCAO } from "@hallaxos/shared";
 import { novoId } from "../lib/ids";
 import { hashSenha } from "../services/auth";
 import { registrarEvento } from "../services/timeline";
@@ -45,6 +46,16 @@ export async function garantirCategoriasPadrao(): Promise<void> {
     faltando.map((c) => ({ id: novoId(), nome: c.nome, tipo: c.tipo }))
   );
   console.log(`Categorias financeiras criadas: ${faltando.map((c) => c.nome).join(", ")}`);
+}
+
+/** Garante os tipos padrão de manutenção (Sprint 14 · C1). Idempotente. */
+export async function garantirTiposManutencaoPadrao(): Promise<void> {
+  const existentes = await db.select({ nome: manutencaoTipos.nome }).from(manutencaoTipos);
+  const nomes = new Set(existentes.map((t) => t.nome.toLowerCase()));
+  const faltando = TIPOS_MANUTENCAO.filter((t) => !nomes.has(t));
+  if (faltando.length === 0) return;
+  await db.insert(manutencaoTipos).values(faltando.map((nome) => ({ nome, padrao: true })));
+  console.log(`Tipos de manutenção criados: ${faltando.join(", ")}`);
 }
 
 export async function garantirAdminInicial(): Promise<void> {

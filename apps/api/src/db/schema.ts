@@ -8,7 +8,7 @@ import {
   PAPEIS_USUARIO, TIPOS_PESSOA, PAPEIS_PESSOA, REFERENCIA_ENTIDADES, EVENTOS_TIMELINE,
   STATUS_ATIVO, COMBUSTIVEIS, TIPOS_DOCUMENTO, TIPOS_LANCAMENTO, STATUS_LANCAMENTO,
   FORMAS_PAGAMENTO, TIPOS_OPERACAO, STATUS_OPERACAO, PAPEIS_OPERACAO_ATIVO,
-  STATUS_DOCUMENTACAO, TIPOS_MANUTENCAO, STATUS_MANUTENCAO, TIPOS_NOTIFICACAO,
+  STATUS_DOCUMENTACAO, STATUS_MANUTENCAO, TIPOS_NOTIFICACAO,
 } from "@hallaxos/shared";
 
 export const papelUsuarioEnum = pgEnum("papel_usuario", PAPEIS_USUARIO);
@@ -120,7 +120,8 @@ export const tipoOperacaoEnum = pgEnum("tipo_operacao", TIPOS_OPERACAO);
 export const statusOperacaoEnum = pgEnum("status_operacao", STATUS_OPERACAO);
 export const papelOperacaoAtivoEnum = pgEnum("papel_operacao_ativo", PAPEIS_OPERACAO_ATIVO);
 export const statusDocumentacaoEnum = pgEnum("status_documentacao", STATUS_DOCUMENTACAO);
-export const tipoManutencaoEnum = pgEnum("tipo_manutencao", TIPOS_MANUTENCAO);
+// Sprint 14 · C1: o enum tipo_manutencao virou a tabela manutencao_tipos
+// (tipos customizáveis). manutencoes.tipo referencia manutencao_tipos.nome.
 export const statusManutencaoEnum = pgEnum("status_manutencao", STATUS_MANUTENCAO);
 
 export const operacoes = pgTable("operacoes", {
@@ -189,10 +190,19 @@ export const operacoesCompraVenda = pgTable("operacoes_compra_venda", {
   statusDocumentacao: statusDocumentacaoEnum("status_documentacao").notNull().default("pendente"),
 });
 
+// Registro de tipos de manutenção (Sprint 14 · C1): os 4 padrão nascem na
+// migration/bootstrap; o usuário cria novos inline no formulário.
+export const manutencaoTipos = pgTable("manutencao_tipos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull().unique(),
+  padrao: boolean("padrao").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const manutencoes = pgTable("manutencoes", {
   id: uuid("id").primaryKey(),
   ativoId: uuid("ativo_id").notNull().references(() => ativos.id),
-  tipo: tipoManutencaoEnum("tipo").notNull(),
+  tipo: text("tipo").notNull(),
   status: statusManutencaoEnum("status").notNull().default("agendada"),
   descricao: text("descricao").notNull(),
   fornecedorId: uuid("fornecedor_id").references(() => pessoas.id),

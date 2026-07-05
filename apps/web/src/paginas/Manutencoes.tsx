@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Wrench, Clock, CalendarCheck, CheckCircle2 } from "lucide-react";
-import { STATUS_MANUTENCAO, TIPOS_MANUTENCAO } from "@hallaxos/shared";
+import { STATUS_MANUTENCAO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
@@ -186,6 +186,56 @@ export function Manutencoes() {
   );
 }
 
+// Seletor de tipo com criação inline (Sprint 14 · C1): lista o registro
+// manutencao_tipos e permite "+ Novo tipo" sem sair do formulário.
+export function SeletorTipoManutencao({ valor, aoMudar }: { valor: string; aoMudar: (t: string) => void }) {
+  const notificar = useToast();
+  const fila = useQueryClient();
+  const [criando, setCriando] = useState(false);
+  const [nome, setNome] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const { data: tipos } = useQuery({
+    queryKey: ["manutencao-tipos"],
+    queryFn: () => api.get<{ dados: Array<{ id: string; nome: string }> }>("/manutencoes/tipos").then((r) => r.dados),
+  });
+
+  const criar = async () => {
+    if (nome.trim().length < 2) return;
+    setSalvando(true);
+    try {
+      const r = await api.post<{ dados: { nome: string } }>("/manutencoes/tipos", { nome: nome.trim() });
+      fila.invalidateQueries({ queryKey: ["manutencao-tipos"] });
+      aoMudar(r.dados.nome);
+      setCriando(false);
+      setNome("");
+      notificar({ tipo: "ok", titulo: `Tipo "${r.dados.nome}" criado` });
+    } catch (e) {
+      notificar({ tipo: "erro", titulo: "Não foi possível criar o tipo", descricao: e instanceof ApiError ? e.message : undefined });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div>
+      <Selecao value={valor} onChange={(e) => aoMudar(e.target.value)}>
+        {(tipos ?? []).map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
+      </Selecao>
+      {!criando ? (
+        <button type="button" onClick={() => setCriando(true)} className="mt-1 text-xs text-ouro hover:underline">
+          + Novo tipo
+        </button>
+      ) : (
+        <div className="mt-2 flex gap-2">
+          <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder='Ex.: "Compra de Peças"' className="flex-1" />
+          <Botao tamanho="sm" onClick={criar} carregando={salvando} disabled={nome.trim().length < 2 || salvando}>Criar</Botao>
+          <Botao tamanho="sm" variante="fantasma" onClick={() => { setCriando(false); setNome(""); }}>Cancelar</Botao>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ModalNova({ aoFechar }: { aoFechar: () => void }) {
   const notificar = useToast();
   const fila = useQueryClient();
@@ -193,12 +243,17 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
   const [fornecedor, setFornecedor] = useState<ItemSeletor | null>(null);
   const [criandoOficina, setCriandoOficina] = useState(false);
   const [campos, setCampos] = useState<Record<string, string>>({ tipo: "preventiva" });
+  const [retroativa, setRetroativa] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const set = (k: string) => (e: { target: { value: string } }) =>
     setCampos((c) => ({ ...c, [k]: e.target.value }));
 
   const enviar = async () => {
     if (!ativo) return;
+    if (retroativa && !campos.data_conclusao) {
+      notificar({ tipo: "erro", titulo: "Informe a data de conclusão", descricao: "Lançamento retroativo precisa da data em que a manutenção foi concluída." });
+      return;
+    }
     setEnviando(true);
     try {
       await api.post("/manutencoes", {
@@ -209,9 +264,14 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
         data_agendada: campos.data_agendada || null,
         observacoes: campos.observacoes || null,
         pecas: campos.pecas || null,
+        // C2 — retroativo: nasce concluída, custo vira despesa vinculada
+        data_inicio: retroativa ? campos.data_inicio || null : null,
+        data_conclusao: retroativa ? campos.data_conclusao || null : null,
+        custo: retroativa && campos.custo ? Number(campos.custo) : null,
+        km_no_momento: retroativa && campos.km_no_momento ? Number(campos.km_no_momento) : null,
       });
       fila.invalidateQueries({ queryKey: ["manutencoes"] });
-      notificar({ tipo: "ok", titulo: "Manutenção agendada" });
+      notificar({ tipo: "ok", titulo: retroativa ? "Manutenção registrada (retroativa)" : "Manutenção agendada" });
       aoFechar();
     } catch (e) {
       notificar({ tipo: "erro", titulo: "Não foi possível agendar", descricao: e instanceof ApiError ? e.message : undefined });
@@ -226,13 +286,42 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
         <Seletor rotulo="Ativo" recurso="ativos" selecionado={ativo} aoSelecionar={setAtivo} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Tipo">
-            <Selecao value={campos.tipo} onChange={set("tipo")}>
-              {TIPOS_MANUTENCAO.map((t) => <option key={t} value={t}>{t}</option>)}
-            </Selecao>
+            <SeletorTipoManutencao valor={campos.tipo ?? "preventiva"} aoMudar={(t) => setCampos((c) => ({ ...c, tipo: t }))} />
           </Campo>
-          <Campo rotulo="Data agendada">
+          <Campo rotulo="Data agendada" dica="Pode ser no passado (registro retroativo)">
             <Entrada type="date" value={campos.data_agendada ?? ""} onChange={set("data_agendada")} />
           </Campo>
+        </div>
+
+        {/* C2 — lançamento retroativo: manutenção que já aconteceu */}
+        <div className="rounded-md border border-borda bg-elevado/50 p-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={retroativa}
+              onChange={(e) => setRetroativa(e.target.checked)}
+              className="h-4 w-4 rounded border-borda-forte accent-ouro"
+            />
+            <span className="flex items-center gap-1.5 text-sm text-suave">
+              <Clock className="h-3.5 w-3.5" /> Já realizada (lançamento retroativo)
+            </span>
+          </label>
+          {retroativa && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Campo rotulo="Início (opcional)">
+                <Entrada type="date" value={campos.data_inicio ?? ""} onChange={set("data_inicio")} />
+              </Campo>
+              <Campo rotulo="Concluída em">
+                <Entrada type="date" value={campos.data_conclusao ?? ""} onChange={set("data_conclusao")} />
+              </Campo>
+              <Campo rotulo="Custo (R$, opcional)" dica="Vira despesa vinculada à manutenção">
+                <Entrada type="number" step="0.01" min="0" value={campos.custo ?? ""} onChange={set("custo")} />
+              </Campo>
+              <Campo rotulo="Km no momento (opcional)">
+                <Entrada type="number" min="0" value={campos.km_no_momento ?? ""} onChange={set("km_no_momento")} />
+              </Campo>
+            </div>
+          )}
         </div>
         <Campo rotulo="Descrição do serviço">
           <Entrada value={campos.descricao ?? ""} onChange={set("descricao")} placeholder="Ex.: Revisão dos 30 mil km, troca de óleo" />
@@ -266,7 +355,7 @@ function ModalNova({ aoFechar }: { aoFechar: () => void }) {
         <div className="flex justify-end gap-2">
           <Botao variante="fantasma" onClick={aoFechar}>Cancelar</Botao>
           <Botao onClick={enviar} carregando={enviando} disabled={!ativo || !campos.descricao || enviando}>
-            Agendar
+            {retroativa ? "Registrar" : "Agendar"}
           </Botao>
         </div>
       </div>
