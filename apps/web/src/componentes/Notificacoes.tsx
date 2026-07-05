@@ -156,7 +156,7 @@ export function Notificacoes() {
           <Bell className="h-5 w-5" />
         )}
         {naoLidas > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-erro px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-erro px-1 text-[10px] font-bold leading-none text-texto">
             {badgeTexto}
           </span>
         )}

@@ -435,7 +435,7 @@ export function DashboardFinanceiro() {
               {drill.tipo === "origem" && `Lançamentos — ${drill.rotulo}`}
               {drill.tipo === "ativo" && `Lançamentos — ${drill.nome}`}
             </h3>
-            <button onClick={() => setDrill(null)} className="ml-auto text-suave hover:text-primario">
+            <button onClick={() => setDrill(null)} className="ml-auto text-suave hover:text-texto">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -801,7 +801,7 @@ function ListaDrillDown({
               {podeEditar && l.status !== "cancelado" && (
                 <button
                   onClick={() => aoEditar(l)}
-                  className="rounded p-1.5 text-mudo hover:text-primario hover:bg-elevado transition-colors"
+                  className="rounded p-1.5 text-mudo hover:text-texto hover:bg-elevado transition-colors"
                   title="Editar"
                 >
                   <Pencil className="h-3.5 w-3.5" />

@@ -395,11 +395,10 @@ export function Dashboard() {
             </button>
 
             <div
-              className="animar-surgir rounded-lg border bg-painel p-4 shadow-painel"
-              style={{
-                animationDelay: "80ms",
-                borderColor: lucro >= 0 ? "rgb(var(--color-ouro) / 0.25)" : "rgb(var(--color-erro) / 0.25)",
-              }}
+              className={`animar-surgir rounded-lg border bg-painel p-4 shadow-painel ${
+                lucro >= 0 ? "border-ouro/25" : "border-erro/25"
+              }`}
+              style={{ animationDelay: "80ms" }}
             >
               <div className="flex items-center gap-2 text-mudo">
                 <Scale className="h-4 w-4" />

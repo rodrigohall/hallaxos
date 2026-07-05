@@ -36,7 +36,7 @@ function ponto(cor: string | null) {
   return (
     <span
       className="h-2 w-2 shrink-0 rounded-full"
-      style={{ background: cor ?? "#5c6b86" }}
+      style={{ background: cor ?? "var(--color-mudo)" }}
     />
   );
 }

@@ -182,7 +182,7 @@ export function Agenda() {
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors
                   ${periodo === p.id
                     ? "bg-ouro text-navy font-bold"
-                    : "text-suave hover:bg-elevado hover:text-primario"}`}
+                    : "text-suave hover:bg-elevado hover:text-texto"}`}
               >
                 {p.rotulo}
               </button>
@@ -233,7 +233,7 @@ export function Agenda() {
             className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ml-2
               ${soMeus
                 ? "bg-info/20 text-info"
-                : "text-suave hover:bg-elevado hover:text-primario"}`}
+                : "text-suave hover:bg-elevado hover:text-texto"}`}
           >
             <UserCheck className="h-3 w-3" />
             Só os meus
@@ -241,7 +241,7 @@ export function Agenda() {
           {tiposAtivos.size > 0 && (
             <button
               onClick={() => setTiposAtivos(new Set())}
-              className="rounded-full px-2.5 py-1 text-xs text-suave hover:text-primario underline"
+              className="rounded-full px-2.5 py-1 text-xs text-suave hover:text-texto underline"
             >
               limpar
             </button>
