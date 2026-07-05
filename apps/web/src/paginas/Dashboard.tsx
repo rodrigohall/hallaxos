@@ -262,7 +262,7 @@ export function Dashboard() {
         {financeiro?.fluxo_caixa_7d && financeiro.fluxo_caixa_7d.length > 0 && (
           <div className="mt-4">
             <MiniBarras dados={financeiro.fluxo_caixa_7d} />
-            <p className="mt-1 text-[10px] text-mudo">Fluxo 7 dias — verde: receita · vermelho: despesa</p>
+            <p className="mt-1 text-[11px] text-mudo">Fluxo 7 dias — verde: receita · vermelho: despesa</p>
           </div>
         )}
       </div>
