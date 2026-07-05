@@ -9,8 +9,8 @@ import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
-  Botao, Campo, Card, Chip, Entrada, EstadoVazio, Kpi, Lista, ListaLinha, Modal,
-  Selecao, Selo, SkeletonLinhas, dataCurta, dinheiro, useToast,
+  Botao, BotaoIcone, Caixa, Campo, Card, Chip, Entrada, EstadoVazio, Kpi, Lista,
+  ListaLinha, Modal, Segmentado, Selecao, Selo, SkeletonLinhas, dataCurta, dinheiro, useToast,
 } from "../componentes/ui";
 
 interface Lancamento {
@@ -370,13 +370,12 @@ export function Financeiro() {
         <h1 className="font-display text-lg font-bold">Financeiro</h1>
         <div className="ml-auto flex items-center gap-2">
           {ehAdmin && (
-            <button
-              title="Vincular lançamentos avulsos automaticamente"
+            <BotaoIcone
+              rotulo="Vincular lançamentos avulsos automaticamente"
+              icone={Link2}
+              tom="ouro"
               onClick={abrirVincular}
-              className="rounded-md p-1.5 text-suave hover:bg-elevado hover:text-ouro"
-            >
-              <Link2 className="h-4 w-4" />
-            </button>
+            />
           )}
           {pode("lancamentos", "criar") && (
             <Botao tamanho="sm" onClick={() => setNovo(true)}>
@@ -394,22 +393,21 @@ export function Financeiro() {
       </div>
 
       {/* ── Painel de Análises ── */}
-      <div className="rounded-xl border border-borda bg-painel shadow-painel">
+      <div className="animar-surgir superficie rounded-lg border border-borda shadow-painel">
         <button
           onClick={() => setAnalisesAberto((v) => !v)}
           className="flex w-full items-center justify-between px-5 py-3.5 text-left"
         >
-          <span className="text-sm font-semibold text-texto">Análises financeiras</span>
-          <div className="flex items-center gap-2">
-            {([1, 3, 6, 12] as const).map((m) => (
-              <button
-                key={m}
-                onClick={(e) => { e.stopPropagation(); setMesesAnalise(m); if (!analisesAberto) setAnalisesAberto(true); }}
-                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${mesesAnalise === m ? "bg-ouro/20 text-ouro" : "text-mudo hover:text-suave"}`}
-              >
-                {m === 1 ? "1m" : m === 12 ? "1a" : `${m}m`}
-              </button>
-            ))}
+          <span className="text-xs font-semibold uppercase tracking-wider text-suave">Análises financeiras</span>
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <Segmentado
+              opcoes={([1, 3, 6, 12] as const).map((m) => ({
+                id: String(m),
+                rotulo: m === 1 ? "1m" : m === 12 ? "1a" : `${m}m`,
+              }))}
+              valor={String(mesesAnalise)}
+              aoTrocar={(v) => { setMesesAnalise(Number(v) as 1 | 3 | 6 | 12); if (!analisesAberto) setAnalisesAberto(true); }}
+            />
             {analisesAberto
               ? <ChevronUp className="h-4 w-4 text-mudo" />
               : <ChevronDown className="h-4 w-4 text-mudo" />}
@@ -432,16 +430,16 @@ export function Financeiro() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[480px] text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-mudo">
-                        <th className="pb-2 font-medium">Mês</th>
-                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Truck className="h-3 w-3" /> Guincho</span></th>
-                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Car className="h-3 w-3" /> Locação</span></th>
-                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><PackageMinus className="h-3 w-3" /> Venda Ativo</span></th>
-                        <th className="pb-2 font-medium text-right">Avulso</th>
-                        <th className="pb-2 font-medium text-right text-texto">Total</th>
+                      <tr className="text-left text-xs font-semibold uppercase tracking-wider text-mudo">
+                        <th className="pb-2">Mês</th>
+                        <th className="pb-2 text-right"><span className="inline-flex items-center gap-1"><Truck className="h-3 w-3" /> Guincho</span></th>
+                        <th className="pb-2 text-right"><span className="inline-flex items-center gap-1"><Car className="h-3 w-3" /> Locação</span></th>
+                        <th className="pb-2 text-right"><span className="inline-flex items-center gap-1"><PackageMinus className="h-3 w-3" /> Venda Ativo</span></th>
+                        <th className="pb-2 text-right">Avulso</th>
+                        <th className="pb-2 text-right text-texto">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-borda/50">
+                    <tbody className="divide-y divide-borda">
                       {porTipo.map((row) => {
                         const total = Number(row.guincho) + Number(row.locacao) + Number(row.venda_ativo) + Number(row.avulso);
                         const mes = new Date(row.mes + "T12:00:00Z").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
@@ -475,15 +473,15 @@ export function Financeiro() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[480px] text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-mudo">
-                        <th className="pb-2 font-medium">Ativo</th>
-                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Wrench className="h-3 w-3" /> Manutenção</span></th>
-                        <th className="pb-2 font-medium text-right"><span className="inline-flex items-center gap-1"><Fuel className="h-3 w-3" /> Combustível</span></th>
-                        <th className="pb-2 font-medium text-right">Outros</th>
-                        <th className="pb-2 font-medium text-right text-erro">Total gasto</th>
+                      <tr className="text-left text-xs font-semibold uppercase tracking-wider text-mudo">
+                        <th className="pb-2">Ativo</th>
+                        <th className="pb-2 text-right"><span className="inline-flex items-center gap-1"><Wrench className="h-3 w-3" /> Manutenção</span></th>
+                        <th className="pb-2 text-right"><span className="inline-flex items-center gap-1"><Fuel className="h-3 w-3" /> Combustível</span></th>
+                        <th className="pb-2 text-right">Outros</th>
+                        <th className="pb-2 text-right text-erro">Total gasto</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-borda/50">
+                    <tbody className="divide-y divide-borda">
                       {custoAtivo.map((row) => (
                         <tr key={row.ativo_id} className="hover:bg-elevado/50 transition-colors">
                           <td className="py-2 font-medium text-texto"><Link to={`/ativos/${row.ativo_id}`} className="hover:text-ouro">{row.ativo}</Link></td>
@@ -505,45 +503,50 @@ export function Financeiro() {
 
       {/* Filtros ativos vindos de deep-link (Sprint 14) — sempre com saída visível */}
       {(lancamentoFiltro || ativoFiltro) && (
-        <div className="flex items-center gap-2 rounded-lg border border-ouro/30 bg-ouro/5 px-4 py-2 text-sm">
-          <Link2 className="h-4 w-4 shrink-0 text-ouro" />
-          <span className="flex-1 text-suave">
-            {lancamentoFiltro ? "Exibindo um lançamento específico." : "Exibindo lançamentos do ativo (diretos, da operação ou herdados de manutenção)."}
-          </span>
-          <button
-            type="button"
-            className="shrink-0 text-ouro hover:underline"
-            onClick={() => {
-              setParams((p) => { p.delete("lancamento"); p.delete("ativo_id"); p.delete("tipo"); p.delete("status"); return p; }, { replace: true });
-              setStatus("previsto");
-            }}
-          >
-            ver todos
-          </button>
-        </div>
+        <Caixa tom="ouro">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 shrink-0 text-ouro" />
+            <span className="flex-1 text-suave">
+              {lancamentoFiltro ? "Exibindo um lançamento específico." : "Exibindo lançamentos do ativo (diretos, da operação ou herdados de manutenção)."}
+            </span>
+            <Botao
+              variante="link"
+              tamanho="sm"
+              className="shrink-0"
+              onClick={() => {
+                setParams((p) => { p.delete("lancamento"); p.delete("ativo_id"); p.delete("tipo"); p.delete("status"); return p; }, { replace: true });
+                setStatus("previsto");
+              }}
+            >
+              ver todos
+            </Botao>
+          </div>
+        </Caixa>
       )}
 
       <div className="flex flex-wrap gap-1.5">
         {FILTROS.map((s) => (
           <Chip key={s} ativo={status === s} onClick={() => setStatus(status === s ? null : s)}>{s}</Chip>
         ))}
-        <span className="mx-1 text-borda">|</span>
+        <span aria-hidden className="mx-1 w-px self-stretch bg-borda" />
         <Chip ativo={tipo === "receita"} onClick={() => setTipo(tipo === "receita" ? null : "receita")}>receitas</Chip>
         <Chip ativo={tipo === "despesa"} onClick={() => setTipo(tipo === "despesa" ? null : "despesa")}>despesas</Chip>
       </div>
 
       {/* Barra de ação em lote */}
       {selecionados.size > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-info/30 bg-info/10 px-4 py-2.5">
-          <ListChecks className="h-4 w-4 shrink-0 text-info" />
-          <span className="flex-1 text-sm font-medium">{selecionados.size} selecionado(s)</span>
-          <Botao tamanho="sm" onClick={() => setLoteModal(true)}>
-            <CheckCircle2 className="h-3.5 w-3.5" /> Pagar selecionados
-          </Botao>
-          <Botao tamanho="sm" variante="fantasma" onClick={() => setSelecionados(new Set())}>
-            Limpar
-          </Botao>
-        </div>
+        <Caixa tom="info">
+          <div className="flex items-center gap-3">
+            <ListChecks className="h-4 w-4 shrink-0 text-info" />
+            <span className="flex-1 text-sm font-medium">{selecionados.size} selecionado(s)</span>
+            <Botao tamanho="sm" onClick={() => setLoteModal(true)}>
+              <CheckCircle2 className="h-3.5 w-3.5" /> Pagar selecionados
+            </Botao>
+            <Botao tamanho="sm" variante="fantasma" onClick={() => setSelecionados(new Set())}>
+              Limpar
+            </Botao>
+          </div>
+        </Caixa>
       )}
 
       <Card>
@@ -570,7 +573,7 @@ export function Financeiro() {
                               return next;
                             });
                           }}
-                          className="h-3.5 w-3.5 shrink-0 rounded border-borda accent-ouro cursor-pointer"
+                          className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-borda-forte accent-ouro"
                           onClick={(e) => e.stopPropagation()}
                         />
                       )}
@@ -593,25 +596,20 @@ export function Financeiro() {
                         {l.vencido ? "vencido" : l.status}
                       </Selo>
                       {podeEditar(l) && (
-                        <button title="Editar" onClick={() => abrirEdicao(l)}
-                          className="rounded p-1.5 text-suave hover:text-ouro"><Pencil className="h-4 w-4" /></button>
+                        <BotaoIcone rotulo="Editar" icone={Pencil} tamanho="sm" tom="ouro" onClick={() => abrirEdicao(l)} />
                       )}
                       {pode("lancamentos", "transicionar") && l.status === "previsto" && (
                         <>
-                          <button title="Pagar" onClick={() => setAcao({ tipo: "pagar", l })}
-                            className="rounded p-1.5 text-suave hover:text-ok"><CheckCircle2 className="h-4 w-4" /></button>
-                          <button title="Cancelar" onClick={() => setAcao({ tipo: "cancelar", l })}
-                            className="rounded p-1.5 text-suave hover:text-erro"><XCircle className="h-4 w-4" /></button>
+                          <BotaoIcone rotulo="Pagar" icone={CheckCircle2} tamanho="sm" tom="ok" onClick={() => setAcao({ tipo: "pagar", l })} />
+                          <BotaoIcone rotulo="Cancelar" icone={XCircle} tamanho="sm" tom="erro" onClick={() => setAcao({ tipo: "cancelar", l })} />
                         </>
                       )}
                       {pode("lancamentos", "transicionar") && l.status === "pago" && !l.descricao.startsWith("Estorno:") && (
-                        <button title="Estornar" onClick={() => setAcao({ tipo: "estornar", l })}
-                          className="rounded p-1.5 text-suave hover:text-alerta"><Undo2 className="h-4 w-4" /></button>
+                        <BotaoIcone rotulo="Estornar" icone={Undo2} tamanho="sm" tom="alerta" onClick={() => setAcao({ tipo: "estornar", l })} />
                       )}
                       {/* Anular: lançado errado — some dos indicadores, sem contrapartida. Só admin. */}
                       {ehAdmin && l.status !== "cancelado" && !l.descricao.startsWith("Estorno:") && (
-                        <button title="Anular (lançado errado)" onClick={() => setAcao({ tipo: "anular", l })}
-                          className="rounded p-1.5 text-suave hover:text-erro"><Ban className="h-4 w-4" /></button>
+                        <BotaoIcone rotulo="Anular (lançado errado)" icone={Ban} tamanho="sm" tom="erro" onClick={() => setAcao({ tipo: "anular", l })} />
                       )}
                     </>
                   }
@@ -747,9 +745,7 @@ export function Financeiro() {
                         onClick={() => escolherVinc(r)}
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-ouro/10"
                       >
-                        <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">
-                          {ROTULO_VINCULO[r.entidade_tipo]}
-                        </span>
+                        <Selo>{ROTULO_VINCULO[r.entidade_tipo]}</Selo>
                         <span className="truncate">{r.titulo}</span>
                       </button>
                     </li>
@@ -770,10 +766,10 @@ export function Financeiro() {
         {editar && (
           <form onSubmit={salvarEdicao} className="space-y-4">
             {editar.temOrigem && (
-              <p className="rounded-md border border-info/25 bg-info/10 px-3 py-2 text-xs text-suave">
+              <Caixa tom="info" className="text-xs text-suave">
                 Lançamento gerado por uma operação/manutenção. Editar aqui corrige o valor
                 sem desfazer o vínculo de origem — a mudança fica na timeline.
-              </p>
+              </Caixa>
             )}
             <Campo rotulo="Descrição">
               <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />

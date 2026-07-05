@@ -70,12 +70,13 @@ export function BotaoIcone({
   rotulo: string;
   icone: LucideIcon;
   tamanho?: "sm" | "md";
-  tom?: "neutro" | "ok" | "erro" | "ouro";
+  tom?: "neutro" | "ok" | "erro" | "alerta" | "ouro";
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
   const TOM = {
     neutro: "text-suave hover:text-texto",
     ok: "text-mudo hover:text-ok",
     erro: "text-mudo hover:text-erro",
+    alerta: "text-mudo hover:text-alerta",
     ouro: "text-mudo hover:text-ouro",
   };
   return (

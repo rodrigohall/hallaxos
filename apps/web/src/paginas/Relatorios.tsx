@@ -8,8 +8,8 @@ import {
 } from "@hallaxos/shared";
 import { api } from "../api";
 import {
-  Card, EstadoVazio, PlanilhaGrade, Selo, SkeletonLinhas, Tabela,
-  Drawer, Lista, ListaLinha,
+  Abas, Botao, Card, EstadoVazio, PlanilhaGrade, Selecao, Selo, SkeletonLinhas,
+  Tabela, Drawer, Lista, ListaLinha,
   dinheiro, dataCurta,
   type PlanilhaResult, type CelulaDrillDown,
 } from "../componentes/ui";
@@ -193,76 +193,67 @@ export function Relatorios() {
     setDrillCelula(celula);
   }
 
-  const classeAba = (a: Aba) =>
-    `px-4 py-2 text-sm font-medium transition-colors rounded-md ${
-      aba === a ? "bg-ouro/15 text-ouro" : "text-suave hover:text-texto hover:bg-elevado"
-    }`;
-
-  const selectClasse =
-    "rounded-md border border-borda bg-painel px-2.5 py-1.5 text-sm text-texto focus:border-ouro focus:outline-none";
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="space-y-2">
         <h1 className="font-display text-lg font-bold">Relatórios</h1>
-        <div className="flex gap-1 rounded-lg border border-borda bg-painel p-1">
-          <button className={classeAba("planilha")} onClick={() => setAba("planilha")}>
-            <TableProperties className="mr-1.5 inline h-3.5 w-3.5" />Planilha
-          </button>
-          <button className={classeAba("roi")} onClick={() => setAba("roi")}>
-            <CarFront className="mr-1.5 inline h-3.5 w-3.5" />Por Ativo
-          </button>
-          <button className={classeAba("dre")} onClick={() => setAba("dre")}>
-            <BarChart3 className="mr-1.5 inline h-3.5 w-3.5" />DRE
-          </button>
-        </div>
+        <Abas
+          abas={[
+            { id: "planilha", rotulo: "Planilha", icone: TableProperties },
+            { id: "roi", rotulo: "Por Ativo", icone: CarFront },
+            { id: "dre", rotulo: "DRE", icone: BarChart3 },
+          ]}
+          ativa={aba}
+          aoTrocar={(id) => setAba(id as Aba)}
+        />
       </div>
 
       {/* ───── ABA PLANILHA ───── */}
       {aba === "planilha" && (
         <div className="space-y-3">
           {/* Controles */}
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-borda bg-painel px-4 py-3">
+          <div className="animar-surgir superficie flex flex-wrap items-center gap-2 rounded-lg border border-borda px-4 py-3 shadow-painel">
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-mudo">Linha</span>
-              <select className={selectClasse} value={linha} onChange={(e) => setLinha(e.target.value as DimensaoLinha)}>
+              <Selecao tamanho="sm" value={linha} onChange={(e) => setLinha(e.target.value as DimensaoLinha)}>
                 {DIMENSOES_LINHA.map((d) => <option key={d} value={d}>{ROTULO_LINHA[d]}</option>)}
-              </select>
+              </Selecao>
             </div>
             <span className="text-mudo">×</span>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-mudo">Coluna</span>
-              <select className={selectClasse} value={coluna} onChange={(e) => setColuna(e.target.value as DimensaoColuna)}>
+              <Selecao tamanho="sm" value={coluna} onChange={(e) => setColuna(e.target.value as DimensaoColuna)}>
                 {DIMENSOES_COLUNA.map((d) => <option key={d} value={d}>{ROTULO_COLUNA[d]}</option>)}
-              </select>
+              </Selecao>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-mudo">Medida</span>
-              <select className={selectClasse} value={medida} onChange={(e) => setMedida(e.target.value as MedidaPlanilha)}>
+              <Selecao tamanho="sm" value={medida} onChange={(e) => setMedida(e.target.value as MedidaPlanilha)}>
                 {MEDIDAS_PLANILHA.map((m) => <option key={m} value={m}>{ROTULO_MEDIDA[m]}</option>)}
-              </select>
+              </Selecao>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-mudo">Ano</span>
-              <select className={selectClasse} value={ano} onChange={(e) => setAno(Number(e.target.value))}>
+              <Selecao tamanho="sm" value={ano} onChange={(e) => setAno(Number(e.target.value))}>
                 {[anoAtual - 1, anoAtual, anoAtual + 1].map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
+              </Selecao>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-mudo">Status</span>
-              <select className={selectClasse} value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)}>
+              <Selecao tamanho="sm" value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)}>
                 <option value="pago">Pago</option>
                 <option value="previsto">Previsto</option>
-              </select>
+              </Selecao>
             </div>
             <div className="ml-auto">
-              <button
-                className="flex items-center gap-1.5 rounded-md border border-borda px-3 py-1.5 text-sm text-suave hover:border-borda-forte hover:text-texto transition-colors disabled:opacity-40"
+              <Botao
+                variante="secundario"
+                tamanho="sm"
                 disabled={!planilha || planilha.linhas.length === 0}
                 onClick={() => planilha && exportarCSV(planilha, { linha, coluna, medida })}
               >
                 <Download className="h-3.5 w-3.5" /> CSV
-              </button>
+              </Botao>
             </div>
           </div>
 

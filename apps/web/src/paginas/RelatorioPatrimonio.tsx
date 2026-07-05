@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CarFront, TrendingUp, TrendingDown, Scale, ArrowUpDown } from "lucide-react";
 import { api } from "../api";
-import { dinheiro, EstadoVazio, SkeletonLinhas, Selecao } from "../componentes/ui";
+import { Card, Kpi, Segmentado, dinheiro, EstadoVazio, SkeletonLinhas, Selecao } from "../componentes/ui";
 
 interface LinhaPatrimonio {
   id: string;
@@ -83,38 +83,16 @@ export function RelatorioPatrimonio({ categorias }: { categorias: Categoria[] })
   return (
     <div className="space-y-4">
       {/* Sumário */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="animar-surgir rounded-lg border border-borda bg-painel p-4">
-          <p className="text-xs font-medium text-mudo uppercase tracking-wider">Ativos no portfólio</p>
-          <p className="mt-1 font-display text-2xl font-bold text-ouro">{linhas.length}</p>
-        </div>
-        <div className="animar-surgir rounded-lg border border-borda bg-painel p-4">
-          <div className="flex items-center gap-1.5 text-mudo">
-            <CarFront className="h-3.5 w-3.5" />
-            <p className="text-xs font-medium uppercase tracking-wider">Patrimônio FIPE</p>
-          </div>
-          <p className="mt-1 font-display text-xl font-bold text-texto">{dinheiro(totalFipe)}</p>
-        </div>
-        <div className="animar-surgir rounded-lg border border-borda bg-painel p-4">
-          <div className="flex items-center gap-1.5 text-mudo">
-            <TrendingDown className="h-3.5 w-3.5" />
-            <p className="text-xs font-medium uppercase tracking-wider">Total investido</p>
-          </div>
-          <p className="mt-1 font-display text-xl font-bold text-texto">{dinheiro(totalCompra)}</p>
-        </div>
-        <div className="animar-surgir rounded-lg border border-borda bg-painel p-4">
-          <div className="flex items-center gap-1.5 text-mudo">
-            <TrendingUp className="h-3.5 w-3.5" />
-            <p className="text-xs font-medium uppercase tracking-wider">Receita total</p>
-          </div>
-          <p className="mt-1 font-display text-xl font-bold text-ok">{dinheiro(totalReceita)}</p>
-        </div>
+      <div className="animar-cascata grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi rotulo="Ativos no portfólio" valor={linhas.length} icone={CarFront} tom="ouro" />
+        <Kpi rotulo="Patrimônio FIPE" valor={dinheiro(totalFipe)} icone={Scale} />
+        <Kpi rotulo="Total investido" valor={dinheiro(totalCompra)} icone={TrendingDown} />
+        <Kpi rotulo="Receita total" valor={dinheiro(totalReceita)} icone={TrendingUp} tom="ok" />
       </div>
 
       {/* Por categoria */}
       {Object.keys(porCategoria).length > 1 && (
-        <div className="animar-surgir rounded-lg border border-borda bg-painel p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-suave">Por categoria</h3>
+        <Card titulo="Por categoria">
           <div className="flex flex-wrap gap-4">
             {Object.entries(porCategoria).map(([cat, val]) => (
               <div key={cat} className="min-w-[120px]">
@@ -124,40 +102,29 @@ export function RelatorioPatrimonio({ categorias }: { categorias: Categoria[] })
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Filtros + ordenação */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {categorias.length > 0 && (
-          <Selecao
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-            className="w-52"
-          >
-            <option value="">Todas as categorias</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </Selecao>
+          <div className="w-52">
+            <Selecao value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+              <option value="">Todas as categorias</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </Selecao>
+          </div>
         )}
         <div className="flex items-center gap-2">
           <ArrowUpDown className="h-3.5 w-3.5 text-mudo" />
           <span className="text-xs text-mudo">Ordenar por:</span>
-          <div className="flex gap-1">
-            {COLUNAS.slice(1).map((c) => (
-              <button
-                key={c.campo}
-                onClick={() => setOrdenar(c.campo)}
-                className={
-                  `rounded px-2 py-0.5 text-xs font-medium transition-colors ` +
-                  (ordenar === c.campo ? "bg-ouro/20 text-ouro" : "text-mudo hover:text-suave hover:bg-elevado")
-                }
-              >
-                {c.rotulo}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            opcoes={COLUNAS.slice(1).map((c) => ({ id: c.campo, rotulo: c.rotulo }))}
+            valor={ordenar}
+            aoTrocar={setOrdenar}
+          />
         </div>
       </div>
 
@@ -165,11 +132,11 @@ export function RelatorioPatrimonio({ categorias }: { categorias: Categoria[] })
       {isLoading ? (
         <SkeletonLinhas linhas={6} />
       ) : ordenadas.length === 0 ? (
-        <div className="rounded-lg border border-borda bg-painel p-8">
+        <Card>
           <EstadoVazio icone={CarFront} titulo="Nenhum ativo no portfólio" descricao="Ativos vendidos e baixados não aparecem aqui." />
-        </div>
+        </Card>
       ) : (
-        <div className="animar-surgir overflow-x-auto rounded-lg border border-borda bg-painel">
+        <div className="animar-surgir superficie overflow-x-auto rounded-lg border border-borda shadow-painel">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-borda">
@@ -196,7 +163,7 @@ export function RelatorioPatrimonio({ categorias }: { categorias: Categoria[] })
                     >
                       {l.nome}
                     </Link>
-                    <p className="text-[11px] text-mudo font-display">{l.codigo}</p>
+                    <p className="font-display text-xs text-mudo">{l.codigo}</p>
                   </td>
                   <td className="px-3 py-2.5 text-suave">{l.categoria}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">

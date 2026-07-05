@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardList, User, Tag, CalendarDays } from "lucide-react";
+import { ClipboardList, User, CalendarDays } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Botao, Card, Chip, Entrada, Selecao, SkeletonLinhas, EstadoVazio, dataCurta, dataHora } from "../componentes/ui";
+import { Botao, Campo, Card, Entrada, Selecao, Selo, SkeletonLinhas, EstadoVazio, dataHora } from "../componentes/ui";
 
 interface EventoAuditoria {
   id: string;
@@ -22,11 +22,10 @@ const ROTULO_EVENTO: Record<string, string> = {
   comentario_adicionado: "comentário", documento_anexado: "documento", lancamento_gerado: "lançamento gerado",
   login: "login", logout: "logout", login_falhou: "login falhou",
 };
-const COR_EVENTO: Record<string, string> = {
-  criado: "text-ok bg-ok/10", atualizado: "text-info bg-info/10",
-  status_alterado: "text-alerta bg-alerta/10", comentario_adicionado: "text-suave bg-elevado",
-  documento_anexado: "text-suave bg-elevado", lancamento_gerado: "text-ouro bg-ouro/10",
-  login: "text-suave bg-elevado", logout: "text-suave bg-elevado", login_falhou: "text-erro bg-erro/10",
+// Tom semântico por evento — a cor em si vem do mapa central do <Selo>.
+const TOM_EVENTO: Record<string, string> = {
+  criado: "ok", atualizado: "info", status_alterado: "alerta",
+  lancamento_gerado: "ouro", login_falhou: "erro",
 };
 
 const ROTA_ENTIDADE: Record<string, (id: string) => string> = {
@@ -54,7 +53,12 @@ export function Auditoria() {
   const [pagina, setPagina] = useState(1);
 
   if (!pode("usuarios", "ler")) {
-    return <div className="p-8 text-center text-suave">Sem permissão de acesso.</div>;
+    return (
+      <div className="space-y-4">
+        <h1 className="font-display text-lg font-bold">Auditoria</h1>
+        <EstadoVazio titulo="Sem permissão" descricao="Seu perfil não tem acesso à auditoria." />
+      </div>
+    );
   }
 
   const params = new URLSearchParams();
@@ -97,70 +101,71 @@ export function Auditoria() {
       </div>
 
       {/* Filtros */}
-      <Card className="p-3">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-suave">Entidade</label>
-            <Selecao value={entidadeTipo} onChange={(e) => { setEntidadeTipo(e.target.value); setPagina(1); }}>
-              <option value="">Todas</option>
-              {TIPOS_ENTIDADE.map((t) => <option key={t} value={t}>{t}</option>)}
-            </Selecao>
+      <Card>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-40">
+            <Campo rotulo="Entidade">
+              <Selecao value={entidadeTipo} onChange={(e) => { setEntidadeTipo(e.target.value); setPagina(1); }}>
+                <option value="">Todas</option>
+                {TIPOS_ENTIDADE.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Selecao>
+            </Campo>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-suave">Evento</label>
-            <Selecao value={evento} onChange={(e) => { setEvento(e.target.value); setPagina(1); }}>
-              <option value="">Todos</option>
-              {TIPOS_EVENTO.map((t) => <option key={t} value={t}>{ROTULO_EVENTO[t] ?? t}</option>)}
-            </Selecao>
+          <div className="w-40">
+            <Campo rotulo="Evento">
+              <Selecao value={evento} onChange={(e) => { setEvento(e.target.value); setPagina(1); }}>
+                <option value="">Todos</option>
+                {TIPOS_EVENTO.map((t) => <option key={t} value={t}>{ROTULO_EVENTO[t] ?? t}</option>)}
+              </Selecao>
+            </Campo>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-suave">Usuário</label>
-            <Selecao value={usuarioId} onChange={(e) => { setUsuarioId(e.target.value); setPagina(1); }}>
-              <option value="">Todos</option>
-              {(usuariosData ?? []).map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-            </Selecao>
+          <div className="w-40">
+            <Campo rotulo="Usuário">
+              <Selecao value={usuarioId} onChange={(e) => { setUsuarioId(e.target.value); setPagina(1); }}>
+                <option value="">Todos</option>
+                {(usuariosData ?? []).map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </Selecao>
+            </Campo>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-suave">De</label>
-            <Entrada type="date" value={de} onChange={(e) => { setDe(e.target.value); setPagina(1); }} />
+          <div className="w-40">
+            <Campo rotulo="De">
+              <Entrada type="date" value={de} onChange={(e) => { setDe(e.target.value); setPagina(1); }} />
+            </Campo>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-suave">Até</label>
-            <Entrada type="date" value={ate} onChange={(e) => { setAte(e.target.value); setPagina(1); }} />
+          <div className="w-40">
+            <Campo rotulo="Até">
+              <Entrada type="date" value={ate} onChange={(e) => { setAte(e.target.value); setPagina(1); }} />
+            </Campo>
           </div>
           {(entidadeTipo || evento || usuarioId || de || ate) && (
-            <Botao tamanho="sm" variante="fantasma" onClick={limpar}>Limpar</Botao>
+            <Botao tamanho="sm" variante="fantasma" className="mb-1" onClick={limpar}>Limpar</Botao>
           )}
         </div>
       </Card>
 
       {/* Lista de eventos */}
-      <Card className="overflow-hidden p-0">
+      <section className="animar-surgir superficie overflow-hidden rounded-lg border border-borda shadow-painel">
         {isLoading ? (
           <div className="p-4"><SkeletonLinhas linhas={8} /></div>
         ) : !data || data.dados.length === 0 ? (
           <EstadoVazio icone={ClipboardList} titulo="Nenhum evento encontrado" />
         ) : (
-          <div className="divide-y divide-borda">
+          <div className="animar-cascata divide-y divide-borda">
             {data.dados.map((ev) => {
               const rota = ev.entidadeId ? ROTA_ENTIDADE[ev.entidadeTipo]?.(ev.entidadeId) : undefined;
               return (
-              <div key={ev.id} className="flex items-start gap-3 px-4 py-3 hover:bg-fundo/50 transition-colors">
-                <div className="flex-1 min-w-0">
+              <div key={ev.id} className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-elevado/60">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${COR_EVENTO[ev.evento] ?? "text-suave bg-elevado"}`}>
-                      {ROTULO_EVENTO[ev.evento] ?? ev.evento}
-                    </span>
+                    <Selo tom={TOM_EVENTO[ev.evento]}>{ROTULO_EVENTO[ev.evento] ?? ev.evento}</Selo>
                     {rota ? (
-                      <Link to={rota} className="text-[11px] text-mudo rounded-full border border-borda px-1.5 py-px hover:text-ouro">
-                        {ev.entidadeTipo}
+                      <Link to={rota} className="transition-colors hover:text-ouro">
+                        <Selo>{ev.entidadeTipo}</Selo>
                       </Link>
                     ) : (
-                      <span className="text-[11px] text-mudo rounded-full border border-borda px-1.5 py-px">
-                        {ev.entidadeTipo}
-                      </span>
+                      <Selo>{ev.entidadeTipo}</Selo>
                     )}
-                    <p className="text-sm truncate flex-1">{ev.descricao}</p>
+                    <p className="flex-1 truncate text-sm">{ev.descricao}</p>
                   </div>
                   <div className="mt-0.5 flex items-center gap-3 text-xs text-suave">
                     {ev.usuarioNome && (
@@ -178,7 +183,7 @@ export function Auditoria() {
             })}
           </div>
         )}
-      </Card>
+      </section>
 
       {/* Paginação */}
       {total > porPagina && (

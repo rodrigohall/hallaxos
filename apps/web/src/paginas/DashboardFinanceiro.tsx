@@ -304,27 +304,23 @@ export function DashboardFinanceiro() {
           {/* Sprint 14 · F1 — intervalo de data X a data Y */}
           {periodo === "custom" && (
             <span className="animar-surgir flex items-center gap-1.5">
-              <span className="w-34">
-                <Entrada
+              <Entrada
                   type="date"
+                  tamanho="sm"
                   value={deCustom}
                   max={ateCustom || undefined}
                   onChange={(e) => setDeCustom(e.target.value)}
-                  className="h-8 px-2 text-xs"
                   aria-label="Data inicial"
                 />
-              </span>
               <span className="text-xs text-mudo">a</span>
-              <span className="w-34">
-                <Entrada
+              <Entrada
                   type="date"
+                  tamanho="sm"
                   value={ateCustom}
                   min={deCustom || undefined}
                   onChange={(e) => setAteCustom(e.target.value)}
-                  className="h-8 px-2 text-xs"
                   aria-label="Data final"
                 />
-              </span>
             </span>
           )}
         </div>
