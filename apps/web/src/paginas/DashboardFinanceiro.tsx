@@ -94,7 +94,12 @@ export function DashboardFinanceiro() {
   const notificar = useToast();
   const fila = useQueryClient();
 
-  const [periodo, setPeriodo] = useState<Periodo>("mes");
+  const [periodo, setPeriodo] = useState<Periodo | "custom">("mes");
+  // Sprint 14 · F1 — intervalo customizado: do 1º dia do mês até hoje por padrão
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [deCustom, setDeCustom] = useState(hoje.slice(0, 8) + "01");
+  const [ateCustom, setAteCustom] = useState(hoje);
+  const customValido = periodo === "custom" && !!deCustom && !!ateCustom;
 
   // Linha 1: conta escolhida por caixa (localStorage, não banco)
   const [contasCaixas, setContasCaixas] = useState<(string | null)[]>(() => {
@@ -150,11 +155,16 @@ export function DashboardFinanceiro() {
   });
 
   const { data: porOrigem, isLoading: loadOrigem } = useQuery({
-    queryKey: ["dashboard-fin-por-origem", periodo],
+    queryKey: ["dashboard-fin-por-origem", periodo, deCustom, ateCustom],
     queryFn: () =>
-      api.get<{ dados: FinanceiroPorOrigem }>(`/dashboard/financeiro/por-origem?periodo=${periodo}`)
-        .then((r) => r.dados),
-    enabled: pode("dashboard_financeiro", "ler"),
+      api.get<{ dados: FinanceiroPorOrigem }>(
+        periodo === "custom"
+          ? `/dashboard/financeiro/por-origem?de=${deCustom}&ate=${ateCustom}`
+          : `/dashboard/financeiro/por-origem?periodo=${periodo}`
+      ).then((r) => r.dados),
+    // Custom só consulta com as duas datas preenchidas (sem falha silenciosa:
+    // os inputs ficam visíveis aguardando preenchimento).
+    enabled: pode("dashboard_financeiro", "ler") && (periodo !== "custom" || customValido),
   });
 
   // Drill-down lancamentos
@@ -282,7 +292,7 @@ export function DashboardFinanceiro() {
           <p className="text-sm text-suave">Dois cortes do mesmo dado: por conta e por origem.</p>
         </div>
         {/* Seletor de período */}
-        <div className="ml-auto flex items-center gap-1 rounded-lg border border-borda bg-painel p-1">
+        <div className="ml-auto flex flex-wrap items-center gap-1 rounded-lg border border-borda bg-painel p-1">
           {PERIODOS.map((p) => (
             <button
               key={p.id}
@@ -293,6 +303,35 @@ export function DashboardFinanceiro() {
               {p.rotulo}
             </button>
           ))}
+          {/* Sprint 14 · F1 — intervalo de data X a data Y */}
+          <button
+            onClick={() => setPeriodo("custom")}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors
+              ${periodo === "custom" ? "bg-ouro text-navy font-bold" : "text-suave hover:bg-elevado"}`}
+          >
+            Personalizado
+          </button>
+          {periodo === "custom" && (
+            <span className="flex items-center gap-1 pl-1">
+              <input
+                type="date"
+                value={deCustom}
+                max={ateCustom || undefined}
+                onChange={(e) => setDeCustom(e.target.value)}
+                className="rounded-md border border-borda bg-fundo px-2 py-1 text-xs text-texto"
+                aria-label="Data inicial"
+              />
+              <span className="text-xs text-mudo">a</span>
+              <input
+                type="date"
+                value={ateCustom}
+                min={deCustom || undefined}
+                onChange={(e) => setAteCustom(e.target.value)}
+                className="rounded-md border border-borda bg-fundo px-2 py-1 text-xs text-texto"
+                aria-label="Data final"
+              />
+            </span>
+          )}
         </div>
       </div>
 

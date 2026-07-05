@@ -107,16 +107,25 @@ async function blocoOperacional() {
   return r.rows[0] as Record<string, unknown>;
 }
 
+/** Sprint 14 · F1 — intervalo customizado (de/ate) tem precedência sobre o período nomeado. */
+function rangeCustom(intervalo?: { de: string; ate: string }): ReturnType<typeof sql> | null {
+  if (!intervalo) return null;
+  return sql`data_pagamento BETWEEN ${intervalo.de} AND ${intervalo.ate}`;
+}
+
 export async function montarFinanceiro(
   papel: PapelUsuario,
   periodo: string,
-  avencer: number
+  avencer: number,
+  intervalo?: { de: string; ate: string }
 ) {
   if (!pode(papel, "dashboard_financeiro", "ler")) return null;
 
   // monta o filtro de data baseado no período
   let rangeSql: ReturnType<typeof sql>;
-  switch (periodo) {
+  const custom = rangeCustom(intervalo);
+  if (custom) rangeSql = custom;
+  else switch (periodo) {
     case "semana":
       rangeSql = sql`data_pagamento BETWEEN date_trunc('week', current_date)::date AND current_date`;
       break;
@@ -176,11 +185,14 @@ export async function montarFinanceiro(
 export async function montarFinanceiroPorOrigem(
   papel: PapelUsuario,
   periodo: string,
+  intervalo?: { de: string; ate: string },
 ) {
   if (!pode(papel, "dashboard_financeiro", "ler")) return null;
 
   let rangeSql: ReturnType<typeof sql>;
-  switch (periodo) {
+  const custom = rangeCustom(intervalo);
+  if (custom) rangeSql = custom;
+  else switch (periodo) {
     case "semana":
       rangeSql = sql`data_pagamento BETWEEN date_trunc('week', current_date)::date AND current_date`;
       break;

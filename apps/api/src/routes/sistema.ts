@@ -17,18 +17,25 @@ export default async function rotasSistema(app: FastifyInstance) {
     async (req) => ({ dados: await montarDashboard(exigirLogin(req).papel) })
   );
 
+  // Sprint 14 · F1: além do período nomeado, aceita intervalo customizado
+  // (?de=YYYY-MM-DD&ate=YYYY-MM-DD) — quando os dois vêm, têm precedência.
+  const intervaloDe = (q: { de?: string; ate?: string }) =>
+    q.de && q.ate ? { de: q.de <= q.ate ? q.de : q.ate, ate: q.de <= q.ate ? q.ate : q.de } : undefined;
+
   app.get(
     "/dashboard/financeiro",
     { preHandler: exigirPermissao("dashboard_financeiro", "ler") },
     async (req) => {
-      const { periodo, avencer } = z
+      const q = z
         .object({
           periodo: z.enum(["hoje", "semana", "mes", "ano", "ultimos30"]).default("hoje"),
           avencer: z.coerce.number().int().min(1).max(90).default(7),
+          de: z.string().date().optional(),
+          ate: z.string().date().optional(),
         })
         .parse(req.query);
       return {
-        dados: await montarFinanceiro(exigirLogin(req).papel, periodo, avencer),
+        dados: await montarFinanceiro(exigirLogin(req).papel, q.periodo, q.avencer, intervaloDe(q)),
       };
     }
   );
@@ -37,11 +44,15 @@ export default async function rotasSistema(app: FastifyInstance) {
     "/dashboard/financeiro/por-origem",
     { preHandler: exigirPermissao("dashboard_financeiro", "ler") },
     async (req) => {
-      const { periodo } = z
-        .object({ periodo: z.enum(["hoje", "semana", "mes", "ano", "ultimos30"]).default("mes") })
+      const q = z
+        .object({
+          periodo: z.enum(["hoje", "semana", "mes", "ano", "ultimos30"]).default("mes"),
+          de: z.string().date().optional(),
+          ate: z.string().date().optional(),
+        })
         .parse(req.query);
       return {
-        dados: await montarFinanceiroPorOrigem(exigirLogin(req).papel, periodo),
+        dados: await montarFinanceiroPorOrigem(exigirLogin(req).papel, q.periodo, intervaloDe(q)),
       };
     }
   );
