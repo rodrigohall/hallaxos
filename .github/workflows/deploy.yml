@@ -146,3 +146,21 @@ jobs:
             fi
             echo "Tentativa $n falhou; aguardando $((n*10))s…"; sleep $((n*10))
           done
+
+      # Fecho do ciclo: confere PELA URL PÚBLICA que o estado.txt já reflete o
+      # commit recém-deployado (é a validação do CLAUDE.md, automatizada — o
+      # runner testa de fora, como qualquer consulta externa faria).
+      - name: Validar estado.txt publicado
+        run: |
+          SHA_CURTO="$(echo '${{ github.sha }}' | cut -c1-7)"
+          for i in 1 2 3 4 5 6; do
+            CONTEUDO="$(curl -fsS --max-time 15 "http://${{ secrets.VPS_HOST }}/estado.txt" 2>/dev/null || true)"
+            if printf '%s' "$CONTEUDO" | grep -q "commit: $SHA_CURTO"; then
+              echo "estado.txt OK — servindo o commit $SHA_CURTO:"
+              printf '%s\n' "$CONTEUDO"
+              exit 0
+            fi
+            echo "Aguardando o container web servir a versão nova ($i/6)…"; sleep 10
+          done
+          echo "::error::estado.txt público não reflete o commit $SHA_CURTO após o deploy — confira o container web e o Caddy."
+          exit 1
