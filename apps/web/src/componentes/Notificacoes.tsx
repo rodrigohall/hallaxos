@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { EstadoVazio, SkeletonLinhas } from "./ui";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -166,7 +167,7 @@ export function Notificacoes() {
       {aberto && (
         <div
           ref={painelRef}
-          className="animar-surgir absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-borda bg-painel shadow-flutuante"
+          className="animar-surgir vidro absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-borda shadow-flutuante"
         >
           {/* Cabeçalho do painel */}
           <div className="flex items-center justify-between border-b border-borda px-4 py-3">
@@ -188,21 +189,13 @@ export function Notificacoes() {
           {/* Lista */}
           <div className="max-h-96 overflow-y-auto">
             {!lista && (
-              <div className="space-y-2 p-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-14 animate-pulse rounded-md bg-elevado" />
-                ))}
+              <div className="p-3">
+                <SkeletonLinhas linhas={3} />
               </div>
             )}
 
             {lista && lista.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <span className="rounded-full bg-elevado p-3">
-                  <BellOff className="h-5 w-5 text-mudo" />
-                </span>
-                <p className="text-sm font-medium">Nenhuma notificação</p>
-                <p className="text-xs text-mudo">Você está em dia!</p>
-              </div>
+              <EstadoVazio icone={BellOff} titulo="Nenhuma notificação" descricao="Você está em dia!" />
             )}
 
             {lista && lista.length > 0 && (

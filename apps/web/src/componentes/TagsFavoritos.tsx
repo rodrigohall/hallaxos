@@ -133,7 +133,7 @@ function PopoverAdicionarTag({
   return (
     <div
       ref={popoverRef}
-      className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-borda bg-painel shadow-flutuante"
+      className="animar-surgir vidro absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-borda shadow-flutuante"
     >
       <div className="border-b border-borda px-3 py-2">
         <input

@@ -140,7 +140,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
                   <button
                     key={ex}
                     onClick={() => enviar(ex)}
-                    className="rounded-full border border-borda px-2.5 py-1 text-xs text-suave hover:border-ouro/60 hover:text-ouro-claro"
+                    className="rounded-full bg-elevado px-3 py-1 text-xs font-medium text-suave ring-1 ring-inset ring-borda transition-colors duration-150 hover:text-ouro-claro hover:ring-ouro/60"
                   >
                     {ex}
                   </button>
@@ -169,9 +169,9 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
                             onClick={() => irParaFonte(f)}
                             disabled={!clicavel}
                             className={
-                              "inline-flex items-center gap-1 rounded-full border border-borda px-2 py-0.5 text-[11px] " +
+                              "inline-flex items-center gap-1 rounded-full bg-elevado px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-borda transition-colors duration-150 " +
                               (clicavel
-                                ? "text-suave hover:border-ouro/60 hover:text-ouro-claro"
+                                ? "text-suave hover:text-ouro-claro hover:ring-ouro/60"
                                 : "cursor-default text-mudo opacity-80")
                             }
                           >

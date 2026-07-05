@@ -231,10 +231,10 @@ export function Galeria(props: PropsEntidade) {
 
       {ampliada !== null && fotos?.[ampliada] && (
         <div
-          className="animar-surgir fixed inset-0 z-50 flex items-center justify-center bg-fundo/90 p-4 backdrop-blur-sm"
+          className="animar-surgir fixed inset-0 z-50 flex items-center justify-center bg-fundo/70 p-4 backdrop-blur-sm"
           onClick={() => setAmpliada(null)}
         >
-          <button className="absolute right-4 top-4 rounded-md p-2 text-suave hover:text-texto" aria-label="Fechar">
+          <button className="absolute right-4 top-4 rounded-md p-2 text-suave transition-colors hover:bg-elevado hover:text-texto" aria-label="Fechar">
             <X className="h-5 w-5" />
           </button>
           {ampliada > 0 && (
@@ -243,7 +243,7 @@ export function Galeria(props: PropsEntidade) {
                 e.stopPropagation();
                 setAmpliada(ampliada - 1);
               }}
-              className="absolute left-3 rounded-full bg-elevado/80 p-2 text-texto"
+              className="vidro absolute left-3 rounded-full border border-borda p-2 text-texto transition-colors hover:border-ouro/40"
               aria-label="Anterior"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -252,7 +252,7 @@ export function Galeria(props: PropsEntidade) {
           <img
             src={`/api/v1/documentos/${fotos[ampliada].id}/arquivo`}
             alt={fotos[ampliada].nome}
-            className="max-h-full max-w-full rounded-lg object-contain shadow-flutuante"
+            className="animar-deslizar max-h-full max-w-full rounded-lg object-contain shadow-flutuante"
             onClick={(e) => e.stopPropagation()}
           />
           {ampliada < fotos.length - 1 && (
@@ -261,7 +261,7 @@ export function Galeria(props: PropsEntidade) {
                 e.stopPropagation();
                 setAmpliada(ampliada + 1);
               }}
-              className="absolute right-3 rounded-full bg-elevado/80 p-2 text-texto"
+              className="vidro absolute right-3 rounded-full border border-borda p-2 text-texto transition-colors hover:border-ouro/40"
               aria-label="Próxima"
             >
               <ChevronRight className="h-5 w-5" />

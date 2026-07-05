@@ -113,12 +113,12 @@ export function Layout() {
       <div className="min-w-0 flex-1">
         {/* Barra superior */}
         <header
-          className="sticky top-0 z-40 flex items-center gap-3 border-b border-borda bg-fundo/80 px-4 py-2.5 backdrop-blur-md safe-t"
+          className="vidro sticky top-0 z-40 flex items-center gap-3 border-b border-borda px-4 py-2.5 safe-t"
         >
           {/* Hamburger visível só no desktop (md+) sem bottom nav, ou quando menu já está aberto no mobile */}
           <button
             onClick={() => setMenuAberto(!menuAberto)}
-            className="rounded-md p-1.5 text-suave hover:bg-elevado md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-suave transition-colors hover:bg-elevado hover:text-texto md:hidden"
             aria-label="Menu"
           >
             {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -135,8 +135,8 @@ export function Layout() {
 
         {/* Menu mobile — slide-up acima da barra inferior */}
         {menuAberto && (
-          <nav className="animar-folha fixed inset-x-0 bottom-14 z-30 max-h-[70vh] overflow-y-auto border-t border-borda bg-painel p-3 shadow-flutuante md:hidden safe-b">
-            <p className="mb-2 px-3 text-[10px] font-medium uppercase tracking-wider text-mudo">
+          <nav className="animar-folha vidro fixed inset-x-0 bottom-14 z-30 max-h-[70vh] overflow-y-auto border-t border-borda p-3 shadow-flutuante md:hidden safe-b">
+            <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-mudo">
               {usuario?.nome} · {usuario?.papel}
             </p>
             {navegacao.map((item) => (
@@ -165,7 +165,7 @@ export function Layout() {
 
         {/* Bottom navigation (mobile only) */}
         <nav
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-borda bg-painel/95 backdrop-blur-md md:hidden safe-b"
+          className="vidro fixed inset-x-0 bottom-0 z-40 border-t border-borda md:hidden safe-b"
         >
           <div className="flex">
             {navBottom.map((item) => (
@@ -181,7 +181,9 @@ export function Layout() {
               >
                 {({ isActive }) => (
                   <>
-                    <item.icone className={`h-5 w-5 transition-transform ${isActive ? "scale-110" : ""}`} />
+                    <span className={`rounded-full px-3 py-0.5 transition-all duration-200 ${isActive ? "bg-ouro/10" : ""}`}>
+                      <item.icone className={`h-5 w-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+                    </span>
                     <span>{item.rotuloBottom ?? item.rotulo}</span>
                   </>
                 )}
@@ -191,7 +193,9 @@ export function Layout() {
               onClick={() => setMenuAberto(!menuAberto)}
               className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${menuAberto ? "text-ouro" : "text-suave"}`}
             >
-              <MoreHorizontal className={`h-5 w-5 transition-transform ${menuAberto ? "scale-110" : ""}`} />
+              <span className={`rounded-full px-3 py-0.5 transition-all duration-200 ${menuAberto ? "bg-ouro/10" : ""}`}>
+                <MoreHorizontal className={`h-5 w-5 transition-transform duration-200 ${menuAberto ? "scale-110" : ""}`} />
+              </span>
               <span>Mais</span>
             </button>
           </div>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { ApiError } from "../api";
 import { Botao, Campo, Entrada } from "../componentes/ui";
-import { Monograma } from "../marca/Logo";
+import { Monograma, Wordmark } from "../marca/Logo";
 
 export function Login() {
   const { entrar } = useAuth();
@@ -34,14 +34,12 @@ export function Login() {
 
       <form
         onSubmit={enviar}
-        className="animar-deslizar relative w-full max-w-sm rounded-xl border border-borda bg-painel/90 p-8 shadow-flutuante backdrop-blur"
+        className="animar-deslizar vidro relative w-full max-w-sm rounded-xl border border-borda p-8 shadow-flutuante"
       >
         <div className="mb-8 flex flex-col items-center gap-3">
           <Monograma className="h-12 w-auto text-ouro" />
           <div className="text-center">
-            <p className="font-display text-xl font-bold tracking-[0.18em]">
-              HALLAX<span className="text-ouro">OS</span>
-            </p>
+            <Wordmark />
             <p className="mt-1 text-xs text-mudo">O cérebro operacional da Hallax</p>
           </div>
         </div>
