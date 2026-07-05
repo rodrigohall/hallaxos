@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { api } from "../api";
 import {
-  Card, Kpi, Selo, dinheiro, dataCurta, horaCurta,
+  Card, Kpi, Selo, Segmentado, Botao, dinheiro, dataCurta, horaCurta,
   Skeleton, EstadoVazio, EstadoErro,
 } from "../componentes/ui";
 
@@ -78,7 +78,7 @@ function RelogioHero() {
   const data = agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-display text-4xl font-extrabold text-ouro tabular-nums leading-none tracking-tight">
+      <span className="texto-ouro-vivo font-display text-4xl font-extrabold tabular-nums leading-none tracking-tight">
         {hms}
       </span>
       <span className="text-xs text-suave capitalize">{data}</span>
@@ -104,65 +104,25 @@ function TempoDecorrido({ desde }: { desde: string }) {
   return <span className="tabular-nums text-xs text-mudo">{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}</span>;
 }
 
-// ─── Seletor de período ───────────────────────────────────────────────────────
-
-function SeletorPeriodo({ valor, onChange }: { valor: Periodo; onChange: (p: Periodo) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1">
-      {PERIODOS.map((p) => (
-        <button
-          key={p.valor}
-          onClick={() => onChange(p.valor)}
-          className={
-            `rounded px-2.5 py-1 text-xs font-medium transition-colors ` +
-            (valor === p.valor ? "bg-ouro/20 text-ouro" : "text-mudo hover:text-suave hover:bg-elevado")
-          }
-        >
-          {p.rotulo}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Seletor "a vencer" ───────────────────────────────────────────────────────
-
-function SeletorAvencer({ valor, onChange }: { valor: Avencer; onChange: (v: Avencer) => void }) {
-  return (
-    <div className="flex gap-1">
-      {([7, 15, 30] as Avencer[]).map((d) => (
-        <button
-          key={d}
-          onClick={() => onChange(d)}
-          className={
-            `rounded px-2 py-0.5 text-xs font-medium transition-colors ` +
-            (valor === d ? "bg-ouro/20 text-ouro" : "text-mudo hover:text-suave hover:bg-elevado")
-          }
-        >
-          {d}d
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ─── Mapa interativo (OpenStreetMap embed) ────────────────────────────────────
 // Centralizado em Dourados – MS, Brasil.
 
 function MapaDourados({ guinchos }: { guinchos: number }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-borda/60 bg-painel shadow-painel">
-      {/* Cabeçalho */}
+    <div className="animar-surgir superficie relative overflow-hidden rounded-lg border border-borda shadow-painel">
+      {/* Cabeçalho no padrão de título de card */}
       <div className="flex items-center gap-2 border-b border-borda px-4 py-3">
-        <MapPin className="h-4 w-4 text-ouro" />
-        <span className="text-sm font-semibold text-texto">Dourados — MS</span>
+        <MapPin className="h-4 w-4 text-mudo" />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-suave">Dourados — MS</h2>
         {guinchos > 0 && (
-          <span className="ml-auto flex items-center gap-1.5 rounded-full border border-ouro/30 bg-ouro/10 px-2.5 py-0.5 text-xs font-semibold text-ouro">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ouro opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-ouro" />
-            </span>
-            {guinchos} guincho{guinchos !== 1 ? "s" : ""} na rua
+          <span className="ml-auto">
+            <Selo tom="ouro">
+              <span className="relative mr-1.5 flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ouro opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-ouro" />
+              </span>
+              {guinchos} guincho{guinchos !== 1 ? "s" : ""} na rua
+            </Selo>
           </span>
         )}
       </div>
@@ -177,7 +137,7 @@ function MapaDourados({ guinchos }: { guinchos: number }) {
           referrerPolicy="no-referrer"
         />
         {/* Overlay de gradiente nas bordas para integrar com o tema */}
-        <div className="pointer-events-none absolute inset-0 rounded-b-xl ring-1 ring-inset ring-ouro/10" />
+        <div className="pointer-events-none absolute inset-0 rounded-b-lg ring-1 ring-inset ring-ouro/10" />
       </div>
     </div>
   );
@@ -199,12 +159,12 @@ function MiniBarras({ dados }: { dados: Array<{ dia: string; receitas: string; d
         return (
           <div key={d.dia} className="flex flex-1 items-end gap-px">
             <div
-              className="w-full rounded-sm transition-all"
-              style={{ height: `${(r / max) * 100}%`, background: isHoje ? "rgb(61 214 140)" : "rgb(61 214 140 / 0.5)" }}
+              className={`w-full rounded-sm transition-all ${isHoje ? "bg-ok" : "bg-ok/50"}`}
+              style={{ height: `${(r / max) * 100}%` }}
             />
             <div
-              className="w-full rounded-sm transition-all"
-              style={{ height: `${(e / max) * 100}%`, background: isHoje ? "rgb(240 80 110)" : "rgb(240 80 110 / 0.4)" }}
+              className={`w-full rounded-sm transition-all ${isHoje ? "bg-erro" : "bg-erro/40"}`}
+              style={{ height: `${(e / max) * 100}%` }}
             />
           </div>
         );
@@ -274,7 +234,7 @@ export function Dashboard() {
     <div className="space-y-4">
 
       {/* ── Hero: Relógio + Resumo rápido ── */}
-      <div className="rounded-xl border border-ouro/20 bg-gradient-to-br from-painel to-elevado p-5 shadow-painel">
+      <div className="animar-surgir rounded-xl border border-ouro/20 bg-gradient-to-br from-painel to-elevado p-5 shadow-painel">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <RelogioHero />
           {financeiro && (
@@ -302,7 +262,7 @@ export function Dashboard() {
         {financeiro?.fluxo_caixa_7d && financeiro.fluxo_caixa_7d.length > 0 && (
           <div className="mt-4">
             <MiniBarras dados={financeiro.fluxo_caixa_7d} />
-            <p className="mt-1 text-[10px] text-mudo">Fluxo 7 dias — verde: receita · vermelho: despesa</p>
+            <p className="mt-1 text-[11px] text-mudo">Fluxo 7 dias — verde: receita · vermelho: despesa</p>
           </div>
         )}
       </div>
@@ -336,12 +296,9 @@ export function Dashboard() {
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                   <span className="flex-1 text-sm">{a.texto}</span>
                   {rota && (
-                    <button
-                      onClick={() => nav(rota)}
-                      className="shrink-0 rounded px-2 py-0.5 text-xs text-suave transition-colors hover:bg-elevado hover:text-ouro"
-                    >
+                    <Botao variante="link" tamanho="xs" className="shrink-0" onClick={() => nav(rota)}>
                       Ver →
-                    </button>
+                    </Botao>
                   )}
                 </li>
               );
@@ -352,156 +309,94 @@ export function Dashboard() {
 
       {/* ── KPIs financeiros + seletor de período ── */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-4">
-          <SeletorPeriodo valor={periodo} onChange={setPeriodo} />
-        </div>
+        <Segmentado
+          opcoes={PERIODOS.map((p) => ({ id: p.valor, rotulo: p.rotulo }))}
+          valor={periodo}
+          aoTrocar={setPeriodo}
+        />
 
         {fin.isLoading ? (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
         ) : fin.isError || financeiro == null ? null : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <button
-              onClick={() => nav("/financeiro?tipo=receita&status=pago")}
-              className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel text-left transition-all hover:border-ok/40 group"
-              style={{ animationDelay: "0ms" }}
-            >
-              <div className="flex items-center justify-between text-mudo">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-ok" />
-                  <span className="text-xs font-medium uppercase tracking-wider">Receita</span>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="mt-2 font-display text-2xl font-bold text-ok">{dinheiro(receitas)}</p>
-              <p className="mt-1 text-xs text-mudo">receitas pagas</p>
-            </button>
-
-            <button
-              onClick={() => nav("/financeiro?tipo=despesa&status=pago")}
-              className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel text-left transition-all hover:border-erro/40 group"
-              style={{ animationDelay: "40ms" }}
-            >
-              <div className="flex items-center justify-between text-mudo">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-erro" />
-                  <span className="text-xs font-medium uppercase tracking-wider">Despesas</span>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="mt-2 font-display text-2xl font-bold text-erro">{dinheiro(despesas)}</p>
-              <p className="mt-1 text-xs text-mudo">despesas pagas</p>
-            </button>
-
-            <div
-              className="animar-surgir rounded-lg border bg-painel p-4 shadow-painel"
-              style={{
-                animationDelay: "80ms",
-                borderColor: lucro >= 0 ? "rgb(var(--color-ouro) / 0.25)" : "rgb(var(--color-erro) / 0.25)",
-              }}
-            >
-              <div className="flex items-center gap-2 text-mudo">
-                <Scale className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Resultado</span>
-              </div>
-              <p className={`mt-2 font-display text-2xl font-bold ${lucro >= 0 ? "text-ouro" : "text-erro"}`}>
-                {dinheiro(lucro)}
-              </p>
-              <p className="mt-1 text-xs text-mudo">{lucro >= 0 ? "lucro estimado" : "prejuízo estimado"}</p>
-            </div>
-
-            <div
-              className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel"
-              style={{ animationDelay: "120ms" }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-mudo">
-                  <CalendarClock className="h-4 w-4" />
-                  <span className="text-xs font-medium uppercase tracking-wider">A vencer</span>
-                </div>
-                <SeletorAvencer valor={avencer} onChange={setAvencer} />
-              </div>
-              <p className="mt-2 font-display text-2xl font-bold text-texto">
-                {dinheiro(financeiro.a_vencer.total)}
-              </p>
-              <p className="mt-1 text-xs text-mudo">
-                {financeiro.a_vencer.quantidade} lançamento(s) · {avencer}d
-              </p>
-            </div>
+          <div className="animar-cascata grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Kpi
+              rotulo="Receita"
+              valor={dinheiro(receitas)}
+              icone={TrendingUp}
+              tom="ok"
+              detalhe="receitas pagas"
+              para="/financeiro?tipo=receita&status=pago"
+            />
+            <Kpi
+              rotulo="Despesas"
+              valor={dinheiro(despesas)}
+              icone={TrendingDown}
+              tom="erro"
+              detalhe="despesas pagas"
+              para="/financeiro?tipo=despesa&status=pago"
+            />
+            <Kpi
+              rotulo="Resultado"
+              valor={dinheiro(lucro)}
+              icone={Scale}
+              tom={lucro >= 0 ? "ouro" : "erro"}
+              detalhe={lucro >= 0 ? "lucro estimado" : "prejuízo estimado"}
+              className={lucro >= 0 ? "border-ouro/25" : "border-erro/25"}
+            />
+            <Kpi
+              rotulo="A vencer"
+              valor={dinheiro(financeiro.a_vencer.total)}
+              icone={CalendarClock}
+              detalhe={`${financeiro.a_vencer.quantidade} lançamento(s) · ${avencer}d`}
+              acao={
+                <Segmentado
+                  opcoes={([7, 15, 30] as Avencer[]).map((d) => ({ id: String(d), rotulo: `${d}d` }))}
+                  valor={String(avencer)}
+                  aoTrocar={(v) => setAvencer(Number(v) as Avencer)}
+                />
+              }
+            />
           </div>
         )}
       </div>
 
       {/* ── Frota ── */}
       {data.patrimonio && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <button
-            onClick={() => nav("/ativos?aba=relatorio")}
-            className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel text-left transition-all hover:border-ouro/40 group"
-          >
-            <div className="flex items-center justify-between gap-2 text-mudo">
-              <div className="flex items-center gap-2">
-                <CarFront className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Patrimônio</span>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <p className="mt-2 font-display text-2xl font-bold text-ouro">{data.patrimonio.total}</p>
-            <p className="mt-1 text-xs text-mudo">{dinheiro(data.patrimonio.valor_patrimonial)} em ativos (FIPE)</p>
-            <p className="mt-1 text-xs text-mudo">Ver relatório →</p>
-          </button>
-
-          <button
-            onClick={() => nav("/ativos?status=disponivel")}
-            className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel text-left transition-all hover:border-ok/40 group"
-          >
-            <div className="flex items-center justify-between gap-2 text-mudo">
-              <div className="flex items-center gap-2">
-                <CarFront className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Disponíveis</span>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <p className="mt-2 font-display text-2xl font-bold text-ok">{data.patrimonio.disponiveis}</p>
-            <p className="mt-1 text-xs text-mudo">Ver ativos →</p>
-          </button>
-
-          <button
-            onClick={() => nav("/operacoes?status=ativa")}
-            className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel text-left transition-all hover:border-info/40 group"
-          >
-            <div className="flex items-center justify-between gap-2 text-mudo">
-              <div className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Em Operação</span>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <p className="mt-2 font-display text-2xl font-bold text-texto">{data.patrimonio.em_operacao}</p>
-            <p className="mt-1 text-xs text-mudo">Ver operações →</p>
-          </button>
-
-          <button
-            onClick={() => nav("/ativos?status=em_manutencao")}
-            className={
-              `animar-surgir rounded-lg border bg-painel p-4 shadow-painel text-left ` +
-              `transition-all hover:border-alerta/40 group ` +
-              (data.patrimonio.em_manutencao > 0 ? "border-alerta/20" : "border-borda")
-            }
-          >
-            <div className="flex items-center justify-between gap-2 text-mudo">
-              <div className="flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Manutenção</span>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <p className={`mt-2 font-display text-2xl font-bold ${data.patrimonio.em_manutencao > 0 ? "text-alerta" : "text-texto"}`}>
-              {data.patrimonio.em_manutencao}
-            </p>
-            <p className="mt-1 text-xs text-mudo">Ver ativos →</p>
-          </button>
+        <div className="animar-cascata grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Kpi
+            rotulo="Patrimônio"
+            valor={data.patrimonio.total}
+            icone={CarFront}
+            tom="ouro"
+            detalhe={`${dinheiro(data.patrimonio.valor_patrimonial)} em ativos (FIPE)`}
+            para="/ativos?aba=relatorio"
+          />
+          <Kpi
+            rotulo="Disponíveis"
+            valor={data.patrimonio.disponiveis}
+            icone={CarFront}
+            tom="ok"
+            detalhe="prontos para operar"
+            para="/ativos?status=disponivel"
+          />
+          <Kpi
+            rotulo="Em Operação"
+            valor={data.patrimonio.em_operacao}
+            icone={KeyRound}
+            detalhe="alugados ou em uso"
+            para="/operacoes?status=ativa"
+          />
+          <Kpi
+            rotulo="Manutenção"
+            valor={data.patrimonio.em_manutencao}
+            icone={Wrench}
+            tom={data.patrimonio.em_manutencao > 0 ? "alerta" : "neutro"}
+            detalhe="na oficina agora"
+            para="/ativos?status=em_manutencao"
+            className={data.patrimonio.em_manutencao > 0 ? "border-alerta/20" : ""}
+          />
         </div>
       )}
 

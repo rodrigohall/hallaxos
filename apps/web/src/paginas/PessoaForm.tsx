@@ -166,7 +166,7 @@ export function PessoaForm() {
               type="checkbox"
               checked={ehOficina}
               onChange={(e) => setEhOficina(e.target.checked)}
-              className="h-4 w-4 rounded border-borda accent-ouro"
+              className="h-4 w-4 rounded border-borda-forte accent-ouro"
             />
             <span>É oficina <span className="text-mudo">— aparece na busca de oficinas das manutenções</span></span>
           </label>

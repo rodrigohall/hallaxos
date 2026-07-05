@@ -33,7 +33,7 @@ export function ProvedorToast({ children }: { children: ReactNode }) {
           return (
             <div
               key={t.id}
-              className="animar-deslizar pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-borda bg-elevado p-3.5 shadow-flutuante"
+              className="animar-deslizar vidro pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-borda-forte p-3.5 shadow-flutuante"
             >
               <Icone className={`mt-0.5 h-4 w-4 shrink-0 ${CORES[t.tipo]}`} />
               <div className="min-w-0">

@@ -14,8 +14,8 @@ import type { LucideIcon } from "lucide-react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
-  Botao, Card, Chip, Modal, Campo, Entrada, AreaTexto, Selecao,
-  useToast, SkeletonLinhas,
+  Botao, BotaoIcone, Caixa, Card, Campo, CampoMarcado, Entrada, AreaTexto,
+  Modal, Segmentado, Selecao, useToast, SkeletonLinhas,
 } from "../componentes/ui";
 
 interface ItemAgenda {
@@ -26,13 +26,13 @@ interface ItemAgenda {
 interface Conta { id: string; nome: string }
 interface Categoria { id: string; nome: string; tipo: string }
 
-const PADRAO = { icone: CalendarClock, cor: "text-suave", fundo: "bg-suave/10" };
-const ESTILO: Record<string, { icone: LucideIcon; cor: string; fundo: string }> = {
-  devolucao:   { icone: Truck,              cor: "text-info",   fundo: "bg-info/10" },
-  manutencao:  { icone: Wrench,             cor: "text-alerta", fundo: "bg-alerta/10" },
-  vencimento:  { icone: CircleDollarSign,   cor: "text-ouro",   fundo: "bg-ouro/10" },
-  cnh:         { icone: IdCard,             cor: "text-erro",   fundo: "bg-erro/10" },
-  documento:   { icone: FileText,           cor: "text-erro",   fundo: "bg-erro/10" },
+const PADRAO = { icone: CalendarClock, cor: "text-suave", fundo: "bg-elevado", anel: "ring-borda" };
+const ESTILO: Record<string, { icone: LucideIcon; cor: string; fundo: string; anel: string }> = {
+  devolucao:   { icone: Truck,              cor: "text-info",   fundo: "bg-info/10",   anel: "ring-info/20" },
+  manutencao:  { icone: Wrench,             cor: "text-alerta", fundo: "bg-alerta/10", anel: "ring-alerta/20" },
+  vencimento:  { icone: CircleDollarSign,   cor: "text-ouro",   fundo: "bg-ouro/10",   anel: "ring-ouro/25" },
+  cnh:         { icone: IdCard,             cor: "text-erro",   fundo: "bg-erro/10",   anel: "ring-erro/20" },
+  documento:   { icone: FileText,           cor: "text-erro",   fundo: "bg-erro/10",   anel: "ring-erro/20" },
   compromisso: PADRAO,
 };
 
@@ -171,36 +171,23 @@ export function Agenda() {
       </div>
 
       {/* Controles: período + navegação mês */}
-      <Card className="p-3">
+      <Card>
         <div className="flex flex-wrap items-center gap-3">
           {/* Seletor de período */}
-          <div className="flex items-center gap-1">
-            {PERIODOS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setPeriodo(p.id)}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors
-                  ${periodo === p.id
-                    ? "bg-ouro text-navy font-bold"
-                    : "text-suave hover:bg-elevado hover:text-primario"}`}
-              >
-                {p.rotulo}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            opcoes={PERIODOS.map((p) => ({ id: p.id, rotulo: p.rotulo }))}
+            valor={periodo}
+            aoTrocar={setPeriodo}
+          />
 
           {/* Navegação de mês (só no modo "mês") */}
           {mostrarNavMes && (
             <div className="flex items-center gap-1 ml-auto">
-              <button onClick={() => mudarMes(-1)} className="rounded p-1.5 text-suave hover:bg-elevado" aria-label="Mês anterior">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+              <BotaoIcone rotulo="Mês anterior" icone={ChevronLeft} tamanho="sm" onClick={() => mudarMes(-1)} />
               <span className="min-w-32 text-center text-sm font-medium capitalize">
                 {NOMES_MES[refMes.getMonth()]} {refMes.getFullYear()}
               </span>
-              <button onClick={() => mudarMes(1)} className="rounded p-1.5 text-suave hover:bg-elevado" aria-label="Próximo mês">
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <BotaoIcone rotulo="Próximo mês" icone={ChevronRight} tamanho="sm" onClick={() => mudarMes(1)} />
             </div>
           )}
         </div>
@@ -217,10 +204,10 @@ export function Agenda() {
               <button
                 key={t.id}
                 onClick={() => alternarTipo(t.id)}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition-colors duration-150
                   ${ativo
-                    ? `${est.fundo} ${est.cor}`
-                    : "bg-fundo text-mudo opacity-50"}`}
+                    ? `${est.fundo} ${est.cor} ${est.anel}`
+                    : "bg-fundo text-mudo ring-borda opacity-60 hover:opacity-100"}`}
               >
                 <est.icone className="h-3 w-3" />
                 {t.rotulo}
@@ -230,21 +217,18 @@ export function Agenda() {
           {/* "Só os meus" — filtra operações e compromissos pelo usuário logado */}
           <button
             onClick={() => setSoMeus((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ml-2
+            className={`ml-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition-colors duration-150
               ${soMeus
-                ? "bg-info/20 text-info"
-                : "text-suave hover:bg-elevado hover:text-primario"}`}
+                ? "bg-info/10 text-info ring-info/20"
+                : "bg-elevado text-suave ring-borda hover:text-texto hover:ring-borda-forte"}`}
           >
             <UserCheck className="h-3 w-3" />
             Só os meus
           </button>
           {tiposAtivos.size > 0 && (
-            <button
-              onClick={() => setTiposAtivos(new Set())}
-              className="rounded-full px-2.5 py-1 text-xs text-suave hover:text-primario underline"
-            >
+            <Botao variante="link" tamanho="xs" onClick={() => setTiposAtivos(new Set())}>
               limpar
-            </button>
+            </Botao>
           )}
         </div>
       </Card>
@@ -253,7 +237,7 @@ export function Agenda() {
       {isLoading ? (
         <SkeletonLinhas linhas={6} />
       ) : (
-        <Card className="overflow-hidden p-0">
+        <section className="animar-surgir superficie overflow-hidden rounded-lg border border-borda shadow-painel">
           <div className="grid grid-cols-7 gap-px text-center text-[11px] font-semibold uppercase tracking-wider text-mudo border-b border-borda">
             {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
               <div key={d} className="py-2">{d}</div>
@@ -287,18 +271,18 @@ export function Agenda() {
                       return <ItemDia key={i} item={it} icone={est.icone} cor={est.cor} />;
                     })}
                     {itens.length > 3 && (
-                      <p className="text-[10px] text-mudo pl-1">+{itens.length - 3} mais</p>
+                      <p className="pl-1 text-[11px] text-mudo">+{itens.length - 3} mais</p>
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
-        </Card>
+        </section>
       )}
 
       {/* Legenda rápida */}
-      <div className="flex flex-wrap gap-3 text-[11px] text-suave">
+      <div className="flex flex-wrap gap-3 text-xs text-suave">
         {TIPOS_FILTRO.map((t) => {
           const est = ESTILO[t.id] ?? PADRAO;
           return (
@@ -436,36 +420,25 @@ function ModalNovo({ dia, aoFechar }: { dia: string | null; aoFechar: () => void
         </Campo>
 
         {/* Toggle: gerar lançamento financeiro */}
-        <div className="rounded-lg border border-borda bg-fundo p-3 space-y-3">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={gerarLanc}
-              onChange={(e) => setGerarLanc(e.target.checked)}
-              className="h-4 w-4 rounded border-borda accent-ouro"
-            />
-            <span className="flex items-center gap-1.5 text-sm font-medium">
+        <Caixa className="space-y-3">
+          <CampoMarcado marcado={gerarLanc} aoTrocar={setGerarLanc}>
+            <span className="flex items-center gap-1.5 font-medium">
               <ReceiptText className="h-4 w-4 text-suave" />
               Gerar lançamento financeiro junto
             </span>
-          </label>
+          </CampoMarcado>
 
           {gerarLanc && (
             <div className="space-y-3 pt-1">
-              <div className="flex gap-2">
-                {(["receita", "despesa"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => { setTipoLanc(t); setCatId(""); }}
-                    className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors
-                      ${tipoLanc === t
-                        ? t === "receita" ? "bg-ok/20 text-ok" : "bg-erro/20 text-erro"
-                        : "bg-fundo text-suave hover:bg-elevado"}`}
-                  >
-                    {t === "receita" ? "Receita" : "Despesa"}
-                  </button>
-                ))}
-              </div>
+              <Segmentado
+                tamanho="md"
+                opcoes={[
+                  { id: "receita" as const, rotulo: "Receita", tom: "ok" as const },
+                  { id: "despesa" as const, rotulo: "Despesa", tom: "erro" as const },
+                ]}
+                valor={tipoLanc}
+                aoTrocar={(t) => { setTipoLanc(t); setCatId(""); }}
+              />
               <Campo rotulo="Descrição do lançamento">
                 <Entrada value={descLanc} onChange={(e) => setDescLanc(e.target.value)} placeholder={titulo || "Ex.: Conserto de pneu"} />
               </Campo>
@@ -491,7 +464,7 @@ function ModalNovo({ dia, aoFechar }: { dia: string | null; aoFechar: () => void
               </Campo>
             </div>
           )}
-        </div>
+        </Caixa>
 
         <div className="flex justify-end gap-2">
           <Botao variante="fantasma" onClick={aoFechar}>Cancelar</Botao>

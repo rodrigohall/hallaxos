@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, Wrench, CircleDollarSign, Play, CheckCircle2, XCircle, Pencil, CheckCircle, ChevronDown } from "lucide-react";
+import { History, Wrench, CircleDollarSign, Play, CheckCircle2, XCircle, Pencil, CheckCircle } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { SeletorTipoManutencao } from "./Manutencoes";
 import { useAuth } from "../auth";
 import {
-  Botao, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto, Timeline, useToast,
+  Botao, BotaoIcone, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto,
+  Timeline, VerMais, useToast,
   dinheiro, dataCurta, dataHora, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   type EventoTimeline,
 } from "../componentes/ui";
@@ -175,15 +176,15 @@ export function ManutencaoDetalhe() {
       </div>
 
       {podeTransicionar && m.proximasTransicoes.length > 0 && (
-        <div className="flex flex-wrap gap-3 rounded-lg border border-borda bg-painel p-3">
+        <div className="animar-surgir superficie flex flex-wrap gap-2 rounded-lg border border-borda p-3 shadow-painel">
           {m.proximasTransicoes.includes("em_andamento") && (
-            <Botao onClick={iniciar} className="flex-1 justify-center">
-              <Play className="h-4 w-4" /> Iniciar manutenção
+            <Botao tamanho="sm" onClick={iniciar}>
+              <Play className="h-3.5 w-3.5" /> Iniciar manutenção
             </Botao>
           )}
           {m.proximasTransicoes.includes("concluida") && (
-            <Botao onClick={() => setAcao("concluir")} className="flex-1 justify-center">
-              <CheckCircle2 className="h-4 w-4" /> Concluir manutenção
+            <Botao tamanho="sm" onClick={() => setAcao("concluir")}>
+              <CheckCircle2 className="h-3.5 w-3.5" /> Concluir manutenção
             </Botao>
           )}
           {m.proximasTransicoes.includes("cancelada") && (
@@ -237,13 +238,13 @@ export function ManutencaoDetalhe() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-erro">− {dinheiro(l.valor)}</span>
                           {l.status === "previsto" && podeTransicionar && (
-                            <button
+                            <BotaoIcone
+                              rotulo="Registrar pagamento"
+                              icone={CheckCircle}
+                              tamanho="sm"
+                              tom="ok"
                               onClick={() => { setPagandoLanc({ id: l.id, descricao: l.descricao, valor: l.valor }); setPagData(hojeISO()); setPagForma(""); setPagConta(""); }}
-                              title="Registrar pagamento"
-                              className="text-mudo hover:text-ok transition-colors"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
+                            />
                           )}
                         </div>
                       }
@@ -251,13 +252,11 @@ export function ManutencaoDetalhe() {
                   ))}
                 </Lista>
                 {m.lancamentos.length > LIMITE_LISTA && (
-                  <button
-                    onClick={() => setVerMaisLanc((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
-                    {verMaisLanc ? "Ver menos" : `Ver mais ${m.lancamentos.length - LIMITE_LISTA}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisLanc}
+                    aoAlternar={() => setVerMaisLanc((v) => !v)}
+                    rotulo={`Ver mais ${m.lancamentos.length - LIMITE_LISTA}`}
+                  />
                 )}
               </>
             )}

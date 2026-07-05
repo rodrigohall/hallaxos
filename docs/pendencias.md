@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 14 — Usabilidade e
-> Interligação — 2026-07-05, conferida contra o código.
+> assumida — não esquecimento. Última revisão: Sprint 15 — Repaginada
+> Visual — 2026-07-05, conferida contra o código.
 
 ## Estado atual — o que está em produção
 
@@ -35,13 +35,14 @@
 | Operação: linkar ativo (vínculo duplo), financeiro clicável/pré-vinculado, cancelar admin c/ estorno | ✅ Sprint 14 |
 | Ativo: KPIs clicáveis, chip preço de compra, atalhos nova operação/manutenção, histórico clicável | ✅ Sprint 14 |
 | Dashboard financeiro: período customizado (de/até); Financeiro lê filtros da URL (deep-links) | ✅ Sprint 14 |
+| Repaginada visual: direção de arte "cockpit noturno", kit ganha Abas/Segmentado/Caixa/BotaoIcone/VerMais/CampoMarcado, tudo convergido pro kit, bugs visuais corrigidos | ✅ Sprint 15 |
 
 ## Pendências em aberto
 
 ### Funcional
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| Componente `<Abas>` unificado com URL-sync | Sprint 13 planejado — dois estilos convivendo (sublinhado em Ativos × pílula em Relatórios), deep-link quebrado em Relatórios | Próximo sprint |
+| URL-sync das abas de Relatórios (`?aba=`) | Visual resolvido no Sprint 15 (`<Abas>` único no kit, usado em Ativos e Relatórios); falta só o deep-link de Relatórios ler/escrever a URL | Próximo sprint |
 | Sidebar em seções (Operação / Financeiro / Sistema) | Sprint 13 planejado — 11 itens planos sem hierarquia, "Dashboard" e "Dashboard $" colados | Próximo sprint |
 | Hub financeiro com abas internas (`/financeiro?aba=lancamentos\|painel\|planilha`) | Sprint 13 planejado — três destinos de topo para "ver dinheiro" que o usuário precisa memorizar | Próximo sprint |
 | Copiloto Fase 3: ações de escrita guardrailadas (criar operação, fechar manutenção) | Fase 1 (leitura) + Fase 2 (propor lançamento) entregues | Sprint futuro |

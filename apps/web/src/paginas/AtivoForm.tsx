@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Link2 } from "lucide-react";
+import { Plus, Link2, X } from "lucide-react";
 import { COMBUSTIVEIS } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { Botao, Campo, Card, Entrada, Selecao, useToast } from "../componentes/ui";
@@ -180,7 +180,7 @@ export function AtivoForm() {
                   autoFocus
                 />
                 <Botao type="button" tamanho="md" onClick={criarCategoria}>Criar</Botao>
-                <Botao type="button" variante="fantasma" onClick={() => setNovaCategoria(null)}>✕</Botao>
+                <Botao type="button" variante="fantasma" onClick={() => setNovaCategoria(null)}><X className="h-4 w-4" /></Botao>
               </div>
             )}
           </Campo>

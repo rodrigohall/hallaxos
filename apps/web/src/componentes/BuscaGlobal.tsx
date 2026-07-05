@@ -118,7 +118,7 @@ export function BuscaGlobal() {
       >
         <Search className="h-3.5 w-3.5" />
         <span className="flex-1 text-left">Buscar qualquer coisa…</span>
-        <kbd className="hidden rounded border border-borda bg-elevado px-1.5 py-0.5 text-[10px] font-medium sm:block">
+        <kbd className="hidden rounded border border-borda bg-elevado px-1.5 py-0.5 text-[11px] font-medium sm:block">
           ⌘K
         </kbd>
       </button>
@@ -186,7 +186,7 @@ export function BuscaGlobal() {
                 <span className="min-w-0 truncate">
                   Perguntar ao copiloto: <span className="text-texto">“{consulta}”</span>
                 </span>
-                <kbd className="ml-auto hidden rounded border border-borda bg-elevado px-1.5 py-0.5 text-[10px] sm:block">
+                <kbd className="ml-auto hidden rounded border border-borda bg-elevado px-1.5 py-0.5 text-[11px] sm:block">
                   ⌘↵
                 </kbd>
               </button>

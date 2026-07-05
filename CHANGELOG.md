@@ -1,5 +1,76 @@
 # Changelog
 
+## Sprint 15 — Repaginada Visual (2026-07-05)
+
+Reformulação 100% estética — zero mudança de comportamento, rota, dado ou
+API. Auditoria página a página encontrou os padrões de deriva visual
+(pills com 5+ estilos, KPIs com 4 tamanhos de número, badges artesanais,
+estados vazios copiados à mão) e tudo convergiu de volta para o kit `ui/`.
+
+### Direção de arte — "cockpit noturno"
+
+- **Fundo ambiente**: dois brilhos radiais quase subliminares (navy no
+  horizonte, calor de ouro no canto oposto), fixos no scroll.
+- **Profundidade em camadas**: sombras contato+ambiente; utilitário
+  `superficie` (painel com luz de cima) em todos os cards; `vidro`
+  (blur + saturação) na topbar, bottom nav, modais, dropdowns e toasts.
+- **Ouro como luz**: CTA primário com gradiente dourado + glow no hover;
+  relógio-herói do dashboard com gradiente `texto-ouro-vivo`; press
+  físico (`active:scale`) em todos os botões.
+- **Movimento coreografado**: grades de KPI e listas entram em cascata
+  escalonada (45ms/item); skeleton com varredura de luz (`cintilar`) no
+  lugar do pulse; sublinhado de aba cresce da esquerda (`riscar`);
+  cards clicáveis com lift de 1px no hover (`elevar`). Tudo respeita
+  `prefers-reduced-motion`.
+
+### Kit `ui/` — componentes novos (matam os estilos paralelos)
+
+- **`<Abas>`** — aba de página única (sublinhado dourado animado) e
+  **`<Segmentado>`** — toggle compacto único: substituem os ~7 estilos
+  de pill/tab que conviviam (Dashboard, Dashboard $, Relatórios, Agenda,
+  Financeiro, Patrimônio, Ativos).
+- **`<Caixa>`** — painel de destaque com tons neutro/info/ok/alerta/
+  erro/ouro: unifica avisos, validações, banners de deep-link e caixas
+  de seção que tinham 6 combinações de raio/fundo.
+- **`<BotaoIcone>`**, **`<Botao variante="link">`** e tamanho `xs`:
+  fim dos icon-buttons e links `hover:underline` crus.
+- **`<VerMais>`** (expansor com chevron) e **`<CampoMarcado>`**
+  (checkbox padronizado — bordas divergiam entre telas).
+- **`<Kpi>`** aceita `para` (vira link com lift + chevron), `acao` e
+  `atraso`; **`Entrada`/`Selecao`** ganham `tamanho="sm"` real e
+  `color-scheme: dark` (date-picker nativo deixa de renderizar claro).
+- Consertos no próprio kit: rings da Timeline alinhados ao Selo, raio do
+  Modal de volta à escala, PlanilhaGrade com cabeçalho unificado.
+
+### Correções de bugs visuais reais
+
+- `text-primario`/`hover:text-primario` referenciavam token inexistente
+  (Agenda ×3, Dashboard $ ×2) — hovers estavam mortos.
+- `rgb(var(--color-ouro)/0.25)` era CSS inválido (tokens são hex) — a
+  borda condicional do card Resultado nunca renderizava.
+- `text-white` e `#5c6b86` hardcoded → tokens.
+
+### Página a página
+
+- **Dashboard/Dashboard $**: 8 KPIs manuais → `<Kpi>`; caixas por
+  conta/origem com anatomia e tamanhos unificados; skeletons espelham o
+  grid real; mapa de Dourados no padrão de card; mini-barras com tokens.
+- **Financeiro/Relatórios/Patrimônio/Auditoria**: tabelas e selects no
+  kit; CSV vira `<Botao>`; KPIs do patrimônio simétricos; mapa de cores
+  paralelo da Auditoria morre em favor do `<Selo>` central.
+- **Operações**: `SeletorTipoOperacao` — a MESMA peça no filtro da
+  lista e no passo 1 da criação (eram dois layouts); pendências de
+  validação, diária sugerida e retroativo em `<Caixa>`; transições com
+  a mesma moldura nas duas telas de detalhe.
+- **Manutenções/Agenda**: kanban com cards canônicos e 3 estilos de
+  vazio unificados; calendário com molduras/pills coerentes.
+- **Fichas 360°**: Pessoa adota a MESMA grade de `<Kpi>` do Ativo (os
+  tiles pequenos sem borda morrem); vazios, "ver mais" e tons de selo
+  idênticos nas duas fichas; abas de Ativos viram `<Abas>`.
+- **Shell**: topbar/navs em vidro; bottom nav com o mesmo vocabulário de
+  ativo da sidebar; lightbox de anexos na linguagem dos modais; Login
+  usa o `<Wordmark>` oficial.
+
 ## Sprint 14 — Usabilidade e Interligação (2026-07-05)
 
 Sessão dupla: Fase 0 organizou o repositório (main como branch oficial,

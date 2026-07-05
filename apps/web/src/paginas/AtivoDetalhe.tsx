@@ -12,7 +12,7 @@ import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
   Botao, Card, Kpi, Selo, Modal, Timeline, useToast, dinheiro, dataCurta,
-  SkeletonLinhas, EstadoVazio, Lista, ListaLinha, type EventoTimeline,
+  SkeletonLinhas, EstadoVazio, Lista, ListaLinha, VerMais, type EventoTimeline,
 } from "../componentes/ui";
 import { Galeria, Documentos } from "../componentes/Anexos";
 import { Comentarios } from "../componentes/Comentarios";
@@ -135,21 +135,23 @@ export function AtivoDetalhe() {
         <h1 className="font-display text-lg font-bold">{ativo.nome}</h1>
         <span className="font-display text-sm font-bold text-ouro">{ativo.codigo}</span>
         <Selo tom={ativo.status}>{ROTULOS[ativo.status] ?? ativo.status}</Selo>
-        {ativo.deletedAt && <Selo tom="erro">arquivado</Selo>}
+        {ativo.deletedAt && <Selo>arquivado</Selo>}
         {/* Sprint 14 · E2 — preço de compra em destaque discreto; clica → operação de compra */}
         {ativo.precoCompra && Number(ativo.precoCompra) > 0 && (
           ativo.operacaoCompraId ? (
             <Link
               to={`/operacoes/${ativo.operacaoCompraId}`}
-              className="inline-flex items-center gap-1 rounded-full border border-ouro/40 bg-ouro/5 px-2.5 py-0.5 text-xs font-medium text-ouro hover:bg-ouro/10"
+              className="transition-colors hover:opacity-90"
               title="Ver a operação de compra"
             >
-              <ShoppingCart className="h-3 w-3" /> Comprado por {dinheiro(ativo.precoCompra)}
+              <Selo tom="ouro">
+                <ShoppingCart className="mr-1 h-3 w-3" /> Comprado por {dinheiro(ativo.precoCompra)}
+              </Selo>
             </Link>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-borda px-2.5 py-0.5 text-xs font-medium text-suave">
-              <ShoppingCart className="h-3 w-3" /> Comprado por {dinheiro(ativo.precoCompra)}
-            </span>
+            <Selo>
+              <ShoppingCart className="mr-1 h-3 w-3" /> Comprado por {dinheiro(ativo.precoCompra)}
+            </Selo>
           )
         )}
         <div className="ml-auto flex gap-2">
@@ -181,15 +183,11 @@ export function AtivoDetalhe() {
       <TagsFavoritos entidadeTipo="ativo" entidadeId={ativo.id} />
 
       {/* ── KPIs financeiros ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="animar-cascata grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* Sprint 14 · E1: KPIs viram portas de entrada — clique abre a lista
             completa das receitas/custos do ativo no Financeiro */}
-        <Link to={`/financeiro?ativo_id=${ativo.id}&tipo=receita`} className="block rounded-lg transition-transform hover:-translate-y-0.5" title="Ver todas as receitas deste ativo">
-          <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" detalhe="clique para ver a lista" />
-        </Link>
-        <Link to={`/financeiro?ativo_id=${ativo.id}&tipo=despesa`} className="block rounded-lg transition-transform hover:-translate-y-0.5" title="Ver todos os custos deste ativo">
-          <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" detalhe="clique para ver a lista" />
-        </Link>
+        <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" detalhe="clique para ver a lista" para={`/financeiro?ativo_id=${ativo.id}&tipo=receita`} />
+        <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" detalhe="clique para ver a lista" para={`/financeiro?ativo_id=${ativo.id}&tipo=despesa`} />
         <Kpi
           rotulo="Lucro líquido"
           valor={dinheiro(fin.lucro)}
@@ -207,24 +205,17 @@ export function AtivoDetalhe() {
           />
         ) : (
           /* Antes da venda: Lucro Presumido = (95% FIPE + receita) − custos (decisão #59) */
-          <div className="animar-surgir rounded-lg border border-borda bg-painel p-4 shadow-painel">
-            <div className="flex items-center gap-2 text-mudo">
-              <Tag className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Lucro Presumido Venda</span>
-            </div>
-            {fin.lucroPresumido !== null ? (
-              <>
-                <p className={`mt-2 font-display text-2xl font-bold ${fin.lucroPresumido >= 0 ? "text-ouro" : "text-erro"}`}>
-                  {dinheiro(fin.lucroPresumido)}
-                </p>
-                <p className="mt-1 text-xs text-mudo">
-                  95% da FIPE ({dinheiro(fin.precoVendaEstimado ?? 0)}) + receita − custos
-                </p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm text-mudo">Informe o valor FIPE para calcular.</p>
-            )}
-          </div>
+          fin.lucroPresumido !== null ? (
+            <Kpi
+              rotulo="Lucro Presumido Venda"
+              valor={dinheiro(fin.lucroPresumido)}
+              icone={Tag}
+              tom={fin.lucroPresumido >= 0 ? "ouro" : "erro"}
+              detalhe={`95% da FIPE (${dinheiro(fin.precoVendaEstimado ?? 0)}) + receita − custos`}
+            />
+          ) : (
+            <Kpi rotulo="Lucro Presumido Venda" valor="—" icone={Tag} detalhe="Informe o valor FIPE para calcular." />
+          )
         )}
       </div>
 
@@ -288,15 +279,11 @@ export function AtivoDetalhe() {
               <>
                 <Timeline eventos={eventosVisiveis} />
                 {(eventos ?? []).length > LIMITE_HISTORICO && (
-                  <button
-                    onClick={() => setVerMaisTimeline((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisTimeline ? "rotate-180" : ""}`} />
-                    {verMaisTimeline
-                      ? "Ver menos"
-                      : `Ver mais ${(eventos ?? []).length - LIMITE_HISTORICO} evento(s)`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisTimeline}
+                    aoAlternar={() => setVerMaisTimeline((v) => !v)}
+                    rotulo={`Ver mais ${(eventos ?? []).length - LIMITE_HISTORICO} evento(s)`}
+                  />
                 )}
               </>
             )}
@@ -336,13 +323,11 @@ export function AtivoDetalhe() {
                   ))}
                 </Lista>
                 {ativo.operacoes.length > LIMITE_HISTORICO && (
-                  <button
-                    onClick={() => setVerMaisOps((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisOps ? "rotate-180" : ""}`} />
-                    {verMaisOps ? "Ver menos" : `Ver mais ${ativo.operacoes.length - LIMITE_HISTORICO}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisOps}
+                    aoAlternar={() => setVerMaisOps((v) => !v)}
+                    rotulo={`Ver mais ${ativo.operacoes.length - LIMITE_HISTORICO}`}
+                  />
                 )}
               </>
             )}
@@ -385,13 +370,11 @@ export function AtivoDetalhe() {
                   ))}
                 </Lista>
                 {ativo.manutencoes.length > LIMITE_HISTORICO && (
-                  <button
-                    onClick={() => setVerMaisManut((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisManut ? "rotate-180" : ""}`} />
-                    {verMaisManut ? "Ver menos" : `Ver mais ${ativo.manutencoes.length - LIMITE_HISTORICO}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisManut}
+                    aoAlternar={() => setVerMaisManut((v) => !v)}
+                    rotulo={`Ver mais ${ativo.manutencoes.length - LIMITE_HISTORICO}`}
+                  />
                 )}
               </>
             )}
@@ -414,20 +397,14 @@ export function AtivoDetalhe() {
                             {l.descricao}
                           </Link>
                           {l.origem === "direto" ? (
-                            <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">custo direto</span>
+                            <Selo>custo direto</Selo>
                           ) : l.origem === "operacao" && l.operacaoId ? (
-                            <Link
-                              to={`/operacoes/${l.operacaoId}`}
-                              className="rounded-full border border-borda px-1.5 py-px text-[10px] text-suave hover:border-ouro/60 hover:text-ouro-claro"
-                            >
-                              {l.operacaoCodigo ?? "operação"}
+                            <Link to={`/operacoes/${l.operacaoId}`} className="transition-colors hover:text-ouro">
+                              <Selo>{l.operacaoCodigo ?? "operação"}</Selo>
                             </Link>
                           ) : l.origem === "manutencao" && l.manutencaoId ? (
-                            <Link
-                              to={`/manutencoes/${l.manutencaoId}`}
-                              className="rounded-full border border-borda px-1.5 py-px text-[10px] text-suave hover:border-ouro/60 hover:text-ouro-claro"
-                            >
-                              manutenção
+                            <Link to={`/manutencoes/${l.manutencaoId}`} className="transition-colors hover:text-ouro">
+                              <Selo>manutenção</Selo>
                             </Link>
                           ) : null}
                         </span>
@@ -446,13 +423,11 @@ export function AtivoDetalhe() {
                   ))}
                 </Lista>
                 {ativo.lancamentos.length > LIMITE_HISTORICO && (
-                  <button
-                    onClick={() => setVerMaisLanc((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
-                    {verMaisLanc ? "Ver menos" : `Ver mais ${ativo.lancamentos.length - LIMITE_HISTORICO}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisLanc}
+                    aoAlternar={() => setVerMaisLanc((v) => !v)}
+                    rotulo={`Ver mais ${ativo.lancamentos.length - LIMITE_HISTORICO}`}
+                  />
                 )}
               </>
             )}

@@ -83,7 +83,7 @@ export function Pessoas() {
                     (p.cidade ? ` · ${p.cidade}` : "")
                   }
                   direita={p.papeis.map((papel) => (
-                    <Selo key={papel}>{papel}</Selo>
+                    <Selo key={papel} tom="ouro">{papel}</Selo>
                   ))}
                 />
               ))}

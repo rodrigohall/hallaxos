@@ -12,7 +12,8 @@ import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import { useCopiloto } from "../componentes/Copiloto";
 import {
-  Botao, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto, Timeline, useToast,
+  Botao, BotaoIcone, Caixa, Card, Selo, Modal, Campo, Entrada, Selecao, AreaTexto,
+  Timeline, VerMais, useToast,
   dinheiro, dataCurta, dataHora, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   type EventoTimeline,
 } from "../componentes/ui";
@@ -61,21 +62,17 @@ function EnderecoGeo({ rotulo, endereco, link, lat, lng }: {
             <span className="break-words">{endereco}</span>
           )}
           {temCoords && (
-            <button
-              type="button"
-              onClick={() => setMapaAberto((v) => !v)}
-              className="ml-2 inline-flex items-center gap-0.5 rounded border border-borda px-1.5 py-px text-[11px] text-suave hover:border-ouro/60 hover:text-ouro"
-            >
+            <Botao variante="link" tamanho="xs" className="ml-2" onClick={() => setMapaAberto((v) => !v)}>
               {mapaAberto ? "fechar mapa" : "ver mapa"}
-            </button>
+            </Botao>
           )}
         </span>
       </div>
       {temCoords && mapaAberto && (
         <iframe
           title={`Mapa — ${rotulo}`}
-          className="mt-2 h-48 w-full rounded-md border border-borda"
-          style={{ filter: "invert(90%) hue-rotate(200deg)" }}
+          className="animar-surgir mt-2 h-48 w-full rounded-md border border-borda"
+          style={{ filter: "invert(90%) hue-rotate(200deg) saturate(0.6) brightness(0.85)" }}
           loading="lazy"
           src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng! - d}%2C${lat! - d}%2C${lng! + d}%2C${lat! + d}&layer=mapnik&marker=${lat}%2C${lng}`}
         />
@@ -307,9 +304,9 @@ export function OperacaoDetalhe() {
         </div>
       </div>
 
-      {/* Transições nomeadas */}
+      {/* Transições nomeadas — mesma moldura da barra do detalhe de manutenção */}
       {podeTransicionar && op.proximasTransicoes.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="animar-surgir superficie flex flex-wrap gap-2 rounded-lg border border-borda p-3 shadow-painel">
           {/* Sprint 14 · D3: cancelar operação é ação de admin */}
           {op.proximasTransicoes.filter((t) => t !== "cancelada" || usuario?.papel === "admin").map((t) => (
             <Botao
@@ -368,7 +365,14 @@ export function OperacaoDetalhe() {
                 <>
                   {ext.kmNoAto != null && <div><dt className="inline text-suave">Km no ato: </dt><dd className="inline">{String(ext.kmNoAto)}</dd></div>}
                   {ext.dataTransferencia != null && <div><dt className="inline text-suave">Transferência: </dt><dd className="inline">{dataCurta(String(ext.dataTransferencia))}</dd></div>}
-                  <div><dt className="inline text-suave">Documentação: </dt><dd className="inline">{String(ext.statusDocumentacao ?? "pendente")}</dd></div>
+                  <div>
+                    <dt className="inline text-suave">Documentação: </dt>
+                    <dd className="inline">
+                      <Selo tom={String(ext.statusDocumentacao ?? "pendente") === "pendente" ? "alerta" : "ok"}>
+                        {String(ext.statusDocumentacao ?? "pendente")}
+                      </Selo>
+                    </dd>
+                  </div>
                 </>
               )}
               {op.observacoes && <p className="pt-2 text-suave">{op.observacoes}</p>}
@@ -398,7 +402,7 @@ export function OperacaoDetalhe() {
                     <Link2 className="h-3.5 w-3.5" /> Linkar ativo
                   </Botao>
                 ) : (
-                  <div className="space-y-2 rounded-md border border-borda bg-elevado/40 p-3">
+                  <Caixa className="space-y-2">
                     <Seletor rotulo="Ativo a vincular" recurso="ativos" selecionado={ativoLink} aoSelecionar={setAtivoLink} />
                     <p className="text-xs text-mudo">
                       Os lançamentos desta operação sem ativo herdam o vínculo automaticamente.
@@ -409,7 +413,7 @@ export function OperacaoDetalhe() {
                         Vincular
                       </Botao>
                     </div>
-                  </div>
+                  </Caixa>
                 )}
               </div>
             )}
@@ -442,13 +446,13 @@ export function OperacaoDetalhe() {
                             {l.tipo === "receita" ? "+" : "−"} {dinheiro(l.valor)}
                           </span>
                           {l.status === "previsto" && podeTransicionar && (
-                            <button
+                            <BotaoIcone
+                              rotulo="Registrar pagamento"
+                              icone={CheckCircle}
+                              tamanho="sm"
+                              tom="ok"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPagandoLanc({ id: l.id, descricao: l.descricao, valor: l.valor }); setPagData(hojeISO()); setPagForma(""); setPagConta(""); }}
-                              title="Registrar pagamento"
-                              className="text-mudo hover:text-ok transition-colors"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
+                            />
                           )}
                         </div>
                       }
@@ -456,13 +460,11 @@ export function OperacaoDetalhe() {
                   ))}
                 </Lista>
                 {op.lancamentos.length > LIMITE_LISTA && (
-                  <button
-                    onClick={() => setVerMaisLanc((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-suave hover:text-ouro transition-colors"
-                  >
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${verMaisLanc ? "rotate-180" : ""}`} />
-                    {verMaisLanc ? "Ver menos" : `Ver mais ${op.lancamentos.length - LIMITE_LISTA}`}
-                  </button>
+                  <VerMais
+                    aberto={verMaisLanc}
+                    aoAlternar={() => setVerMaisLanc((v) => !v)}
+                    rotulo={`Ver mais ${op.lancamentos.length - LIMITE_LISTA}`}
+                  />
                 )}
               </>
             )}
@@ -504,7 +506,7 @@ export function OperacaoDetalhe() {
               </Campo>
             )}
             {geraLancamento && (
-              <div className="space-y-3 rounded-md border border-borda bg-elevado/40 p-3">
+              <Caixa className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[13px] font-medium text-suave">Lançamentos a gerar</span>
                   {previa && (
@@ -553,7 +555,7 @@ export function OperacaoDetalhe() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </Caixa>
             )}
             {transicao !== "cancelada" && (
               <Campo rotulo="Data do evento" dica="Opcional — retroativo (padrão: agora)">

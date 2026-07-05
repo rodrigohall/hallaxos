@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PAPEIS_USUARIO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
-import { Botao, Campo, Card, Entrada, Selecao, Selo, useToast } from "../componentes/ui";
+import { Botao, Campo, Card, Entrada, Lista, ListaLinha, Selecao, Selo, useToast } from "../componentes/ui";
 
 interface Usuario {
   id: string;
@@ -82,24 +82,25 @@ export function Usuarios() {
       )}
 
       <Card>
-        <ul className="divide-y divide-borda">
-          {data?.map((u) => (
-            <li key={u.id} className="flex items-center gap-3 py-3">
-              <div className="flex-1">
-                <p className="text-sm font-medium">
-                  {u.nome} {!u.ativo && <Selo>desativado</Selo>}
-                </p>
-                <p className="text-xs text-suave">{u.email}</p>
-              </div>
-              <Selo>{u.papel}</Selo>
-              {pode("usuarios", "editar") && u.id !== logado?.id && (
-                <Botao variante="secundario" onClick={() => alternarAtivo(u)}>
-                  {u.ativo ? "Desativar" : "Reativar"}
-                </Botao>
-              )}
-            </li>
+        <Lista>
+          {(data ?? []).map((u) => (
+            <ListaLinha
+              key={u.id}
+              titulo={<span className="flex items-center gap-2">{u.nome}{!u.ativo && <Selo tom="erro">desativado</Selo>}</span>}
+              subtitulo={u.email}
+              direita={
+                <>
+                  <Selo tom="ouro">{u.papel}</Selo>
+                  {pode("usuarios", "editar") && u.id !== logado?.id && (
+                    <Botao variante="secundario" tamanho="sm" onClick={() => alternarAtivo(u)}>
+                      {u.ativo ? "Desativar" : "Reativar"}
+                    </Botao>
+                  )}
+                </>
+              }
+            />
           ))}
-        </ul>
+        </Lista>
       </Card>
     </div>
   );

@@ -6,7 +6,7 @@ import { SearchX, RefreshCw } from "lucide-react";
 import { Botao } from "./Botao";
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-elevado ${className}`} />;
+  return <div className={`animar-cintilar rounded-md ${className}`} />;
 }
 
 export function SkeletonLinhas({ linhas = 3 }: { linhas?: number }) {
