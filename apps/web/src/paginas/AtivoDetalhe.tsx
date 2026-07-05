@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PencilLine, Archive, ArchiveRestore, History, TrendingUp, TrendingDown,
   Scale, CarFront, Workflow, Wrench, CircleDollarSign, ChevronDown, Tag,
-  CalendarDays, Percent, Sparkles,
+  CalendarDays, Percent, Sparkles, ShoppingCart, Plus,
 } from "lucide-react";
 import { useCopiloto } from "../componentes/Copiloto";
 import { api, ApiError } from "../api";
@@ -43,6 +43,9 @@ interface AtivoDetalheDados {
     precoVendaEstimado: number | null;
     lucroPresumido: number | null; // (FIPE×0.95 + receita) - custos, para não-vendidos
   };
+  // Sprint 14 · E2: derivado da operação de compra vinculada (fonte única)
+  precoCompra: string | null;
+  operacaoCompraId: string | null;
   operacoes: Array<{ id: string; codigo: string; tipo: string; status: string; valor_total: string; data_inicio: string; cliente: string }>;
   manutencoes: Array<{ id: string; tipo: string; status: string; descricao: string; data_agendada: string | null; fornecedor: string | null; custo: string }>;
   lancamentos: Array<{
@@ -133,6 +136,22 @@ export function AtivoDetalhe() {
         <span className="font-display text-sm font-bold text-ouro">{ativo.codigo}</span>
         <Selo tom={ativo.status}>{ROTULOS[ativo.status] ?? ativo.status}</Selo>
         {ativo.deletedAt && <Selo tom="erro">arquivado</Selo>}
+        {/* Sprint 14 · E2 — preço de compra em destaque discreto; clica → operação de compra */}
+        {ativo.precoCompra && Number(ativo.precoCompra) > 0 && (
+          ativo.operacaoCompraId ? (
+            <Link
+              to={`/operacoes/${ativo.operacaoCompraId}`}
+              className="inline-flex items-center gap-1 rounded-full border border-ouro/40 bg-ouro/5 px-2.5 py-0.5 text-xs font-medium text-ouro hover:bg-ouro/10"
+              title="Ver a operação de compra"
+            >
+              <ShoppingCart className="h-3 w-3" /> Comprado por {dinheiro(ativo.precoCompra)}
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-borda px-2.5 py-0.5 text-xs font-medium text-suave">
+              <ShoppingCart className="h-3 w-3" /> Comprado por {dinheiro(ativo.precoCompra)}
+            </span>
+          )
+        )}
         <div className="ml-auto flex gap-2">
           {copilotoAtivo && (
             <Botao tamanho="sm" variante="fantasma" onClick={() => abrirCopiloto(`Analise o ativo ${ativo.nome} (${ativo.codigo}): receita acumulada, custos, lucro atual, status e próximas manutenções previstas.`)}>
@@ -163,8 +182,14 @@ export function AtivoDetalhe() {
 
       {/* ── KPIs financeiros ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" />
-        <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" />
+        {/* Sprint 14 · E1: KPIs viram portas de entrada — clique abre a lista
+            completa das receitas/custos do ativo no Financeiro */}
+        <Link to={`/financeiro?ativo_id=${ativo.id}&tipo=receita`} className="block rounded-lg transition-transform hover:-translate-y-0.5" title="Ver todas as receitas deste ativo">
+          <Kpi rotulo="Receita acumulada" valor={dinheiro(fin.receita)} icone={TrendingUp} tom="ok" detalhe="clique para ver a lista" />
+        </Link>
+        <Link to={`/financeiro?ativo_id=${ativo.id}&tipo=despesa`} className="block rounded-lg transition-transform hover:-translate-y-0.5" title="Ver todos os custos deste ativo">
+          <Kpi rotulo="Custos acumulados" valor={dinheiro(fin.custos)} icone={TrendingDown} tom="erro" detalhe="clique para ver a lista" />
+        </Link>
         <Kpi
           rotulo="Lucro líquido"
           valor={dinheiro(fin.lucro)}
@@ -279,16 +304,19 @@ export function AtivoDetalhe() {
 
           {/* Operações */}
           <Card titulo="Operações" icone={Workflow}>
+            {/* Sprint 14 · E4: nova operação já com este ativo pré-selecionado */}
+            {pode("operacoes", "criar") && !ativo.deletedAt && (
+              <div className="mb-3">
+                <Botao tamanho="sm" variante="fantasma" onClick={() => navegar(`/operacoes/nova?ativo_id=${ativo.id}`)}>
+                  <Plus className="h-3.5 w-3.5" /> Nova operação
+                </Botao>
+              </div>
+            )}
             {ativo.operacoes.length === 0 ? (
               <EstadoVazio
                 icone={Workflow}
                 titulo="Nenhuma operação ainda"
                 descricao="Locações, guinchos e vendas deste ativo aparecem aqui."
-                acao={pode("operacoes", "criar") ? (
-                  <Botao tamanho="sm" variante="secundario" onClick={() => navegar("/operacoes/nova")}>
-                    Nova operação
-                  </Botao>
-                ) : undefined}
               />
             ) : (
               <>
@@ -322,6 +350,14 @@ export function AtivoDetalhe() {
 
           {/* Manutenções */}
           <Card titulo="Manutenções" icone={Wrench}>
+            {/* Sprint 14 · E3: nova manutenção já com este ativo pré-selecionado */}
+            {pode("manutencoes", "criar") && !ativo.deletedAt && (
+              <div className="mb-3">
+                <Botao tamanho="sm" variante="fantasma" onClick={() => navegar(`/manutencoes?nova=1&ativo_id=${ativo.id}`)}>
+                  <Plus className="h-3.5 w-3.5" /> Nova manutenção
+                </Botao>
+              </div>
+            )}
             {ativo.manutencoes.length === 0 ? (
               <EstadoVazio icone={Wrench} titulo="Nenhuma manutenção registrada" />
             ) : (
@@ -373,7 +409,10 @@ export function AtivoDetalhe() {
                       key={l.id}
                       titulo={
                         <span className="inline-flex items-center gap-1.5">
-                          {l.descricao}
+                          {/* Sprint 14 · E5: lançamento clicável → sua página no Financeiro */}
+                          <Link to={`/financeiro?lancamento=${l.id}`} className="hover:text-ouro">
+                            {l.descricao}
+                          </Link>
                           {l.origem === "direto" ? (
                             <span className="rounded-full border border-borda px-1.5 py-px text-[10px] text-mudo">custo direto</span>
                           ) : l.origem === "operacao" && l.operacaoId ? (

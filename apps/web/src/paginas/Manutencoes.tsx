@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Wrench, Clock, CalendarCheck, CheckCircle2 } from "lucide-react";
 import { STATUS_MANUTENCAO } from "@hallaxos/shared";
@@ -90,8 +90,23 @@ function CardManutencao({ m }: { m: ManutencaoLista }) {
 }
 
 export function Manutencoes() {
-  const [nova, setNova] = useState(false);
   const { pode } = useAuth();
+  // Sprint 14 · E3: ?nova=1&ativo_id=X abre o modal com o ativo pré-selecionado
+  // (atalho vindo da ficha do ativo).
+  const [params, setParams] = useSearchParams();
+  const [nova, setNova] = useState(params.get("nova") === "1");
+  const ativoParam = params.get("ativo_id");
+  const { data: ativoPre } = useQuery({
+    queryKey: ["ativo-pre-manut", ativoParam],
+    enabled: !!ativoParam && nova,
+    queryFn: () =>
+      api.get<{ dados: { id: string; nome: string; codigo: string; status: string } }>(`/ativos/${ativoParam}`)
+        .then((r) => ({ id: r.dados.id, titulo: r.dados.nome, subtitulo: `${r.dados.codigo} · ${r.dados.status}` })),
+  });
+  const fecharNova = () => {
+    setNova(false);
+    setParams((p) => { p.delete("nova"); p.delete("ativo_id"); return p; }, { replace: true });
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["manutencoes"],
@@ -181,7 +196,7 @@ export function Manutencoes() {
         </div>
       )}
 
-      {nova && <ModalNova aoFechar={() => setNova(false)} />}
+      {nova && (!ativoParam || ativoPre) && <ModalNova aoFechar={fecharNova} ativoInicial={ativoPre ?? null} />}
     </div>
   );
 }
@@ -236,10 +251,10 @@ export function SeletorTipoManutencao({ valor, aoMudar }: { valor: string; aoMud
   );
 }
 
-function ModalNova({ aoFechar }: { aoFechar: () => void }) {
+function ModalNova({ aoFechar, ativoInicial = null }: { aoFechar: () => void; ativoInicial?: ItemSeletor | null }) {
   const notificar = useToast();
   const fila = useQueryClient();
-  const [ativo, setAtivo] = useState<ItemSeletor | null>(null);
+  const [ativo, setAtivo] = useState<ItemSeletor | null>(ativoInicial);
   const [fornecedor, setFornecedor] = useState<ItemSeletor | null>(null);
   const [criandoOficina, setCriandoOficina] = useState(false);
   const [campos, setCampos] = useState<Record<string, string>>({ tipo: "preventiva" });

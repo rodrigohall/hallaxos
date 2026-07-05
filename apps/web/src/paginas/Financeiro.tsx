@@ -50,8 +50,10 @@ export function Financeiro() {
   // Com ?novo=1, ativo_id é pré-vínculo do modal (não filtro da lista).
   const ativoFiltro = params.get("novo") === "1" ? null : params.get("ativo_id");
   const lancamentoFiltro = params.get("lancamento");
+  // Deep-links de lançamento/ativo mostram TUDO por padrão (o alvo pode estar
+  // em qualquer status); a lista normal continua abrindo em "previsto".
   const [status, setStatus] = useState<string | null>(
-    lancamentoFiltro ? null : params.get("status") ?? "previsto"
+    lancamentoFiltro || ativoFiltro ? params.get("status") : params.get("status") ?? "previsto"
   );
   const [tipo, setTipo] = useState<string | null>(params.get("tipo"));
   const [novo, setNovo] = useState(false);

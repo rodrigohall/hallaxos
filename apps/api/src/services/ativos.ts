@@ -160,12 +160,25 @@ export async function obterAtivo(id: string) {
   // navegar — uma só consulta canônica, reusada pelo endpoint dedicado.
   const lancamentos = await lancamentosDoAtivo(id);
 
+  // Sprint 14 · E2 — preço de compra vem do vínculo com a operação de compra
+  // (fonte única); valor_aquisicao é o fallback para ativos anteriores ao
+  // fluxo de compra.
+  const compra = (
+    await db.execute(sql`
+      SELECT o.id, o.valor_total FROM operacoes o
+      JOIN operacao_ativos oa ON oa.operacao_id = o.id AND oa.ativo_id = ${id}
+      WHERE o.tipo = 'compra' AND o.status != 'cancelada' AND o.deleted_at IS NULL
+      ORDER BY o.data_inicio DESC LIMIT 1`)
+  ).rows[0] as { id: string; valor_total: string } | undefined;
+
   return {
     ...linha.ativo,
     veiculo: linha.veiculo,
     categoria: linha.categoria,
     valorDiaria: linha.ativo.valorDiaria,
     dataFipeAtualizacao: linha.ativo.dataFipeAtualizacao,
+    precoCompra: compra?.valor_total ?? linha.ativo.valorAquisicao ?? null,
+    operacaoCompraId: compra?.id ?? null,
     financeiro: {
       receita,
       custos,

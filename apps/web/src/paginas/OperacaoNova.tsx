@@ -144,6 +144,29 @@ export function OperacaoNova() {
     }
   }, [clientePreFill, cliente]);
 
+  // Pré-preenchimento por URL: ?ativo_id=X pré-seleciona o ativo (Sprint 14 · E4).
+  // Guardado à parte porque escolher o tipo reseta o formulário — o prefill
+  // sobrevive à escolha e é aplicado quando o tipo permitir ativo.
+  const ativoIdParam = params.get("ativo_id");
+  const ativoPrefill = useRef<ItemSeletor | null>(null);
+  const { data: ativoPrefillDados } = useQuery({
+    queryKey: ["ativo-prefill", ativoIdParam],
+    enabled: !!ativoIdParam,
+    queryFn: () =>
+      api.get<{ dados: { id: string; nome: string; codigo: string; status: string } }>(`/ativos/${ativoIdParam}`).then((r) => r.dados),
+  });
+  useEffect(() => {
+    if (!ativoPrefillDados) return;
+    const item = {
+      id: ativoPrefillDados.id,
+      titulo: ativoPrefillDados.nome,
+      subtitulo: `${ativoPrefillDados.codigo} · ${ativoPrefillDados.status}`,
+    };
+    ativoPrefill.current = item;
+    if (!ativo && tipo) setAtivo(item);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativoPrefillDados]);
+
   // Endereço do cliente para atalho "Usar endereço do cliente" no guincho.
   const { data: clientePessoa } = useQuery({
     queryKey: ["pessoa-endereco", cliente?.id],
@@ -352,7 +375,8 @@ export function OperacaoNova() {
             key={t.tipo}
             onClick={() => {
               setTipo(t.tipo);
-              setAtivo(null);
+              // E4: mantém o ativo vindo da ficha (?ativo_id=) ao escolher o tipo
+              setAtivo(ativoPrefill.current);
               // Locação e guincho nascem com início = agora (editável — cobre
               // retroativo e agendamento futuro).
               setCampos(t.tipo === "locacao" || t.tipo === "guincho" ? { data_inicio: agoraLocal() } : {});
