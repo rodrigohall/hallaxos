@@ -48,7 +48,7 @@ export function PlanilhaGrade({ dados, aoDrillDown }: Props) {
   }
 
   return (
-    <div className="overflow-auto rounded-lg border border-borda">
+    <div className="animar-surgir overflow-auto rounded-lg border border-borda">
       <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10 bg-elevado">
           <tr>
@@ -56,12 +56,12 @@ export function PlanilhaGrade({ dados, aoDrillDown }: Props) {
               {rotuloLinha}
             </th>
             {colunas.map((c) => (
-              <th key={c} className="px-3 py-2.5 text-right text-xs font-medium text-mudo whitespace-nowrap">
+              <th key={c} className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-mudo whitespace-nowrap">
                 {c}
               </th>
             ))}
-            <th className="px-3 py-2.5 text-right text-xs font-bold text-ouro whitespace-nowrap">
-              TOTAL
+            <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-ouro whitespace-nowrap">
+              Total
             </th>
           </tr>
         </thead>

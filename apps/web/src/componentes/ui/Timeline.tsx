@@ -20,15 +20,15 @@ export interface EventoTimeline {
 }
 
 const ICONES: Record<string, { icone: LucideIcon; cor: string; rotulo: string }> = {
-  criado: { icone: Plus, cor: "text-ok bg-ok/10 ring-ok/25", rotulo: "Criação" },
-  atualizado: { icone: PencilLine, cor: "text-info bg-info/10 ring-info/25", rotulo: "Edição" },
-  status_alterado: { icone: ArrowRightLeft, cor: "text-ouro bg-ouro/10 ring-ouro/25", rotulo: "Status" },
+  criado: { icone: Plus, cor: "text-ok bg-ok/10 ring-ok/20", rotulo: "Criação" },
+  atualizado: { icone: PencilLine, cor: "text-info bg-info/10 ring-info/20", rotulo: "Edição" },
+  status_alterado: { icone: ArrowRightLeft, cor: "text-ouro bg-ouro/10 ring-ouro/20", rotulo: "Status" },
   comentario_adicionado: { icone: MessageSquare, cor: "text-suave bg-elevado ring-borda", rotulo: "Comentário" },
   documento_anexado: { icone: Paperclip, cor: "text-suave bg-elevado ring-borda", rotulo: "Documento" },
-  lancamento_gerado: { icone: CircleDollarSign, cor: "text-ok bg-ok/10 ring-ok/25", rotulo: "Financeiro" },
+  lancamento_gerado: { icone: CircleDollarSign, cor: "text-ok bg-ok/10 ring-ok/20", rotulo: "Financeiro" },
   login: { icone: LogIn, cor: "text-suave bg-elevado ring-borda", rotulo: "Acesso" },
   logout: { icone: LogOut, cor: "text-suave bg-elevado ring-borda", rotulo: "Acesso" },
-  login_falhou: { icone: ShieldAlert, cor: "text-erro bg-erro/10 ring-erro/25", rotulo: "Segurança" },
+  login_falhou: { icone: ShieldAlert, cor: "text-erro bg-erro/10 ring-erro/20", rotulo: "Segurança" },
 };
 
 const PADRAO = { icone: PencilLine, cor: "text-suave bg-elevado ring-borda", rotulo: "Evento" };
@@ -38,12 +38,12 @@ export function Timeline({ eventos }: { eventos: EventoTimeline[] }) {
     return <EstadoVazio icone={History} titulo="Sem história ainda" descricao="Tudo o que acontecer com este registro aparecerá aqui." />;
   }
   return (
-    <ol className="relative space-y-5 before:absolute before:inset-y-1 before:left-[15px] before:w-px before:bg-borda">
+    <ol className="animar-cascata relative space-y-5 before:absolute before:inset-y-1 before:left-4 before:w-px before:bg-borda">
       {eventos.map((e) => {
         const { icone: Icone, cor, rotulo } = ICONES[e.evento] ?? PADRAO;
         return (
-          <li key={e.id} className="animar-surgir relative flex gap-3.5 pl-0.5">
-            <span className={`z-10 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ring-1 ring-inset ${cor}`}>
+          <li key={e.id} className="relative flex gap-3.5 pl-0.5">
+            <span className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ring-inset ${cor}`}>
               <Icone className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0 pt-0.5">
