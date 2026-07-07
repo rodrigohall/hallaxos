@@ -52,7 +52,7 @@ Com Postgres próprio (sem Docker): copie `.env.example` para `.env`, ajuste `DA
 Em um VPS Ubuntu/Debian limpo, três comandos:
 
 ```bash
-git clone -b claude/stoic-shannon-d3fxpi https://github.com/rodrigohall/hallaxos.git
+git clone https://github.com/rodrigohall/hallaxos.git
 cd hallaxos
 ./deploy/instalar.sh                       # acesso por IP (http)
 # ou, com domínio apontado para o VPS (HTTPS automático):
@@ -72,7 +72,7 @@ banco + API + site. Ao final, imprime o endereço e o login inicial.
 O ambiente de produção roda num **VPS da Hostinger** (Ubuntu), com **acesso ao
 terminal** por SSH e pelo **Console web** do painel da Hostinger. O fluxo:
 
-1. **Deploy automático (CI):** push no branch `claude/stoic-shannon-d3fxpi`
+1. **Deploy automático (CI):** push no branch `main`
    dispara o GitHub Actions (`.github/workflows/deploy.yml`), que valida
    (typecheck/build/testes) e, se passar, envia o código por SSH/rsync ao VPS e
    roda `./deploy/instalar.sh`. Segredos em GitHub → Settings → Secrets:
@@ -108,9 +108,12 @@ Documentos vivos, sincronizados a cada sprint: [`CHANGELOG.md`](CHANGELOG.md) ·
 
 ## Status do projeto
 
-**Sprint 13 concluída — em produção (25/jun/2026).** Dashboard repaginado com mapa
-interativo, análises financeiras por tipo de operação e custo por ativo, melhorias
-mobile-first (iOS/Android) e vinculação automática de lançamentos avulsos.
+**Sprint 15 concluída — em produção (05/jul/2026).** Repaginada Visual completa:
+direção de arte "cockpit noturno", kit `ui/` expandido (Abas, Segmentado, Caixa,
+BotaoIcone, VerMais, CampoMarcado), todas as telas convergidas ao kit e bugs
+visuais corrigidos — zero mudança de comportamento. Antes dela, o Sprint 14
+entregou usabilidade e interligação (locação/guincho corrigidos, tipos de
+manutenção customizáveis, cancelamento com estorno, período customizado).
 
 ### O que está disponível hoje
 
@@ -135,45 +138,60 @@ mobile-first (iOS/Android) e vinculação automática de lançamentos avulsos.
 | Análises financeiras: faturamento por tipo/mês, custo por ativo (manutenção/combustível) | 13 |
 | Mobile: bottom nav, bottom sheets, safe areas iOS, formulários responsivos | 13 |
 | 17 categorias financeiras padrão criadas no arranque (idempotente) | 13 |
+| Usabilidade e interligação: locação/guincho corrigidos, tipos de manutenção customizáveis, retroativos, cancelar c/ estorno, período customizado, `main` oficial + `estado.txt` público | 14 |
+| Repaginada Visual: direção de arte, kit unificado (Abas/Segmentado/Caixa/BotaoIcone/VerMais/CampoMarcado), fichas 360° simétricas, animações coreografadas | 15 |
 
 **Sprints anteriores em produção:** detalhes completos no [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Continuar o desenvolvimento (nova sessão)
 
-- **Branch único e fonte da verdade:** `claude/stoic-shannon-d3fxpi`. O workflow
-  CI/CD dispara em push nesse branch. Desenvolva e dê push aqui. Os demais
-  branches `claude/*` são obsoletos.
+- **Regras permanentes:** leia primeiro o [`CLAUDE.md`](CLAUDE.md) na raiz —
+  branch, fluxo de sessão, regra máxima e pendências de infraestrutura.
 
-- **Último commit entregue:** `ad49aee` — Sprint 13 completa (25/jun/2026).
-  Ver topo do [`CHANGELOG.md`](CHANGELOG.md) para o detalhe completo.
+- **Branch único e fonte da verdade: `main`.** O workflow CI/CD dispara em
+  push no `main`. Branches de sessão nascem do `main`, são mergeados ao final
+  e apagados. Todos os branches `claude/*` remanescentes são obsoletos.
+
+- **O que está deployado:** consulte `http://2.25.200.8/estado.txt` (commit,
+  data, sprint e últimos 15 commits) — **não confie no cache do GitHub** para
+  saber o que está no ar. Último sprint entregue: **15 — Repaginada Visual**
+  (05/jul/2026); detalhe no topo do [`CHANGELOG.md`](CHANGELOG.md).
 
 - **Arquitetura:** leia os docs em ordem (`docs/01-visao-geral.md` → ...07).
   A regra máxima — *toda informação existe apenas uma vez* — vale para tudo.
   Nenhuma tabela nova sem decisão explícita registrada em `docs/decisoes.md`.
+  Estado real do sistema e dívidas: [`docs/pendencias.md`](docs/pendencias.md).
 
 - **Operação/deploy:** runbook em [`docs/operacao-vps.md`](docs/operacao-vps.md) —
   VPS Hostinger, SSH intermitente, recuperação do `.env`.
 
 - **Próximas frentes sugeridas** (conforme apetite do dono do produto):
-  - Sprint 13 (pendente): componente `<Abas>` unificado (URL-sync), sidebar em
-    seções (Operação / Financeiro / Sistema), hub financeiro com abas internas —
-    ver [`docs/sprint13-plan.md`](docs/sprint13-plan.md).
+  - Navegação (restante do plano do Sprint 13): URL-sync das abas de
+    Relatórios, sidebar em seções (Operação / Financeiro / Sistema), hub
+    financeiro com abas internas — ver [`docs/sprint13-plan.md`](docs/sprint13-plan.md).
   - Copiloto Fase 3: ações de escrita guardrailadas (criar operação, fechar
     manutenção) com confirmação humana.
   - Estabilização SSH do VPS (mover para porta alta, ajustar fail2ban/firewall).
+  - Ação única no VPS: `docker compose -f docker-compose.prod.yml exec api pnpm busca:reindexar`.
   - Verificação visual em navegador real (ambiente remoto sem browser — validar
     no `pnpm dev` local).
 
 - **Notas técnicas para o próximo desenvolvedor:**
+  - Visual: **tudo vem do kit** `apps/web/src/componentes/ui/` + utilitários de
+    `styles.css` (doc 07). Não sobrescreva utilitários via `className`
+    (`p-0`, `h-8`…) — o override falha em silêncio; variação vira prop
+    (decisão #68). Pills/tabs só via `<Abas>`/`<Segmentado>` (decisão #67).
   - `paginacaoSchema` max: 200 (o kanban de manutenções usa `por_pagina=200`).
-  - `garantirCategoriasPadrao()` é idempotente — adicionar novas categorias ao
-    array em `apps/api/src/db/bootstrap.ts` é suficiente (sem migration).
-  - O `filter` CSS do mapa OpenStreetMap está em `Dashboard.tsx:MapaDourados` —
-    ajustar `hue-rotate` se quiser tons diferentes.
-  - Novos endpoints financeiros: `GET /financeiro/por-tipo` e
-    `GET /financeiro/custo-por-ativo` — gateados por `dashboard_financeiro:ler`.
+  - `garantirCategoriasPadrao()` e o bootstrap de `manutencao_tipos` são
+    idempotentes — adicionar itens aos arrays em `apps/api/src/db/bootstrap.ts`
+    é suficiente (sem migration).
+  - O `filter` CSS do mapa OpenStreetMap está em `Dashboard.tsx:MapaDourados`
+    (o mini-mapa do guincho usa o mesmo filtro em `OperacaoDetalhe.tsx`).
+  - `react-leaflet` foi bloqueado 2× pelo ambiente remoto — mapas usam iframe
+    OSM embed; não insista nessa dependência.
 
 > **Fluxo de trabalho:** o dono do produto tem acesso ao terminal do VPS
 > (Hostinger) e topa rodar comandos colados quando o deploy automático falha.
-> Ao entregar algo, **dê push no branch acima** e confirme o deploy; se o CI
-> não publicar, forneça o comando manual pronto (ver runbook).
+> Ao entregar algo, **mergeie no `main` e confirme o deploy** (valide com
+> `curl http://2.25.200.8/estado.txt`); se o CI não publicar, forneça o
+> comando manual pronto (ver runbook).
