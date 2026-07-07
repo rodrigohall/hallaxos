@@ -11,6 +11,13 @@ Stripe, Linear, Notion e Raycast construindo um centro de comando operacional:
 pouco — e por isso importa: ele marca a ação principal, o estado ativo e os
 momentos de marca. Uma tela cheia de dourado não é premium; é poluída.
 
+Direção de arte (Sprint 15) — **"cockpit noturno"**: profundidade em
+camadas (fundo ambiente com brilhos radiais sutis + painéis com luz de cima +
+superfícies flutuantes em vidro), **ouro como luz e não como tinta** (gradiente
+no CTA, glow no hover, gradiente `texto-ouro-vivo` no número-herói) e
+**movimento coreografado** (cascatas de entrada, skeleton com varredura de
+luz, sublinhado de aba que cresce, lift de 1px em cards clicáveis).
+
 Regras de ouro:
 
 1. Cada tela responde uma pergunta (doc 01). O design reforça isso: uma
@@ -84,14 +91,32 @@ Regras de ouro:
 - **Sombras**: `painel` (sutil, repouso) · `flutuante` (modais/drawers/toasts) · `brilho-ouro` (reservada a momentos de marca).
 - **Ícones**: Lucide, 16px no corpo, 14px em botões `sm`, stroke padrão. Nunca emoji na UI.
 
+### Utilitários de superfície e movimento (styles.css)
+
+| Utilitário | O que faz | Onde usar |
+|---|---|---|
+| `superficie` | Painel com luz de cima (gradiente 2.5% de branco) | Todo card/moldura — substitui `bg-painel` cru |
+| `vidro` | Blur + saturação sobre painel translúcido | Topbar, bottom nav, modais, dropdowns, toasts |
+| `elevar` | Lift de 1px + borda acesa no hover | Cards/KPIs clicáveis |
+| `texto-ouro-vivo` | Gradiente dourado recortando o texto | Número-herói (relógio do dashboard) |
+| `animar-cascata` | Filhos diretos entram escalonados (45ms/item) | Grades de KPI, listas, colunas de kanban |
+| `animar-cintilar` | Skeleton com varredura de luz (substitui pulse) | Interno do `<Skeleton>` |
+| `animar-riscar` | Sublinhado cresce da esquerda | Interno do `<Abas>` |
+
 ## 6. Biblioteca de componentes (`componentes/ui/`)
 
 | Componente | Arquivo | Notas |
 |---|---|---|
-| `Botao` | Botao.tsx | `primario` (dourado, 1 por contexto), `secundario`, `fantasma`, `perigo`; estado `carregando` |
-| `Campo` + `Entrada`/`Selecao`/`AreaTexto` | Campo.tsx | Rótulo, erro e dica padronizados; foco dourado |
+| `Botao` | Botao.tsx | `primario` (gradiente dourado + glow, 1 por contexto), `secundario`, `fantasma`, `perigo`, `link`; tamanhos `xs/sm/md`; press físico; estado `carregando` |
+| `BotaoIcone` | Botao.tsx | Botão quadrado só-ícone com tons semânticos — fim dos icon-buttons crus |
+| `VerMais` | Botao.tsx | Expansor "Ver mais/menos" com chevron rotativo — padrão das fichas |
+| `Abas` | Abas.tsx | Aba de página única (sublinhado dourado animado); aceita ícone e selo |
+| `Segmentado` | Abas.tsx | Toggle compacto 2-5 opções (período, R$/%, receita/despesa) — único estilo de pill permitido |
+| `Caixa` | Caixa.tsx | Painel de destaque embutido, tons neutro/info/ok/alerta/erro/ouro (avisos, validação, banners) |
+| `Campo` + `Entrada`/`Selecao`/`AreaTexto` | Campo.tsx | Rótulo, erro e dica padronizados; foco dourado; `tamanho="sm"` para barras de filtro; `color-scheme: dark` |
+| `CampoMarcado` | Campo.tsx | Checkbox padronizado com rótulo clicável e dica |
 | `Card` | Card.tsx | Título caps + ícone opcional + ação |
-| `Kpi` | Card.tsx | Número display + rótulo + tom semântico |
+| `Kpi` | Card.tsx | Número display + rótulo + tom semântico; `para=` vira link com lift+chevron; `acao=` no cabeçalho |
 | `Selo` | Selo.tsx | Mapa central status→cor; telas nunca escolhem cor de status |
 | `Chip` | Selo.tsx | Selo interativo (filtros, etapas, tags removíveis) |
 | `Lista`/`ListaLinha` | Tabela.tsx | Linhas tocáveis mobile-first com chevron |
@@ -103,8 +128,11 @@ Regras de ouro:
 | `Timeline` | Timeline.tsx | Assinatura visual do sistema (§8) |
 | `dinheiro`/`dataCurta`/`dataHora`/`horaCurta` | formato.ts | Formatação única pt-BR |
 
-**Especificados, ainda sem implementação** (entram com as telas que os usam):
-Calendário (agenda, Sprint de agenda), paginação visual, upload com arrastar-soltar (documentos, Sprint 2).
+> **Não sobrescreva utilitários por `className`** (`p-0`, `h-8`, `w-auto`…):
+> o vencedor é decidido pela ordem do stylesheet do Tailwind, não pela ordem no
+> atributo — o override falha em silêncio. Se um componente do kit não cobre o
+> caso, adicione uma prop ao componente (como `tamanho="sm"` em `Entrada`) ou
+> crie a moldura própria com os utilitários canônicos.
 
 ## 7. Padrões de tela
 

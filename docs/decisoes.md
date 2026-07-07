@@ -123,6 +123,14 @@
 | 64 | Classificação de origem do lançamento via **CASE SQL** (`o.tipo` / `manutencao_id IS NOT NULL` → `'manutencao'` / else `'avulso'`) no endpoint `por-origem`, sem coluna derivada no banco | Regra máxima: a origem já existe (FK + tipo da operação). Calcular em runtime preserva o núcleo íntegro e permite retroação (lançamentos antigos herdam a classificação correta sem recálculo). |
 | 65 | Persistência das seleções de conta no Dashboard Financeiro em **localStorage**, sem backend | A seleção de qual conta exibir em cada uma das 4 caixas é preferência de interface, não dado de negócio. Não há razão para round-trip ao servidor para salvar isso. Chave `hallax_dashboard_fin_contas`. |
 
+## Sprint 15 — Repaginada Visual
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| 66 | Direção de arte "cockpit noturno" implementada como **utilitários CSS nomeados** (`superficie`, `vidro`, `elevar`, `texto-ouro-vivo`, `animar-cascata/cintilar/riscar`) no styles.css, nunca como estilo por tela | Mantém a regra "nenhuma tela define estilo próprio" mesmo com a estética mais rica: as telas compõem utilitários; trocar a direção de arte é editar um arquivo. Tudo CSS puro, zero dependência nova, `prefers-reduced-motion` respeitado |
+| 67 | Controles de seleção reduzidos a **dois** componentes canônicos: `<Abas>` (navegação entre painéis, sublinhado dourado) e `<Segmentado>` (toggle compacto, fundo dourado sólido) | A auditoria do Sprint 15 achou 7+ estilos de pill/tab convivendo (`bg-ouro/20`, `bg-ouro text-navy`, `bg-ouro/15`, sublinhado, cards verticais…). Dois papéis distintos → dois componentes; qualquer pill novo fora do kit é regressão |
+| 68 | Componentes do kit **não aceitam override de utilitário via className** (`p-0`, `h-8`…); variações viram **prop** (`tamanho="sm"` em Entrada/Selecao) ou moldura própria | Conflitos de utilitário Tailwind resolvem pela ordem do stylesheet, não do atributo — `<Card className="p-0">` nunca funcionou de verdade (p-4 vence) e falhava em silêncio. Prop explícita é verificável pelo compilador |
+
 ## Como propor mudança
 
 Discordou de uma decisão? Escreva a proposta com o contexto novo que a justifica
