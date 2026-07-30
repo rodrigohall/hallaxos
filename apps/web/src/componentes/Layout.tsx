@@ -1,64 +1,22 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import {
-  LayoutDashboard, Users, CarFront, Workflow, Wrench, CalendarDays,
-  CircleDollarSign, BarChart3, ShieldCheck, KeyRound, LogOut, Menu, X,
-  TrendingUp, ClipboardList, MoreHorizontal, type LucideIcon,
-} from "lucide-react";
+import { KeyRound, LogOut, Menu, X, MoreHorizontal } from "lucide-react";
 import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
 import { Notificacoes } from "./Notificacoes";
 import { ProvedorCopiloto, BotaoCopiloto } from "./Copiloto";
 import { LogoCompleta, Monograma } from "../marca/Logo";
 import { ModalTrocarSenha } from "./TrocarSenha";
-
-interface ItemNav {
-  para: string;
-  rotulo: string;
-  icone: LucideIcon;
-  fim?: boolean;
-  rotuloBottom?: string; // rótulo mais curto para a barra inferior
-}
+import { secoesVisiveis, itensVisiveis, type ItemNav } from "./navegacao";
 
 export function Layout() {
   const { usuario, sair, pode, copilotoAtivo } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
   const [senhaAberta, setSenhaAberta] = useState(false);
 
-  const navegacao: ItemNav[] = [
-    { para: "/", rotulo: "Dashboard", icone: LayoutDashboard, fim: true, rotuloBottom: "Início" },
-    { para: "/ativos", rotulo: "Ativos", icone: CarFront },
-    ...(pode("operacoes", "ler")
-      ? [{ para: "/operacoes", rotulo: "Operações", icone: Workflow, rotuloBottom: "Ops" }]
-      : []),
-    ...(pode("manutencoes", "ler")
-      ? [{ para: "/manutencoes", rotulo: "Manutenções", icone: Wrench, rotuloBottom: "Manutenção" }]
-      : []),
-    ...(pode("agenda", "ler")
-      ? [{ para: "/agenda", rotulo: "Agenda", icone: CalendarDays }]
-      : []),
-    { para: "/clientes", rotulo: "Clientes", icone: Users },
-    ...(pode("lancamentos", "ler")
-      ? [{ para: "/financeiro", rotulo: "Financeiro", icone: CircleDollarSign, rotuloBottom: "R$" }]
-      : []),
-    ...(pode("dashboard_financeiro", "ler")
-      ? [{ para: "/dashboard-financeiro", rotulo: "Dashboard $", icone: TrendingUp }]
-      : []),
-    ...(pode("relatorios_financeiros", "ler")
-      ? [{ para: "/relatorios", rotulo: "Relatórios", icone: BarChart3 }]
-      : []),
-    ...(pode("usuarios", "ler")
-      ? [{ para: "/usuarios", rotulo: "Usuários", icone: ShieldCheck }]
-      : []),
-    ...(pode("usuarios", "ler")
-      ? [{ para: "/auditoria", rotulo: "Auditoria", icone: ClipboardList }]
-      : []),
-  ];
-
-  // Bottom nav: até 4 itens primários (os mais usados no dia a dia)
-  const navBottom = navegacao.filter((i) =>
-    ["/", "/ativos", "/operacoes", "/financeiro"].includes(i.para)
-  );
+  const secoes = secoesVisiveis(pode);
+  // Barra inferior: os itens marcados como primários que o papel enxerga.
+  const navBottom = itensVisiveis(pode).filter((i) => i.primario);
 
   const Item = ({ item }: { item: ItemNav }) => (
     <NavLink
@@ -77,6 +35,18 @@ export function Layout() {
     </NavLink>
   );
 
+  // Seção com rótulo discreto. A seção só chega aqui se tiver item visível.
+  const Secao = ({ secao, itens }: { secao: string; itens: ItemNav[] }) => (
+    <div className="space-y-0.5">
+      <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-mudo">
+        {secao}
+      </p>
+      {itens.map((item) => (
+        <Item key={item.para} item={item} />
+      ))}
+    </div>
+  );
+
   return (
     <ProvedorCopiloto>
     <div className="min-h-screen md:flex">
@@ -85,9 +55,9 @@ export function Layout() {
         <div className="px-5 py-5">
           <LogoCompleta />
         </div>
-        <nav className="flex-1 space-y-0.5 px-3">
-          {navegacao.map((item) => (
-            <Item key={item.para} item={item} />
+        <nav className="flex-1 px-3">
+          {secoes.map((s) => (
+            <Secao key={s.secao} secao={s.secao} itens={s.itens} />
           ))}
         </nav>
         <div className="border-t border-borda p-4">
@@ -139,8 +109,8 @@ export function Layout() {
             <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-mudo">
               {usuario?.nome} · {usuario?.papel}
             </p>
-            {navegacao.map((item) => (
-              <Item key={item.para} item={item} />
+            {secoes.map((s) => (
+              <Secao key={s.secao} secao={s.secao} itens={s.itens} />
             ))}
             <div className="mt-2 border-t border-borda pt-2">
               <button
