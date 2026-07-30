@@ -17,9 +17,7 @@ import { OperacaoDetalhe } from "./paginas/OperacaoDetalhe";
 import { Manutencoes } from "./paginas/Manutencoes";
 import { ManutencaoDetalhe } from "./paginas/ManutencaoDetalhe";
 import { Agenda } from "./paginas/Agenda";
-import { Financeiro } from "./paginas/Financeiro";
-import { DashboardFinanceiro } from "./paginas/DashboardFinanceiro";
-import { Relatorios } from "./paginas/Relatorios";
+import { HubFinanceiro } from "./paginas/financeiro/HubFinanceiro";
 import { Usuarios } from "./paginas/Usuarios";
 import { Auditoria } from "./paginas/Auditoria";
 
@@ -63,9 +61,11 @@ export function App() {
               <Route path="/manutencoes" element={<Manutencoes />} />
               <Route path="/manutencoes/:id" element={<ManutencaoDetalhe />} />
               <Route path="/agenda" element={<Agenda />} />
-              <Route path="/financeiro" element={<Financeiro />} />
-              <Route path="/dashboard-financeiro" element={<DashboardFinanceiro />} />
-              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/financeiro" element={<HubFinanceiro />} />
+              {/* Dashboard $ e Relatórios viraram abas do hub (Sprint 16) —
+                  os endereços antigos seguem valendo para bookmarks. */}
+              <Route path="/dashboard-financeiro" element={<Navigate to="/financeiro?aba=painel" replace />} />
+              <Route path="/relatorios" element={<Navigate to="/financeiro?aba=planilha" replace />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
             </Route>

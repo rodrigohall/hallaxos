@@ -1,7 +1,7 @@
-// Dashboard Financeiro: dois cortes do mesmo dado — por CONTA (onde está o
-// dinheiro) e por ORIGEM/TIPO (de onde veio). Tudo é consulta sobre o núcleo;
-// nenhum dado próprio. Decisão #60 (endpoint separado do operacional).
-import { useState, useEffect, useRef, type FormEvent } from "react";
+// Aba "Painel" do hub financeiro: dois cortes do mesmo dado — por CONTA (onde
+// está o dinheiro) e por ORIGEM/TIPO (de onde veio). Tudo é consulta sobre o
+// núcleo; nenhum dado próprio. Decisão #60 (endpoint separado do operacional).
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, TrendingUp, TrendingDown, ArrowDownToLine, ArrowUpFromLine,
@@ -10,13 +10,14 @@ import {
   BarChart3, CircleDollarSign,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
-import { api, ApiError } from "../api";
-import { useAuth } from "../auth";
+import { api, ApiError } from "../../api";
+import { useAuth } from "../../auth";
 import {
   Botao, BotaoIcone, Caixa, Card, Campo, Entrada, Selecao, Modal, Segmentado,
   Skeleton, SkeletonLinhas, EstadoVazio, Selo, dinheiro, dataCurta, useToast,
-} from "../componentes/ui";
+} from "../../componentes/ui";
+import { ModalEditarLancamento } from "../../componentes/financeiro/ModalEditarLancamento";
+import { useParamUrl } from "../../hooks/estadoUrl";
 
 // ─────────────────────────────── Tipos ────────────────────────────────────
 
@@ -88,17 +89,21 @@ const LS_CONTAS = "hallax_dashboard_fin_contas"; // chave localStorage
 
 // ─────────────────────────────── Componente ───────────────────────────────
 
-export function DashboardFinanceiro() {
+export function PainelVisaoGeral() {
   const { pode, usuario } = useAuth();
   const ehAdmin = usuario?.papel === "admin";
   const notificar = useToast();
   const fila = useQueryClient();
 
-  const [periodo, setPeriodo] = useState<Periodo | "custom">("mes");
-  // Sprint 14 · F1 — intervalo customizado: do 1º dia do mês até hoje por padrão
+  // Período e indicador vão para a URL com prefixo `p_` — a aba de Lançamentos,
+  // no mesmo endereço, usa `status`/`tipo` com outro significado.
   const hoje = new Date().toISOString().slice(0, 10);
-  const [deCustom, setDeCustom] = useState(hoje.slice(0, 8) + "01");
-  const [ateCustom, setAteCustom] = useState(hoje);
+  const [periodoParam, setPeriodo] = useParamUrl("p_periodo", "mes");
+  const [deParam, setDeCustom] = useParamUrl("p_de", hoje.slice(0, 8) + "01");
+  const [ateParam, setAteCustom] = useParamUrl("p_ate", hoje);
+  const periodo = (periodoParam ?? "mes") as Periodo | "custom";
+  const deCustom = deParam ?? "";
+  const ateCustom = ateParam ?? "";
   const customValido = periodo === "custom" && !!deCustom && !!ateCustom;
 
   // Linha 1: conta escolhida por caixa (localStorage, não banco)
@@ -114,7 +119,8 @@ export function DashboardFinanceiro() {
   };
 
   // Linha 2: indicador global alternável
-  const [indicador, setIndicador] = useState<Indicador>("receita_paga");
+  const [indParam, setIndicador] = useParamUrl("p_ind", "receita_paga");
+  const indicador = (indParam ?? "receita_paga") as Indicador;
 
   // Drill-down: qual caixa está expandida e o tipo de drill-down
   const [drill, setDrill] = useState<
@@ -131,9 +137,6 @@ export function DashboardFinanceiro() {
 
   // Modal de edição de lançamento
   const [editarLanc, setEditarLanc] = useState<Lancamento | null>(null);
-  const [formEd, setFormEd] = useState({ descricao: "", valor: "", data_vencimento: "", categoria_id: "", conta_id: "", forma_pagamento: "", data_pagamento: "" });
-  const [erroEd, setErroEd] = useState("");
-  const [salvandoEd, setSalvandoEd] = useState(false);
 
   // Modal de linkar lançamento → ativo
   const [linkarLanc, setLinkarLanc] = useState<Lancamento | null>(null);
@@ -169,7 +172,7 @@ export function DashboardFinanceiro() {
 
   // Drill-down lancamentos
   const { data: drillLanc, isLoading: loadDrill } = useQuery({
-    queryKey: ["drill-lancamentos", drill],
+    queryKey: ["drill", "painel", drill],
     queryFn: async () => {
       if (!drill) return null;
       if (drill.tipo === "conta") {
@@ -218,7 +221,7 @@ export function DashboardFinanceiro() {
     setSalvandoLink(true);
     try {
       await api.patch(`/lancamentos/${lancId}`, { ativo_id: ativoId });
-      fila.invalidateQueries({ queryKey: ["drill-lancamentos"] });
+      fila.invalidateQueries({ queryKey: ["drill", "painel"] });
       notificar({ tipo: "ok", titulo: "Lançamento vinculado ao ativo" });
       setLinkarLanc(null);
       setBuscaAtivLink("");
@@ -229,68 +232,21 @@ export function DashboardFinanceiro() {
     }
   };
 
-  const abrirEdicao = (l: Lancamento) => {
-    setEditarLanc(l);
-    setErroEd("");
-    setFormEd({
-      descricao: l.descricao,
-      valor: l.valor,
-      data_vencimento: l.dataVencimento,
-      categoria_id: l.categoriaId,
-      conta_id: l.contaId,
-      forma_pagamento: l.formaPagamento ?? "",
-      data_pagamento: l.dataPagamento ?? "",
-    });
-  };
-
-  const salvarEdicao = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!editarLanc) return;
-    setErroEd("");
-    setSalvandoEd(true);
-    try {
-      const payload: Record<string, unknown> = {
-        descricao: formEd.descricao,
-        valor: Number(formEd.valor),
-        data_vencimento: formEd.data_vencimento,
-        categoria_id: formEd.categoria_id,
-        conta_id: formEd.conta_id,
-        forma_pagamento: formEd.forma_pagamento || null,
-      };
-      if (editarLanc.status === "pago" && formEd.data_pagamento) payload.data_pagamento = formEd.data_pagamento;
-      await api.patch(`/lancamentos/${editarLanc.id}`, payload);
-      fila.invalidateQueries({ queryKey: ["drill-lancamentos"] });
-      fila.invalidateQueries({ queryKey: ["dashboard-fin-por-origem"] });
-      notificar({ tipo: "ok", titulo: "Lançamento atualizado" });
-      setEditarLanc(null);
-    } catch (err) {
-      setErroEd(err instanceof ApiError ? err.message : "Erro inesperado.");
-    } finally {
-      setSalvandoEd(false);
-    }
-  };
-
   // ── Render ──
 
   const indInfo = INDICADORES.find((i) => i.id === indicador)!;
 
+  // Defesa em profundidade: a aba já fica oculta sem permissão, mas o conteúdo
+  // também se recusa a renderizar — deep-link não fura a regra.
   if (!pode("dashboard_financeiro", "ler")) {
-    return (
-      <div className="space-y-4">
-        <h1 className="font-display text-lg font-bold">Dashboard Financeiro</h1>
-        <EstadoVazio titulo="Sem permissão" descricao="Seu perfil não tem acesso ao financeiro." />
-      </div>
-    );
+    return <EstadoVazio titulo="Sem permissão" descricao="Seu perfil não tem acesso ao painel financeiro." />;
   }
 
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center gap-3">
-        <div>
-          <h1 className="font-display text-lg font-bold">Dashboard Financeiro</h1>
-          <p className="text-sm text-suave">Dois cortes do mesmo dado: por conta e por origem.</p>
-        </div>
+        <p className="text-sm text-suave">Dois cortes do mesmo dado: por conta e por origem.</p>
         {/* Seletor de período */}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Segmentado
@@ -440,9 +396,9 @@ export function DashboardFinanceiro() {
               ehAdmin={ehAdmin}
               podeEditar={pode("lancamentos", "editar")}
               podeTransicionar={pode("lancamentos", "transicionar")}
-              aoEditar={abrirEdicao}
+              aoEditar={setEditarLanc}
               aoLinkar={setLinkarLanc}
-              onAtualizar={() => fila.invalidateQueries({ queryKey: ["drill-lancamentos"] })}
+              onAtualizar={() => fila.invalidateQueries({ queryKey: ["drill", "painel"] })}
             />
           )}
         </section>
@@ -502,10 +458,10 @@ export function DashboardFinanceiro() {
                   ehAdmin={ehAdmin}
                   podeEditar={pode("lancamentos", "editar")}
                   podeTransicionar={pode("lancamentos", "transicionar")}
-                  aoEditar={abrirEdicao}
+                  aoEditar={setEditarLanc}
               aoLinkar={setLinkarLanc}
                   mostrarOrigem
-                  onAtualizar={() => fila.invalidateQueries({ queryKey: ["drill-lancamentos"] })}
+                  onAtualizar={() => fila.invalidateQueries({ queryKey: ["drill", "painel"] })}
                 />
               )}
             </div>
@@ -513,62 +469,13 @@ export function DashboardFinanceiro() {
         </Card>
       </section>
 
-      {/* Modal: editar lançamento */}
-      <Modal aberto={!!editarLanc} aoFechar={() => setEditarLanc(null)} titulo="Editar lançamento">
-        {editarLanc && (
-          <form onSubmit={salvarEdicao} className="space-y-4">
-            {editarLanc.temOrigem && (
-              <Caixa tom="info" className="text-xs text-suave">
-                Lançamento gerado por uma operação/manutenção. Editar aqui corrige o valor sem desfazer o vínculo.
-              </Caixa>
-            )}
-            <Campo rotulo="Descrição">
-              <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />
-            </Campo>
-            <div className="grid grid-cols-2 gap-4">
-              <Campo rotulo="Valor (R$)">
-                <Entrada type="number" step="0.01" min="0.01" required value={formEd.valor}
-                  onChange={(e) => setFormEd({ ...formEd, valor: e.target.value })} />
-              </Campo>
-              <Campo rotulo="Vencimento">
-                <Entrada type="date" required value={formEd.data_vencimento}
-                  onChange={(e) => setFormEd({ ...formEd, data_vencimento: e.target.value })} />
-              </Campo>
-              <Campo rotulo="Categoria">
-                <Selecao required value={formEd.categoria_id} onChange={(e) => setFormEd({ ...formEd, categoria_id: e.target.value })}>
-                  <option value="">Escolha…</option>
-                  {categorias?.filter((c) => c.tipo === editarLanc.tipo).map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </Selecao>
-              </Campo>
-              <Campo rotulo="Conta">
-                <Selecao required value={formEd.conta_id} onChange={(e) => setFormEd({ ...formEd, conta_id: e.target.value })}>
-                  <option value="">Escolha…</option>
-                  {contas?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </Selecao>
-              </Campo>
-              <Campo rotulo="Forma de pagamento">
-                <Selecao value={formEd.forma_pagamento} onChange={(e) => setFormEd({ ...formEd, forma_pagamento: e.target.value })}>
-                  <option value="">—</option>
-                  {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
-                </Selecao>
-              </Campo>
-              {editarLanc.status === "pago" && (
-                <Campo rotulo="Data do pagamento" dica="Retroativo">
-                  <Entrada type="date" value={formEd.data_pagamento}
-                    onChange={(e) => setFormEd({ ...formEd, data_pagamento: e.target.value })} />
-                </Campo>
-              )}
-            </div>
-            {erroEd && <p className="text-sm text-erro">{erroEd}</p>}
-            <div className="flex justify-end gap-2">
-              <Botao type="button" variante="fantasma" onClick={() => setEditarLanc(null)}>Cancelar</Botao>
-              <Botao type="submit" carregando={salvandoEd}>Salvar</Botao>
-            </div>
-          </form>
-        )}
-      </Modal>
+      <ModalEditarLancamento
+        lancamento={editarLanc}
+        categorias={categorias}
+        contas={contas}
+        aoFechar={() => setEditarLanc(null)}
+        invalidar={[["drill", "painel"], ["dashboard-fin-por-origem"], ["lancamentos"], ["contas"]]}
+      />
 
       {/* Modal: linkar lançamento → ativo */}
       {linkarLanc && (

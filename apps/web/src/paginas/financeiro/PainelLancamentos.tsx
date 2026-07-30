@@ -6,12 +6,13 @@ import {
   ListChecks, Link2, ChevronDown, ChevronUp, Truck, Car, PackageMinus, Wrench, Fuel,
 } from "lucide-react";
 import { FORMAS_PAGAMENTO } from "@hallaxos/shared";
-import { api, ApiError } from "../api";
-import { useAuth } from "../auth";
+import { api, ApiError } from "../../api";
+import { useAuth } from "../../auth";
 import {
   Botao, BotaoIcone, Caixa, Campo, Card, Chip, Entrada, EstadoVazio, Kpi, Lista,
   ListaLinha, Modal, Segmentado, Selecao, Selo, SkeletonLinhas, dataCurta, dinheiro, useToast,
-} from "../componentes/ui";
+} from "../../componentes/ui";
+import { ModalEditarLancamento } from "../../componentes/financeiro/ModalEditarLancamento";
 
 interface Lancamento {
   id: string; tipo: string; descricao: string; valor: string; status: string;
@@ -33,12 +34,8 @@ const VAZIO = {
   tipo: "despesa", descricao: "", categoria_id: "", conta_id: "",
   valor: "", data_vencimento: "", data_pagamento: "", parcelas: "1", pago: false, forma_pagamento: "pix",
 };
-const VAZIO_ED = {
-  descricao: "", valor: "", data_vencimento: "", categoria_id: "", conta_id: "",
-  forma_pagamento: "", data_pagamento: "",
-};
 
-export function Financeiro() {
+export function PainelLancamentos() {
   const { pode, usuario } = useAuth();
   const ehAdmin = usuario?.papel === "admin";
   const fila = useQueryClient();
@@ -62,9 +59,6 @@ export function Financeiro() {
   const [acao, setAcao] = useState<{ tipo: "pagar" | "estornar" | "cancelar" | "anular"; l: Lancamento } | null>(null);
   const [campoAcao, setCampoAcao] = useState("");
   const [editar, setEditar] = useState<Lancamento | null>(null);
-  const [formEd, setFormEd] = useState({ ...VAZIO_ED });
-  const [erroEd, setErroEd] = useState("");
-  const [salvandoEd, setSalvandoEd] = useState(false);
   // Criação inline de categoria/conta direto no formulário de lançamento —
   // necessário no primeiro uso, quando ainda não há nenhuma cadastrada.
   const [novaCat, setNovaCat] = useState("");
@@ -293,47 +287,6 @@ export function Financeiro() {
     }
   };
 
-  // Edição depois de lançado: corrige valor/vencimento/conta/categoria/forma e,
-  // num pago (só admin), a data de pagamento — com auditoria no servidor.
-  const abrirEdicao = (l: Lancamento) => {
-    setEditar(l);
-    setErroEd("");
-    setFormEd({
-      descricao: l.descricao,
-      valor: l.valor,
-      data_vencimento: l.dataVencimento,
-      categoria_id: l.categoriaId,
-      conta_id: l.contaId,
-      forma_pagamento: l.formaPagamento ?? "",
-      data_pagamento: l.dataPagamento ?? "",
-    });
-  };
-  const salvarEdicao = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!editar) return;
-    setErroEd("");
-    setSalvandoEd(true);
-    try {
-      const payload: Record<string, unknown> = {
-        descricao: formEd.descricao,
-        valor: Number(formEd.valor),
-        data_vencimento: formEd.data_vencimento,
-        categoria_id: formEd.categoria_id,
-        conta_id: formEd.conta_id,
-        forma_pagamento: formEd.forma_pagamento || null,
-      };
-      // Data de pagamento só vale para um lançamento já pago (invariante pago⇔data).
-      if (editar.status === "pago" && formEd.data_pagamento) payload.data_pagamento = formEd.data_pagamento;
-      await api.patch(`/lancamentos/${editar.id}`, payload);
-      invalidar();
-      notificar({ tipo: "ok", titulo: "Lançamento atualizado" });
-      setEditar(null);
-    } catch (err) {
-      setErroEd(err instanceof ApiError ? err.message : "Erro inesperado.");
-    } finally {
-      setSalvandoEd(false);
-    }
-  };
   // Quem pode editar esta linha: tem permissão, não está anulada e — se paga —
   // é admin (reescreve indicadores).
   const podeEditar = (l: Lancamento) =>
@@ -367,7 +320,6 @@ export function Financeiro() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <h1 className="font-display text-lg font-bold">Financeiro</h1>
         <div className="ml-auto flex items-center gap-2">
           {ehAdmin && (
             <BotaoIcone
@@ -596,7 +548,7 @@ export function Financeiro() {
                         {l.vencido ? "vencido" : l.status}
                       </Selo>
                       {podeEditar(l) && (
-                        <BotaoIcone rotulo="Editar" icone={Pencil} tamanho="sm" tom="ouro" onClick={() => abrirEdicao(l)} />
+                        <BotaoIcone rotulo="Editar" icone={Pencil} tamanho="sm" tom="ouro" onClick={() => setEditar(l)} />
                       )}
                       {pode("lancamentos", "transicionar") && l.status === "previsto" && (
                         <>
@@ -762,62 +714,13 @@ export function Financeiro() {
         </form>
       </Modal>
 
-      <Modal aberto={!!editar} aoFechar={() => setEditar(null)} titulo="Editar lançamento">
-        {editar && (
-          <form onSubmit={salvarEdicao} className="space-y-4">
-            {editar.temOrigem && (
-              <Caixa tom="info" className="text-xs text-suave">
-                Lançamento gerado por uma operação/manutenção. Editar aqui corrige o valor
-                sem desfazer o vínculo de origem — a mudança fica na timeline.
-              </Caixa>
-            )}
-            <Campo rotulo="Descrição">
-              <Entrada required value={formEd.descricao} onChange={(e) => setFormEd({ ...formEd, descricao: e.target.value })} />
-            </Campo>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Campo rotulo="Valor (R$)">
-                <Entrada type="number" step="0.01" min="0.01" required value={formEd.valor}
-                  onChange={(e) => setFormEd({ ...formEd, valor: e.target.value })} />
-              </Campo>
-              <Campo rotulo="Vencimento">
-                <Entrada type="date" required value={formEd.data_vencimento}
-                  onChange={(e) => setFormEd({ ...formEd, data_vencimento: e.target.value })} />
-              </Campo>
-              <Campo rotulo="Categoria">
-                <Selecao required value={formEd.categoria_id} onChange={(e) => setFormEd({ ...formEd, categoria_id: e.target.value })}>
-                  <option value="">Escolha…</option>
-                  {categorias?.filter((c) => c.tipo === editar.tipo).map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </Selecao>
-              </Campo>
-              <Campo rotulo="Conta">
-                <Selecao required value={formEd.conta_id} onChange={(e) => setFormEd({ ...formEd, conta_id: e.target.value })}>
-                  <option value="">Escolha…</option>
-                  {contas?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </Selecao>
-              </Campo>
-              <Campo rotulo="Forma de pagamento">
-                <Selecao value={formEd.forma_pagamento} onChange={(e) => setFormEd({ ...formEd, forma_pagamento: e.target.value })}>
-                  <option value="">—</option>
-                  {FORMAS_PAGAMENTO.map((f) => <option key={f} value={f}>{f.replace(/_/g, " ")}</option>)}
-                </Selecao>
-              </Campo>
-              {editar.status === "pago" && (
-                <Campo rotulo="Data do pagamento" dica="Retroativo">
-                  <Entrada type="date" value={formEd.data_pagamento}
-                    onChange={(e) => setFormEd({ ...formEd, data_pagamento: e.target.value })} />
-                </Campo>
-              )}
-            </div>
-            {erroEd && <p className="text-sm text-erro">{erroEd}</p>}
-            <div className="flex justify-end gap-2">
-              <Botao type="button" variante="fantasma" onClick={() => setEditar(null)}>Cancelar</Botao>
-              <Botao type="submit" carregando={salvandoEd}>Salvar</Botao>
-            </div>
-          </form>
-        )}
-      </Modal>
+      <ModalEditarLancamento
+        lancamento={editar}
+        categorias={categorias}
+        contas={contas}
+        aoFechar={() => setEditar(null)}
+        invalidar={[["lancamentos"], ["contas"], ["dashboard"]]}
+      />
 
       {/* Modal: pagamento em lote */}
       <Modal aberto={loteModal} aoFechar={() => setLoteModal(false)} titulo={`Pagar ${selecionados.size} lançamento(s)`}>
