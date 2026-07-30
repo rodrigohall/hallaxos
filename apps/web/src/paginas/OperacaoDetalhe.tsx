@@ -16,7 +16,7 @@ import {
   Timeline, VerMais, useToast,
   dinheiro, dataCurta, dataHora, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   type EventoTimeline,
-} from "../componentes/ui";
+  Trilha } from "../componentes/ui";
 import { Comentarios } from "../componentes/Comentarios";
 import { Documentos } from "../componentes/Anexos";
 import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
@@ -283,6 +283,7 @@ export function OperacaoDetalhe() {
 
   return (
     <div className="space-y-4">
+      <Trilha passos={[{ rotulo: "Operações", para: "/operacoes" }, { rotulo: op.codigo }]} />
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-lg font-bold">{ROTULO_TIPO[op.tipo] ?? op.tipo}</h1>
         <span className="font-display text-sm font-bold text-ouro">{op.codigo}</span>

@@ -6,6 +6,7 @@ import { Search, User, Car, FileText, Wrench, CircleDollarSign, Workflow, Sparkl
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { useCopiloto } from "./Copiloto";
+import { useAtalhos } from "./Atalhos";
 import { Modal } from "./ui";
 
 interface Resultado {
@@ -25,7 +26,8 @@ const TIPOS: Record<string, { icone: LucideIcon; rotulo: string; rota?: (id: str
 };
 
 export function BuscaGlobal() {
-  const [aberta, setAberta] = useState(false);
+  // Quem abre e fecha a paleta é o ProvedorAtalhos — ⌘K e `/` chegam por lá.
+  const { buscaAberta: aberta, abrirBusca, fecharBusca } = useAtalhos();
   const [consulta, setConsulta] = useState("");
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [selecionado, setSelecionado] = useState(0);
@@ -33,18 +35,6 @@ export function BuscaGlobal() {
   const navegar = useNavigate();
   const { copilotoAtivo } = useAuth();
   const { abrir: abrirCopiloto } = useCopiloto();
-
-  // Atalho global ⌘K / Ctrl+K
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setAberta((a) => !a);
-      }
-    };
-    document.addEventListener("keydown", tecla);
-    return () => document.removeEventListener("keydown", tecla);
-  }, []);
 
   useEffect(() => {
     clearTimeout(temporizador.current);
@@ -64,10 +54,10 @@ export function BuscaGlobal() {
   }, [consulta]);
 
   const fechar = useCallback(() => {
-    setAberta(false);
+    fecharBusca();
     setConsulta("");
     setResultados([]);
-  }, []);
+  }, [fecharBusca]);
 
   const abrir = useCallback(
     (r: Resultado) => {
@@ -113,7 +103,7 @@ export function BuscaGlobal() {
   return (
     <>
       <button
-        onClick={() => setAberta(true)}
+        onClick={abrirBusca}
         className="flex h-9 w-full max-w-sm items-center gap-2 rounded-md border border-borda bg-fundo/60 px-3 text-sm text-mudo transition-colors hover:border-borda-forte hover:text-suave"
       >
         <Search className="h-3.5 w-3.5" />

@@ -11,7 +11,7 @@ import {
   Timeline, VerMais, useToast,
   dinheiro, dataCurta, dataHora, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   type EventoTimeline,
-} from "../componentes/ui";
+  Trilha } from "../componentes/ui";
 import { Comentarios } from "../componentes/Comentarios";
 import { Documentos } from "../componentes/Anexos";
 
@@ -162,6 +162,7 @@ export function ManutencaoDetalhe() {
 
   return (
     <div className="space-y-4">
+      <Trilha passos={[{ rotulo: "Manutenções", para: "/manutencoes" }, { rotulo: m.descricao }]} />
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-lg font-bold">{m.descricao}</h1>
         <Selo tom={m.status}>{ROTULO_STATUS[m.status] ?? m.status}</Selo>

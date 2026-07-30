@@ -13,7 +13,7 @@ import { useAuth } from "../auth";
 import {
   Botao, Card, Kpi, Selo, Modal, Timeline, useToast, dinheiro, dataCurta,
   SkeletonLinhas, EstadoVazio, Lista, ListaLinha, VerMais, type EventoTimeline,
-} from "../componentes/ui";
+  Trilha } from "../componentes/ui";
 import { Galeria, Documentos } from "../componentes/Anexos";
 import { Comentarios } from "../componentes/Comentarios";
 import { TagsFavoritos } from "../componentes/TagsFavoritos";
@@ -131,6 +131,7 @@ export function AtivoDetalhe() {
 
   return (
     <div className="space-y-4">
+      <Trilha passos={[{ rotulo: "Ativos", para: "/ativos" }, { rotulo: ativo.codigo }]} />
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-lg font-bold">{ativo.nome}</h1>
         <span className="font-display text-sm font-bold text-ouro">{ativo.codigo}</span>

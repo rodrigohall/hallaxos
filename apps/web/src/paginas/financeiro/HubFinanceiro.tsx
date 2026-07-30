@@ -12,10 +12,12 @@
 // As demais abas usam prefixo próprio (`p_` painel, `pl_` planilha, `dre_`)
 // porque `status`, `tipo` e `ano` significam coisas diferentes em cada uma.
 // Ao trocar de aba, só sobrevivem os params da aba de destino.
+import { useQuery } from "@tanstack/react-query";
 import { CircleDollarSign, TrendingUp, TableProperties, CarFront, BarChart3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { Abas, EstadoVazio } from "../../componentes/ui";
+import { Abas, EstadoVazio, Selo } from "../../componentes/ui";
 import { useAbaUrl } from "../../hooks/estadoUrl";
 import { PainelLancamentos } from "./PainelLancamentos";
 import { PainelVisaoGeral } from "./PainelVisaoGeral";
@@ -67,6 +69,17 @@ export function HubFinanceiro() {
     manter: (chave, destino) => pertenceA(chave, destino),
   });
 
+  // Contador de vencidos na aba de Lançamentos: o número que mais importa não
+  // deve exigir entrar na aba para ser visto.
+  const { data: vencidos } = useQuery({
+    queryKey: ["lancamentos", "vencidos", "contador"],
+    queryFn: () =>
+      api
+        .get<{ meta: { total: number } }>("/lancamentos?status=vencido&por_pagina=1")
+        .then((r) => r.meta.total),
+    enabled: pode("lancamentos", "ler"),
+  });
+
   if (visiveis.length === 0) {
     return (
       <div className="space-y-4">
@@ -81,7 +94,15 @@ export function HubFinanceiro() {
       <div className="space-y-2">
         <h1 className="font-display text-lg font-bold">Financeiro</h1>
         <Abas
-          abas={visiveis.map((a) => ({ id: a.id, rotulo: a.rotulo, icone: a.icone }))}
+          abas={visiveis.map((a) => ({
+            id: a.id,
+            rotulo: a.rotulo,
+            icone: a.icone,
+            selo:
+              a.id === "lancamentos" && vencidos
+                ? <Selo tom="erro">{vencidos}</Selo>
+                : undefined,
+          }))}
           ativa={aba}
           aoTrocar={(id) => trocarAba(id as AbaFinanceiro)}
         />

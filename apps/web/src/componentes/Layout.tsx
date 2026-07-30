@@ -5,6 +5,7 @@ import { useAuth } from "../auth";
 import { BuscaGlobal } from "./BuscaGlobal";
 import { Notificacoes } from "./Notificacoes";
 import { ProvedorCopiloto, BotaoCopiloto } from "./Copiloto";
+import { ProvedorAtalhos } from "./Atalhos";
 import { LogoCompleta, Monograma } from "../marca/Logo";
 import { ModalTrocarSenha } from "./TrocarSenha";
 import { secoesVisiveis, itensVisiveis, type ItemNav } from "./navegacao";
@@ -49,6 +50,7 @@ export function Layout() {
 
   return (
     <ProvedorCopiloto>
+    <ProvedorAtalhos>
     <div className="min-h-screen md:flex">
       {/* Sidebar desktop */}
       <aside className="hidden border-r border-borda bg-painel md:flex md:min-h-screen md:w-60 md:flex-col">
@@ -174,6 +176,7 @@ export function Layout() {
 
       <ModalTrocarSenha aberto={senhaAberta} aoFechar={() => setSenhaAberta(false)} />
     </div>
+    </ProvedorAtalhos>
     </ProvedorCopiloto>
   );
 }

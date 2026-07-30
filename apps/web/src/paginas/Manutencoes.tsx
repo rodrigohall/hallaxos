@@ -158,7 +158,18 @@ export function Manutencoes() {
         <SkeletonLinhas linhas={4} />
       ) : todas.length === 0 ? (
         <Card>
-          <EstadoVazio icone={Wrench} titulo="Nenhuma manutenção" descricao="Agende a manutenção de um ativo para começar." />
+          <EstadoVazio
+            icone={Wrench}
+            titulo="Nenhuma manutenção"
+            descricao="Agende a manutenção de um ativo para começar."
+            acao={
+              pode("manutencoes", "criar") && (
+                <Botao variante="secundario" tamanho="sm" onClick={() => setNova(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Nova manutenção
+                </Botao>
+              )
+            }
+          />
         </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">

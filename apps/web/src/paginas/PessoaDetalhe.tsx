@@ -11,7 +11,7 @@ import { useCopiloto } from "../componentes/Copiloto";
 import {
   Botao, Card, Kpi, Selo, Modal, Timeline, VerMais, EstadoVazio, useToast,
   dataCurta, dinheiro, SkeletonLinhas, Lista, ListaLinha, type EventoTimeline,
-} from "../componentes/ui";
+  Trilha } from "../componentes/ui";
 
 interface LancamentoResumo {
   id: string; tipo: string; descricao: string; valor: string; status: string;
@@ -97,6 +97,7 @@ export function PessoaDetalhe() {
 
   return (
     <div className="space-y-4">
+      <Trilha passos={[{ rotulo: "Clientes", para: "/clientes" }, { rotulo: pessoa.nome }]} />
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-lg font-bold">{pessoa.nome}</h1>

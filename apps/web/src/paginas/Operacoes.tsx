@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Workflow, AlertTriangle, Truck } from "lucide-react";
@@ -9,6 +8,7 @@ import {
   Botao, Card, Chip, Entrada, Selo, SkeletonLinhas, EstadoVazio, Lista, ListaLinha,
   dinheiro, dataCurta,
 } from "../componentes/ui";
+import { useParamUrl } from "../hooks/estadoUrl";
 import { ROTULO_STATUS_OP } from "../operacoes/rotulos";
 import { SeletorTipoOperacao, TIPO_ICONE } from "../operacoes/SeletorTipo";
 
@@ -24,9 +24,11 @@ interface OperacaoLista {
 }
 
 export function Operacoes() {
-  const [busca, setBusca] = useState("");
-  const [tipo, setTipo] = useState<string | null>(null);
-  const [situacao, setSituacao] = useState<string | null>(null);
+  // Filtros na URL: o redirect /guinchos → /operacoes?tipo=guincho (Sprint 5)
+  // apontava para um estado que a tela ignorava; agora ele funciona de fato.
+  const [busca, setBusca] = useParamUrl("busca", "");
+  const [tipo, setTipo] = useParamUrl("tipo");
+  const [situacao, setSituacao] = useParamUrl("situacao");
   const { pode } = useAuth();
 
   const { data, isLoading } = useQuery({
@@ -55,7 +57,7 @@ export function Operacoes() {
 
       <Entrada
         placeholder="Buscar por código ou cliente…"
-        value={busca}
+        value={busca ?? ""}
         onChange={(e) => setBusca(e.target.value)}
       />
 
