@@ -20,13 +20,27 @@ interface Fonte {
 }
 // Fase 2: proposta de ação. O copiloto não escreve — propõe; o humano confirma
 // aqui, e só então a UI dispara o endpoint existente (decisão #43).
-interface Proposta {
+type TipoOperacao = "guincho" | "locacao" | "venda" | "compra";
+
+interface PropostaLancamentoDados {
   acao: "criar_lancamento";
   titulo: string;
   resumo: string;
   endpoint: string;
   payload: { tipo: "receita" | "despesa"; descricao: string; valor: number; data_vencimento: string | null };
 }
+// Fase 3 (Sprint 16): proposta de operação. Mesmo contrato — inerte até o
+// humano confirmar; a operação nasce no formulário oficial de Nova Operação.
+interface PropostaOperacaoDados {
+  acao: "criar_operacao";
+  titulo: string;
+  resumo: string;
+  endpoint: string;
+  tipoOperacao: TipoOperacao;
+  payload: Record<string, string | number | null | undefined>;
+  sugestoes?: { clienteNome?: string; ativoNome?: string };
+}
+type Proposta = PropostaLancamentoDados | PropostaOperacaoDados;
 interface Turno {
   pergunta: string;
   resposta?: string;
@@ -37,8 +51,9 @@ interface Turno {
 
 interface CopilotoCtx {
   abrir: (pergunta?: string) => void;
+  fechar: () => void;
 }
-const Contexto = createContext<CopilotoCtx>({ abrir: () => {} });
+const Contexto = createContext<CopilotoCtx>({ abrir: () => {}, fechar: () => {} });
 export const useCopiloto = () => useContext(Contexto);
 
 // Cada tipo de fonte aponta para a tela real da entidade (reusa as mesmas rotas
@@ -101,6 +116,8 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
     if (pergunta && pergunta.trim()) pendente.current = pergunta.trim();
   }, []);
 
+  const fecharPainel = useCallback(() => setAberto(false), []);
+
   // Auto-envia a pergunta que veio do ⌘K assim que o painel abre.
   useEffect(() => {
     if (aberto && pendente.current) {
@@ -122,7 +139,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Contexto.Provider value={{ abrir }}>
+    <Contexto.Provider value={{ abrir, fechar: fecharPainel }}>
       {children}
       <Drawer aberto={aberto} aoFechar={() => setAberto(false)} titulo="Copiloto">
         <div className="flex min-h-[60vh] flex-col gap-4">
@@ -185,9 +202,13 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
                 </div>
               )}
               {/* Propostas de ação (Fase 2): o humano confirma; só então cria. */}
-              {t.propostas?.map((p, j) => (
-                <PropostaLancamento key={j} proposta={p} />
-              ))}
+              {t.propostas?.map((p, j) =>
+                p.acao === "criar_operacao" ? (
+                  <PropostaOperacao key={j} proposta={p} />
+                ) : (
+                  <PropostaLancamento key={j} proposta={p} />
+                )
+              )}
               {t.erro && (
                 <p className="max-w-[92%] rounded-lg rounded-bl-sm border border-erro/25 bg-erro/10 px-3 py-2 text-sm text-erro">
                   {t.erro}
@@ -236,7 +257,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
 interface ContaOpt { id: string; nome: string }
 interface CategoriaOpt { id: string; nome: string; tipo: string }
 
-function PropostaLancamento({ proposta }: { proposta: Proposta }) {
+function PropostaLancamento({ proposta }: { proposta: PropostaLancamentoDados }) {
   const navegar = useNavigate();
   const [contas, setContas] = useState<ContaOpt[]>([]);
   const [categorias, setCategorias] = useState<CategoriaOpt[]>([]);
@@ -328,6 +349,65 @@ function PropostaLancamento({ proposta }: { proposta: Proposta }) {
       {erro && <p className="text-xs text-erro">{erro}</p>}
       <div className="flex justify-end">
         <Botao tamanho="sm" carregando={confirmando} onClick={confirmar}>Confirmar e criar</Botao>
+      </div>
+    </div>
+  );
+}
+
+// Card de proposta de OPERAÇÃO (Fase 3). Diferente do lançamento, aqui não
+// reconstruímos o formulário: a operação tem quatro fluxos, validação visível e
+// regras próprias que já vivem em /operacoes/nova. O card grava o mesmo rascunho
+// que aquela tela já sabe restaurar (o mecanismo usado no desvio "novo cliente")
+// e leva o usuário para lá com tudo pré-preenchido. Quem cria é ele, no lugar de
+// sempre — o copiloto só adiantou a digitação.
+const CHAVE_RASCUNHO_OPERACAO = "operacao-nova-rascunho";
+
+const ROTULO_TIPO_OP: Record<TipoOperacao, string> = {
+  guincho: "Guincho", locacao: "Locação", venda: "Venda", compra: "Compra",
+};
+
+function PropostaOperacao({ proposta }: { proposta: PropostaOperacaoDados }) {
+  const navegar = useNavigate();
+  const { fechar } = useCopiloto();
+
+  const revisar = () => {
+    const { cliente_id, ativo_id, ...resto } = proposta.payload;
+    // O formulário guarda os campos como texto; números viram string aqui.
+    const campos: Record<string, string> = {};
+    Object.entries(resto).forEach(([k, v]) => {
+      if (v !== null && v !== undefined && v !== "") {
+        // A locação chama a diária de `valor_diaria_base` no formulário.
+        campos[k === "valor_diaria" ? "valor_diaria_base" : k] = String(v);
+      }
+    });
+    sessionStorage.setItem(
+      CHAVE_RASCUNHO_OPERACAO,
+      JSON.stringify({
+        tipo: proposta.tipoOperacao,
+        ativo: ativo_id
+          ? { id: String(ativo_id), titulo: proposta.sugestoes?.ativoNome ?? "Ativo sugerido", subtitulo: "sugerido pelo copiloto" }
+          : null,
+        campos,
+        retroativo: false,
+        descontoTipo: "R$",
+      })
+    );
+    fechar();
+    navegar(`/operacoes/nova${cliente_id ? `?cliente_id=${cliente_id}` : ""}`);
+  };
+
+  return (
+    <div className="max-w-[92%] space-y-2 rounded-lg border border-ouro/30 bg-ouro/5 px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-sm font-medium text-texto">
+        <Sparkles className="h-3.5 w-3.5 text-ouro" /> {proposta.titulo}
+      </div>
+      <p className="text-xs text-mudo">{proposta.resumo}</p>
+      <p className="text-xs text-suave">
+        Nada foi criado. Ao revisar você abre o formulário de {ROTULO_TIPO_OP[proposta.tipoOperacao]}{" "}
+        já preenchido — a operação só nasce quando você confirmar lá.
+      </p>
+      <div className="flex justify-end">
+        <Botao tamanho="sm" onClick={revisar}>Revisar e abrir</Botao>
       </div>
     </div>
   );

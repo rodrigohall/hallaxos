@@ -34,11 +34,15 @@ export interface FonteCopiloto {
 // + resumo). A UI mostra, o humano confirma, e SÓ ENTÃO a UI dispara o endpoint —
 // com a autoria do humano e a máquina de estados intactas. A proposta é inerte.
 export interface PropostaCopiloto {
-  acao: "criar_lancamento";
+  acao: "criar_lancamento" | "criar_operacao";
   titulo: string;
   resumo: string;
   endpoint: string; // ex.: "POST /lancamentos" — disparado pela UI após confirmar
   payload: Record<string, unknown>; // o que a UI vai enviar (conta/categoria o humano escolhe)
+  /** Só em criar_operacao: qual tipo de operação a UI deve montar. */
+  tipoOperacao?: TipoOperacao;
+  /** Nomes legíveis do que o copiloto encontrou, para a UI pré-preencher. */
+  sugestoes?: { clienteNome?: string; ativoNome?: string };
 }
 
 export interface RespostaCopiloto {
@@ -68,6 +72,12 @@ const SISTEMA = [
   "ele revisar e confirmar (a conta e a categoria ele escolhe ao confirmar). Se a",
   "ferramenta propor_lancamento não estiver disponível, diga que o papel do usuário",
   "não pode lançar no financeiro.",
+  "Do mesmo jeito, quando ele pedir para ABRIR/REGISTRAR um guincho, uma locação,",
+  "uma venda ou uma compra, use propor_operacao: ela também só monta uma PROPOSTA",
+  "que o usuário confirma na tela. Antes de propor, use busca_global para achar o",
+  "cliente e o ativo citados e passe os ids encontrados — nunca invente um id. O que",
+  "você não souber, deixe em branco: o usuário completa ao confirmar. Nunca diga que",
+  "abriu ou criou a operação; diga que preparou uma proposta para ele revisar.",
 ].join(" ");
 
 // As ferramentas expostas ao modelo — TODAS de leitura (Fase 1). A lista é a
@@ -154,15 +164,60 @@ export const FERRAMENTAS_PROPOSTA: Anthropic.Tool[] = [
   },
 ];
 
+// Fase 3 (Sprint 16): propor OPERAÇÃO. Mesmo guardrail da Fase 2 — a ferramenta
+// não escreve; devolve uma proposta inerte que a UI confirma. Lista separada
+// porque a permissão é outra (operacoes:criar, não lancamentos:criar).
+export const FERRAMENTAS_PROPOSTA_OPERACAO: Anthropic.Tool[] = [
+  {
+    name: "propor_operacao",
+    description:
+      "PROPÕE (não cria) uma operação — guincho, locação, venda ou compra — para o " +
+      "usuário confirmar na tela. Use quando ele pedir para abrir/registrar uma dessas. " +
+      "Não cria nada: monta a proposta. Use busca_global antes para achar o cliente e o " +
+      "ativo e passe os ids encontrados; o usuário revisa e completa o que faltar ao confirmar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        tipo: {
+          type: "string",
+          enum: ["guincho", "locacao", "venda", "compra"],
+          description: "Tipo da operação.",
+        },
+        cliente_id: { type: "string", description: "UUID do cliente, vindo de busca_global." },
+        cliente_nome: { type: "string", description: "Nome do cliente, para o usuário conferir." },
+        ativo_id: { type: "string", description: "UUID do ativo (locação, venda, compra)." },
+        ativo_nome: { type: "string", description: "Nome do ativo, para o usuário conferir." },
+        valor: { type: "number", description: "Valor total (guincho, venda, compra) em reais." },
+        valor_diaria: { type: "number", description: "Valor da diária, só para locação." },
+        data_devolucao_prevista: { type: "string", description: "Devolução prevista YYYY-MM-DD (locação)." },
+        origem_endereco: { type: "string", description: "Endereço de origem (guincho)." },
+        destino_endereco: { type: "string", description: "Endereço de destino (guincho)." },
+        veiculo_cliente_descricao: { type: "string", description: "Veículo do cliente a rebocar (guincho)." },
+        observacoes: { type: "string", description: "Observações livres." },
+      },
+      required: ["tipo"],
+    },
+  },
+];
+
 // Ferramentas disponíveis ao papel: leitura para todos; proposta de lançamento só
 // para quem pode criar lançamentos (doc 05). Mantém o copiloto escopado ao papel.
 export function ferramentasPara(papel: PapelUsuario): Anthropic.Tool[] {
-  return pode(papel, "lancamentos", "criar")
-    ? [...FERRAMENTAS_LEITURA, ...FERRAMENTAS_PROPOSTA]
-    : FERRAMENTAS_LEITURA;
+  return [
+    ...FERRAMENTAS_LEITURA,
+    ...(pode(papel, "lancamentos", "criar") ? FERRAMENTAS_PROPOSTA : []),
+    ...(pode(papel, "operacoes", "criar") ? FERRAMENTAS_PROPOSTA_OPERACAO : []),
+  ];
 }
 
 const TIPOS_OPERACAO = new Set<TipoOperacao>(["guincho", "locacao", "venda", "compra"]);
+
+const ROTULO_OPERACAO: Record<TipoOperacao, string> = {
+  guincho: "guincho", locacao: "locação", venda: "venda", compra: "compra",
+};
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ResultadoFerramenta {
   conteudo: string;
@@ -294,6 +349,103 @@ export async function executarFerramenta(
         conteudo: JSON.stringify({
           proposta_registrada: true,
           mensagem: "Proposta montada. O usuário precisa confirmar na tela para efetivar; nada foi criado ainda.",
+        }),
+        fontes: [],
+        proposta,
+      };
+    }
+
+    case "propor_operacao": {
+      // Fase 3: NÃO escreve. Mesma mecânica da Fase 2 — revalida o papel e
+      // devolve uma proposta inerte. A operação só nasce quando o humano
+      // confirma na UI, que dispara POST /operacoes/{tipo} com a própria
+      // autoria e a máquina de estados intacta (decisão #43).
+      if (!pode(papel, "operacoes", "criar")) return semPermissao("criar operações");
+
+      const tipo = String(input.tipo ?? "") as TipoOperacao;
+      if (!TIPOS_OPERACAO.has(tipo)) {
+        return {
+          conteudo: JSON.stringify({ erro: "Tipo de operação inválido. Use guincho, locacao, venda ou compra." }),
+          fontes: [],
+        };
+      }
+
+      const texto = (chave: string): string | undefined => {
+        const v = input[chave];
+        if (typeof v !== "string") return undefined;
+        const t = v.trim();
+        return t.length > 0 ? t : undefined;
+      };
+      const numero = (chave: string): number | undefined => {
+        const v = typeof input[chave] === "number" ? (input[chave] as number) : Number(input[chave]);
+        return Number.isFinite(v) && v >= 0 ? v : undefined;
+      };
+      const uuid = (chave: string): string | undefined => {
+        const v = texto(chave);
+        return v && UUID.test(v) ? v : undefined;
+      };
+
+      // O payload espelha o schema de criação do tipo (packages/shared). Campos
+      // que o copiloto não soube preencher ficam de fora — o humano completa na
+      // tela, onde a validação normal do formulário vale.
+      const payload: Record<string, unknown> = {};
+      const clienteId = uuid("cliente_id");
+      if (clienteId) payload.cliente_id = clienteId;
+      const observacoes = texto("observacoes");
+      if (observacoes) payload.observacoes = observacoes;
+
+      const partes: string[] = [];
+      if (tipo === "guincho") {
+        const origem = texto("origem_endereco");
+        const destino = texto("destino_endereco");
+        const veiculo = texto("veiculo_cliente_descricao");
+        const valor = numero("valor");
+        if (origem) payload.origem_endereco = origem;
+        if (destino) payload.destino_endereco = destino;
+        if (veiculo) payload.veiculo_cliente_descricao = veiculo;
+        if (valor !== undefined) payload.valor_total = valor;
+        if (origem && destino) partes.push(`de ${origem} para ${destino}`);
+        if (veiculo) partes.push(`veículo ${veiculo}`);
+        if (valor !== undefined) partes.push(`R$ ${valor.toFixed(2)}`);
+      } else {
+        const ativoId = uuid("ativo_id");
+        if (ativoId) payload.ativo_id = ativoId;
+        if (tipo === "locacao") {
+          const diaria = numero("valor_diaria");
+          const devolucao = texto("data_devolucao_prevista");
+          if (diaria !== undefined) payload.valor_diaria = diaria;
+          if (devolucao && DATA.test(devolucao)) payload.data_devolucao_prevista = devolucao;
+          if (diaria !== undefined) partes.push(`diária de R$ ${diaria.toFixed(2)}`);
+          if (devolucao) partes.push(`devolução prevista em ${devolucao}`);
+        } else {
+          const valor = numero("valor");
+          if (valor !== undefined) payload.valor_total = valor;
+          if (valor !== undefined) partes.push(`R$ ${valor.toFixed(2)}`);
+        }
+      }
+
+      const clienteNome = texto("cliente_nome");
+      const ativoNome = texto("ativo_nome");
+      if (clienteNome) partes.unshift(`cliente ${clienteNome}`);
+      if (ativoNome && tipo !== "guincho") partes.unshift(`ativo ${ativoNome}`);
+
+      const proposta: PropostaCopiloto = {
+        acao: "criar_operacao",
+        tipoOperacao: tipo,
+        titulo: `Abrir ${ROTULO_OPERACAO[tipo]}`,
+        resumo:
+          (partes.length > 0 ? `${partes.join(" · ")}. ` : "") +
+          "Confirme revisando os campos na tela; o que faltar você completa lá.",
+        endpoint: `POST /operacoes/${tipo}`,
+        payload,
+        sugestoes: { clienteNome, ativoNome },
+      };
+      // O tool_result diz ao modelo que NADA foi criado — só proposto.
+      return {
+        conteudo: JSON.stringify({
+          proposta_registrada: true,
+          mensagem:
+            "Proposta de operação montada. O usuário precisa revisar e confirmar na tela para efetivar; nada foi criado ainda.",
         }),
         fontes: [],
         proposta,

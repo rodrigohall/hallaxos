@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   FERRAMENTAS_LEITURA,
   FERRAMENTAS_PROPOSTA,
+  FERRAMENTAS_PROPOSTA_OPERACAO,
   ferramentasPara,
   executarFerramenta,
   perguntar,
@@ -76,6 +77,71 @@ test("propor_lancamento devolve PROPOSTA e não escreve (decisão #43)", async (
 
 test("propor_lancamento nega o operador (não pode lançar)", async () => {
   const r = await executarFerramenta("propor_lancamento", { tipo: "despesa", descricao: "x", valor: 10 }, "operador");
+  assert.equal((JSON.parse(r.conteudo) as { sem_permissao?: boolean }).sem_permissao, true);
+  assert.equal(r.proposta, undefined);
+});
+
+// 1c. Fase 3 (Sprint 16): propor OPERAÇÃO segue exatamente o mesmo guardrail —
+//     fora da lista de leitura, inerte, e escopada a quem pode criar operação.
+test("propor_operacao existe como proposta, separada da leitura", () => {
+  assert.ok(!FERRAMENTAS_LEITURA.some((f) => f.name === "propor_operacao"), "propor não é leitura");
+  assert.ok(FERRAMENTAS_PROPOSTA_OPERACAO.some((f) => f.name === "propor_operacao"), "propor é proposta");
+});
+
+test("ferramentasPara expõe propor_operacao só a quem pode criar operação", () => {
+  const nomes = (papel: Parameters<typeof ferramentasPara>[0]) =>
+    ferramentasPara(papel).map((f) => f.name);
+  assert.ok(nomes("admin").includes("propor_operacao"), "admin pode propor operação");
+  assert.ok(nomes("operador").includes("propor_operacao"), "operador pode propor operação");
+  // O papel financeiro só lê operações — não pode criar, logo não vê a ferramenta.
+  assert.ok(!nomes("financeiro").includes("propor_operacao"), "financeiro não cria operação");
+});
+
+test("propor_operacao devolve PROPOSTA e não escreve (decisão #43)", async () => {
+  const r = await executarFerramenta(
+    "propor_operacao",
+    {
+      tipo: "guincho",
+      cliente_id: "3f1c1b52-9a2e-4c77-8f1d-2b7a5c9e4d10",
+      cliente_nome: "Auto Center Dourados",
+      origem_endereco: "Rua Brasil, 100",
+      destino_endereco: "Av. Marcelino Pires, 2000",
+      veiculo_cliente_descricao: "Gol prata",
+      valor: 350,
+    },
+    "admin"
+  );
+  assert.ok(r.proposta, "deve devolver uma proposta");
+  assert.equal(r.proposta!.acao, "criar_operacao");
+  assert.equal(r.proposta!.tipoOperacao, "guincho");
+  assert.equal(r.proposta!.endpoint, "POST /operacoes/guincho");
+  assert.equal(r.proposta!.payload.valor_total, 350);
+  assert.equal(r.proposta!.payload.cliente_id, "3f1c1b52-9a2e-4c77-8f1d-2b7a5c9e4d10");
+  const corpo = JSON.parse(r.conteudo) as { proposta_registrada?: boolean };
+  assert.equal(corpo.proposta_registrada, true);
+});
+
+test("propor_operacao descarta id inventado pelo modelo", async () => {
+  const r = await executarFerramenta(
+    "propor_operacao",
+    { tipo: "venda", cliente_id: "o cliente João", ativo_id: "123", valor: 50000 },
+    "admin"
+  );
+  assert.ok(r.proposta);
+  // Id fora do formato uuid não entra no payload — o humano escolhe na tela.
+  assert.equal(r.proposta!.payload.cliente_id, undefined);
+  assert.equal(r.proposta!.payload.ativo_id, undefined);
+  assert.equal(r.proposta!.payload.valor_total, 50000);
+});
+
+test("propor_operacao recusa tipo inválido", async () => {
+  const r = await executarFerramenta("propor_operacao", { tipo: "reboque" }, "admin");
+  assert.equal(r.proposta, undefined);
+  assert.ok((JSON.parse(r.conteudo) as { erro?: string }).erro);
+});
+
+test("propor_operacao nega o papel financeiro (não cria operação)", async () => {
+  const r = await executarFerramenta("propor_operacao", { tipo: "guincho" }, "financeiro");
   assert.equal((JSON.parse(r.conteudo) as { sem_permissao?: boolean }).sem_permissao, true);
   assert.equal(r.proposta, undefined);
 });
