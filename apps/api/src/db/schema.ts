@@ -196,7 +196,17 @@ export const manutencaoTipos = pgTable("manutencao_tipos", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull().unique(),
   padrao: boolean("padrao").notNull().default(false),
+  // Desativado sai do seletor mas continua no histórico de quem já o usa.
+  ativo: boolean("ativo").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Estado interno do sistema (chave/valor) — não é dado de negócio. Hoje guarda
+// só a versão do índice de busca; ver garantirIndiceBusca em db/bootstrap.ts.
+export const metaSistema = pgTable("meta_sistema", {
+  chave: text("chave").primaryKey(),
+  valor: text("valor").notNull(),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const manutencoes = pgTable("manutencoes", {

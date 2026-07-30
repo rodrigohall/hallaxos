@@ -3,12 +3,12 @@ import { z } from "zod";
 import {
   idSchema, paginacaoSchema, manutencaoCriarSchema, manutencaoEditarSchema,
   manutencaoConcluirSchema, manutencaoFiltrosSchema, manutencaoIniciarSchema,
-  manutencaoTipoCriarSchema,
+  manutencaoTipoCriarSchema, manutencaoTipoEditarSchema,
 } from "@hallaxos/shared";
 import {
   listarManutencoes, obterManutencao, criarManutencao, editarManutencao,
   iniciarManutencao, concluirManutencao, cancelarManutencao,
-  listarTiposManutencao, criarTipoManutencao,
+  listarTiposManutencao, criarTipoManutencao, editarTipoManutencao,
 } from "../services/manutencoes";
 import { listarTimeline } from "../services/timeline";
 import { db } from "../db/client";
@@ -29,14 +29,25 @@ export default async function rotasManutencoes(app: FastifyInstance) {
 
   // Tipos customizáveis (Sprint 14 · C1): registro consultado pelos seletores;
   // quem pode criar manutenção pode criar tipo (criação inline no formulário).
-  app.get("/manutencoes/tipos", { preHandler: exigirPermissao("manutencoes", "ler") }, async () => ({
-    dados: await listarTiposManutencao(),
-  }));
+  app.get("/manutencoes/tipos", { preHandler: exigirPermissao("manutencoes", "ler") }, async (req) => {
+    // ?todos=1 traz também os desativados — só a tela de gestão precisa deles;
+    // o seletor de nova manutenção continua vendo apenas os ativos.
+    const { todos } = z.object({ todos: z.string().optional() }).parse(req.query);
+    return { dados: await listarTiposManutencao({ incluirInativos: todos === "1" }) };
+  });
 
   app.post("/manutencoes/tipos", { preHandler: exigirPermissao("manutencoes", "criar") }, async (req, reply) => {
     const { nome } = manutencaoTipoCriarSchema.parse(req.body);
     reply.code(201);
     return { dados: await criarTipoManutencao(nome, exigirLogin(req).id) };
+  });
+
+  // Renomear e (des)ativar (Sprint 16): o rename se propaga às manutenções pelo
+  // ON UPDATE CASCADE da FK; desativar tira do seletor sem apagar histórico.
+  app.patch("/manutencoes/tipos/:id", { preHandler: exigirPermissao("manutencoes", "editar") }, async (req) => {
+    const { id } = params.parse(req.params);
+    const input = manutencaoTipoEditarSchema.parse(req.body);
+    return { dados: await editarTipoManutencao(id, input) };
   });
 
   app.get("/manutencoes/:id", { preHandler: exigirPermissao("manutencoes", "ler") }, async (req) => {

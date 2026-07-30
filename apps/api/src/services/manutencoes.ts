@@ -89,9 +89,17 @@ export async function obterManutencao(id: string) {
   return { ...m, lancamentos: lancs, proximasTransicoes: proximasTransicoesManutencao(m.status as StatusManutencao) };
 }
 
-// ── Tipos customizáveis (Sprint 14 · C1) ──
-export async function listarTiposManutencao() {
-  return db.select().from(manutencaoTipos).orderBy(manutencaoTipos.nome);
+// ── Tipos customizáveis (Sprint 14 · C1; renomear/desativar no Sprint 16) ──
+
+/**
+ * Por padrão devolve só os tipos ativos — é o que o seletor de nova manutenção
+ * deve oferecer. A tela de gestão pede `incluirInativos` para poder reativar.
+ */
+export async function listarTiposManutencao({ incluirInativos = false } = {}) {
+  const q = db.select().from(manutencaoTipos);
+  return incluirInativos
+    ? q.orderBy(manutencaoTipos.nome)
+    : q.where(eq(manutencaoTipos.ativo, true)).orderBy(manutencaoTipos.nome);
 }
 
 export async function criarTipoManutencao(nome: string, usuarioId: string) {
@@ -106,9 +114,54 @@ export async function criarTipoManutencao(nome: string, usuarioId: string) {
   return criado!;
 }
 
+/**
+ * Renomeia e/ou (des)ativa um tipo.
+ *
+ * O rename não precisa tocar em `manutencoes`: a FK por chave natural criada na
+ * migration 0009 tem ON UPDATE CASCADE, então o Postgres propaga o novo nome
+ * para todas as manutenções que usam o tipo.
+ *
+ * Os quatro tipos de fábrica (`padrao`) são intocáveis: garantirTiposManutencao
+ * Padrao() os recria por nome a cada arranque, então permitir rename ou
+ * desativação faria o bootstrap e o usuário brigarem para sempre.
+ */
+export async function editarTipoManutencao(
+  id: string,
+  input: { nome?: string; ativo?: boolean }
+) {
+  const [tipo] = await db.select().from(manutencaoTipos).where(eq(manutencaoTipos.id, id));
+  if (!tipo) throw naoEncontrado("Tipo de manutenção");
+  if (tipo.padrao) {
+    throw regraNegocio(
+      `"${tipo.nome}" é um tipo padrão do sistema e não pode ser renomeado nem desativado.`
+    );
+  }
+
+  const patch: { nome?: string; ativo?: boolean } = {};
+
+  if (input.nome !== undefined) {
+    const limpo = input.nome.trim();
+    if (limpo.toLowerCase() !== tipo.nome.toLowerCase()) {
+      const [colisao] = await db.select().from(manutencaoTipos)
+        .where(sql`lower(${manutencaoTipos.nome}) = lower(${limpo})`);
+      if (colisao) throw conflito(`O tipo "${colisao.nome}" já existe.`);
+    }
+    patch.nome = limpo;
+  }
+  if (input.ativo !== undefined) patch.ativo = input.ativo;
+  if (Object.keys(patch).length === 0) return tipo;
+
+  const [atualizado] = await db.update(manutencaoTipos)
+    .set(patch).where(eq(manutencaoTipos.id, id)).returning();
+  return atualizado!;
+}
+
 async function exigirTipoManutencao(tipo: string) {
   const [t] = await db.select().from(manutencaoTipos).where(eq(manutencaoTipos.nome, tipo));
   if (!t) throw regraNegocio(`Tipo de manutenção "${tipo}" não existe — cadastre-o em "+ Novo tipo".`);
+  // Um tipo desativado não pode receber manutenção nova, mas as antigas seguem
+  // válidas (por isso a checagem é aqui, não em listarTiposManutencao).
+  if (!t.ativo) throw regraNegocio(`O tipo "${t.nome}" está desativado.`);
   return t;
 }
 

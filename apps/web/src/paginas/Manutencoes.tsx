@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Wrench, Clock, CalendarCheck, CheckCircle2 } from "lucide-react";
+import { Plus, Wrench, Clock, CalendarCheck, CheckCircle2, Settings2 } from "lucide-react";
 import { STATUS_MANUTENCAO } from "@hallaxos/shared";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import {
   Botao, Caixa, Card, Modal, Campo, CampoMarcado, Entrada, Selecao, AreaTexto,
-  Selo, SkeletonLinhas, EstadoVazio, useToast, dataCurta,
+  Selo, SkeletonLinhas, EstadoVazio, Lista, ListaLinha, useToast, dataCurta,
 } from "../componentes/ui";
 import { Seletor, type ItemSeletor } from "../operacoes/Seletor";
 
@@ -95,6 +95,7 @@ export function Manutencoes() {
   // (atalho vindo da ficha do ativo).
   const [params, setParams] = useSearchParams();
   const [nova, setNova] = useState(params.get("nova") === "1");
+  const [gerirTipos, setGerirTipos] = useState(false);
   const ativoParam = params.get("ativo_id");
   const { data: ativoPre } = useQuery({
     queryKey: ["ativo-pre-manut", ativoParam],
@@ -147,11 +148,18 @@ export function Manutencoes() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <h1 className="font-display text-lg font-bold">Manutenções</h1>
-        {pode("manutencoes", "criar") && (
-          <Botao tamanho="sm" className="ml-auto" onClick={() => setNova(true)}>
-            <Plus className="h-3.5 w-3.5" /> Nova manutenção
-          </Botao>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {pode("manutencoes", "editar") && (
+            <Botao variante="secundario" tamanho="sm" onClick={() => setGerirTipos(true)}>
+              <Settings2 className="h-3.5 w-3.5" /> Tipos
+            </Botao>
+          )}
+          {pode("manutencoes", "criar") && (
+            <Botao tamanho="sm" onClick={() => setNova(true)}>
+              <Plus className="h-3.5 w-3.5" /> Nova manutenção
+            </Botao>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -208,7 +216,133 @@ export function Manutencoes() {
       )}
 
       {nova && (!ativoParam || ativoPre) && <ModalNova aoFechar={fecharNova} ativoInicial={ativoPre ?? null} />}
+      {gerirTipos && <ModalTiposManutencao aoFechar={() => setGerirTipos(false)} />}
     </div>
+  );
+}
+
+// Gestão dos tipos customizáveis (Sprint 16): renomear e desativar sem SQL.
+// Renomear se propaga às manutenções existentes (ON UPDATE CASCADE na FK);
+// desativar tira do seletor mas mantém o histórico de quem já usa o tipo.
+interface TipoManutencao { id: string; nome: string; padrao: boolean; ativo: boolean }
+
+function ModalTiposManutencao({ aoFechar }: { aoFechar: () => void }) {
+  const notificar = useToast();
+  const fila = useQueryClient();
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [rascunho, setRascunho] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const { data: tipos, isLoading } = useQuery({
+    queryKey: ["manutencao-tipos", "todos"],
+    queryFn: () =>
+      api.get<{ dados: TipoManutencao[] }>("/manutencoes/tipos?todos=1").then((r) => r.dados),
+  });
+
+  const aplicar = async (id: string, corpo: { nome?: string; ativo?: boolean }, sucesso: string) => {
+    setSalvando(true);
+    try {
+      await api.patch(`/manutencoes/tipos/${id}`, corpo);
+      // Invalida as duas leituras: a de gestão e a do seletor do formulário.
+      fila.invalidateQueries({ queryKey: ["manutencao-tipos"] });
+      fila.invalidateQueries({ queryKey: ["manutencoes"] });
+      setEditandoId(null);
+      notificar({ tipo: "ok", titulo: sucesso });
+    } catch (e) {
+      notificar({
+        tipo: "erro",
+        titulo: "Não foi possível salvar",
+        descricao: e instanceof ApiError ? e.message : undefined,
+      });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <Modal aberto aoFechar={aoFechar} titulo="Tipos de manutenção">
+      <div className="space-y-3">
+        <p className="text-xs text-suave">
+          Renomear um tipo atualiza todas as manutenções que já o usam. Desativar tira o
+          tipo do seletor de nova manutenção, mas o histórico continua intacto.
+        </p>
+        {isLoading ? (
+          <SkeletonLinhas linhas={4} />
+        ) : (
+          <Lista>
+            {(tipos ?? []).map((t) => (
+              <ListaLinha
+                key={t.id}
+                titulo={
+                  editandoId === t.id ? (
+                    <Entrada
+                      autoFocus
+                      value={rascunho}
+                      onChange={(e) => setRascunho(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && rascunho.trim().length >= 2) {
+                          aplicar(t.id, { nome: rascunho.trim() }, "Tipo renomeado");
+                        }
+                        if (e.key === "Escape") setEditandoId(null);
+                      }}
+                      className="max-w-xs"
+                    />
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <span className={t.ativo ? "" : "text-mudo line-through"}>{t.nome}</span>
+                      {t.padrao && <Selo>padrão</Selo>}
+                      {!t.ativo && <Selo tom="erro">desativado</Selo>}
+                    </span>
+                  )
+                }
+                direita={
+                  t.padrao ? (
+                    <span className="text-xs text-mudo">do sistema</span>
+                  ) : editandoId === t.id ? (
+                    <>
+                      <Botao
+                        tamanho="xs"
+                        carregando={salvando}
+                        disabled={rascunho.trim().length < 2 || salvando}
+                        onClick={() => aplicar(t.id, { nome: rascunho.trim() }, "Tipo renomeado")}
+                      >
+                        Salvar
+                      </Botao>
+                      <Botao tamanho="xs" variante="fantasma" onClick={() => setEditandoId(null)}>
+                        Cancelar
+                      </Botao>
+                    </>
+                  ) : (
+                    <>
+                      <Botao
+                        tamanho="xs"
+                        variante="link"
+                        onClick={() => { setEditandoId(t.id); setRascunho(t.nome); }}
+                      >
+                        Renomear
+                      </Botao>
+                      <Botao
+                        tamanho="xs"
+                        variante="link"
+                        disabled={salvando}
+                        onClick={() =>
+                          aplicar(t.id, { ativo: !t.ativo }, t.ativo ? "Tipo desativado" : "Tipo reativado")
+                        }
+                      >
+                        {t.ativo ? "Desativar" : "Reativar"}
+                      </Botao>
+                    </>
+                  )
+                }
+              />
+            ))}
+          </Lista>
+        )}
+        <div className="flex justify-end">
+          <Botao variante="fantasma" onClick={aoFechar}>Fechar</Botao>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

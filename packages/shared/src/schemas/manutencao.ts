@@ -28,6 +28,17 @@ export const manutencaoTipoCriarSchema = z.object({
 });
 export type ManutencaoTipoCriarInput = z.infer<typeof manutencaoTipoCriarSchema>;
 
+/** Renomear e/ou (des)ativar um tipo customizado (Sprint 16). */
+export const manutencaoTipoEditarSchema = z
+  .object({
+    nome: z.string().trim().min(2, "Dê um nome ao tipo").max(60).optional(),
+    ativo: z.boolean().optional(),
+  })
+  .refine((v) => v.nome !== undefined || v.ativo !== undefined, {
+    message: "Informe o novo nome ou se o tipo fica ativo",
+  });
+export type ManutencaoTipoEditarInput = z.infer<typeof manutencaoTipoEditarSchema>;
+
 // Edição depois de lançada (qualquer status, exceto cancelada): corrige dados e
 // datas (incl. retroativo: início/conclusão), com auditoria na timeline.
 export const manutencaoEditarSchema = z.object({
