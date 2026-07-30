@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 15 — Repaginada
-> Visual — 2026-07-05, conferida contra o código.
+> assumida — não esquecimento. Última revisão: Sprint 16 — Um só caminho —
+> 2026-07-30, conferida contra o código.
 
 ## Estado atual — o que está em produção
 
@@ -20,7 +20,6 @@
 | Manutenções (kanban 3 colunas, contadores de dias, campo peças) e Agenda (calendário derivado + filtro por tipo) | ✅ Sprints 6, 10, 11 |
 | Confiança: backup automático do Postgres, suíte de testes no CI, bloqueio progressivo de login | ✅ Sprint 7 |
 | Notificações (sino + job de prazos), tags, favoritos, rate limiting, auditoria de negações | ✅ Sprint 8 |
-| Copiloto de IA Fase 1 (leitura) + Fase 2 (propor lançamento com confirmação) | ✅ Sprint 9 |
 | Dashboard financeiro por origem (guincho/locação/venda/manutenção/avulso), drill-down | ✅ Sprint 11 |
 | Ficha 360° em todas as entidades, navegação sem beco, copiloto contextual, pagamento em lote | ✅ Sprint 12 |
 | Dashboard hero (relógio giant, mapa Dourados-MS, mini-sparkline, KPIs clicáveis) | ✅ Sprint 13 |
@@ -29,64 +28,52 @@
 | 17 categorias financeiras padrão no arranque (idempotente, sem migration) | ✅ Sprint 13 |
 | Auto-vincular lançamentos avulsos a operações/manutenções (dry_run + confirmação) | ✅ Sprint 13 |
 | Repo organizado: `main` oficial, deploy no main, `estado.txt` público, `CLAUDE.md` | ✅ Sprint 14 |
-| Locação: botão Criar corrigido (validação visível), diária/início+hora/devolução+hora/km inicial | ✅ Sprint 14 |
-| Guincho: seletor de caminhão corrigido, endereços com Maps/coords + mini-mapa OSM, data solicitação + HOJE | ✅ Sprint 14 |
-| Manutenções: tipos customizáveis (tabela + "+ Novo tipo") e lançamento retroativo já-concluído | ✅ Sprint 14 |
-| Operação: linkar ativo (vínculo duplo), financeiro clicável/pré-vinculado, cancelar admin c/ estorno | ✅ Sprint 14 |
-| Ativo: KPIs clicáveis, chip preço de compra, atalhos nova operação/manutenção, histórico clicável | ✅ Sprint 14 |
-| Dashboard financeiro: período customizado (de/até); Financeiro lê filtros da URL (deep-links) | ✅ Sprint 14 |
-| Repaginada visual: direção de arte "cockpit noturno", kit ganha Abas/Segmentado/Caixa/BotaoIcone/VerMais/CampoMarcado, tudo convergido pro kit, bugs visuais corrigidos | ✅ Sprint 15 |
+| Locação/Guincho/Manutenções/Operação/Ativo: correções e atalhos do Sprint 14 | ✅ Sprint 14 |
+| Repaginada visual: direção de arte "cockpit noturno", kit unificado, bugs visuais corrigidos | ✅ Sprint 15 |
+| **Hub financeiro**: 5 abas em `/financeiro` (Lançamentos · Painel · Planilha · Por Ativo · DRE), aba na URL, redirects das rotas antigas | ✅ Sprint 16 |
+| **Estado de tela na URL**: `useAbaUrl`/`useParamUrl`; aba e filtros sobrevivem a refresh, ao botão voltar e ao link compartilhado | ✅ Sprint 16 |
+| **Sidebar em seções** (Operação/Financeiro/Sistema), navegação declarativa e rotas protegidas por permissão | ✅ Sprint 16 |
+| **Atalhos de teclado** (`g`+letra, `/`, `?`, ⌘K num listener só) e trilha nas fichas de detalhe | ✅ Sprint 16 |
+| **Copiloto Fase 3**: propor operação com confirmação humana no formulário oficial | ✅ Sprint 16 |
+| **Tipos de manutenção**: renomear e desativar pela UI | ✅ Sprint 16 |
+| **Busca**: manutenções indexadas + reindexação automática versionada no arranque | ✅ Sprint 16 |
 
 ## Pendências em aberto
 
-### Funcional
+### Ação do Rodrigo (fora do alcance do ambiente remoto)
+
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| URL-sync das abas de Relatórios (`?aba=`) | Visual resolvido no Sprint 15 (`<Abas>` único no kit, usado em Ativos e Relatórios); falta só o deep-link de Relatórios ler/escrever a URL | Próximo sprint |
-| Sidebar em seções (Operação / Financeiro / Sistema) | Sprint 13 planejado — 11 itens planos sem hierarquia, "Dashboard" e "Dashboard $" colados | Próximo sprint |
-| Hub financeiro com abas internas (`/financeiro?aba=lancamentos\|painel\|planilha`) | Sprint 13 planejado — três destinos de topo para "ver dinheiro" que o usuário precisa memorizar | Próximo sprint |
-| Copiloto Fase 3: ações de escrita guardrailadas (criar operação, fechar manutenção) | Fase 1 (leitura) + Fase 2 (propor lançamento) entregues | Sprint futuro |
+| **Estabilizar o SSH do VPS** (porta alta) | Causa raiz do deploy intermitente. O `deploy.yml` já lê `VPS_PORT`; o script `deploy/ssh-porta-alta.sh` empacota a mudança no servidor (idempotente, mantém a :22 até você confirmar a porta nova). Falta rodar no Console web da Hostinger, liberar a porta no firewall do painel e criar a variável `VPS_PORT` no GitHub. Runbook em `docs/operacao-vps.md §1` | VPS · ~10 min |
+| **Apagar 10 branches órfãos no remoto** | Deleção segue bloqueada para sessões remotas (o proxy responde "Everything up-to-date" sem apagar). Todos com prefixo `claude/`: `admiring-meitner-9m9ks9`, `admiring-wright-03b5np`, `event-hall-operational-planning-3rtgki`, `hallaxos-dev-status-ohoo7m`, `hallaxos-dev-status-w0bskq`, `hallaxos-repo-sprint14-srh9ct`, `inspiring-goldberg-vzsjgd`, `stoic-shannon-d3fxpi`, `test-coverage-analysis-wby40m`, `zealous-mayer-iwls56` | GitHub · 2 min |
 | Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
 
-### Segurança e confiabilidade
+### Funcional
+
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| Deploy intermitente: SSH do VPS com timeout na :22 | Mitigado no Sprint 9 — retry 4× + runbook. **Ação no VPS** (recomendada, ainda não aplicada): mover SSH p/ porta alta + `VPS_PORT` no CI + afrouxar fail2ban (ver `docs/operacao-vps.md §1`) | VPS |
+| Copiloto Fase 3 — demais ações de escrita | Propor operação entregue no Sprint 16. Ficaram fora, por escolha: concluir manutenção, agendar manutenção e baixar lançamento. Todas cabem no mesmo padrão (ferramenta `propor_*` + card de confirmação) | Sprint futuro |
+| Filtros por sessão nas telas restantes | Operações, Ativos e Manutenções já levam filtro na URL. Financeiro/Lançamentos ainda usa `useState` — de propósito: os params sem prefixo são contrato dos deep-links e mudá-los exige cuidado maior que o resto | Sprint futuro |
 
 ### Técnico (dívida pequena)
+
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| Índice de busca de produção no formato antigo | Seed corrigido no Sprint 14; falta rodar 1× no VPS: `docker compose -f docker-compose.prod.yml exec api pnpm busca:reindexar` | Ação única no VPS |
-| Tipos de manutenção: só criação via UI | Renomear/desativar tipo ainda exige SQL (`ON UPDATE CASCADE` propaga rename); registro de tipo não entra na timeline (não é entidade referenciável) | Sprint futuro |
-| Instalar `react-leaflet` para mapa com marcadores custom | Bash classifier bloqueou instalação nos dois tries; mapas usam iframe OSM com filter CSS (dashboard + mini-mapa guincho) | Sprint futuro |
-| Branches antigos no remoto | Default já é `main` ✅; deleção segue bloqueada p/ sessões remotas (proxy 403). Apagar manualmente no GitHub: `event-hall-*` (doc resgatado), `hallaxos-dev-status-*`, `stoic-shannon-*`, `hallaxos-repo-sprint14-*` (sessão Sprint 14, mergeado), `admiring-*`, `inspiring-*`, `test-coverage-*`, `zealous-mayer-*` | Rodrigo (2 min) |
+| `pnpm build` na raiz está quebrado | `apps/api` aponta para um `tsconfig.build.json` que nunca existiu no repo. **Não afeta produção nem o CI** (o `deploy.yml` roda `--filter @hallaxos/api typecheck` e `--filter @hallaxos/web build`), nem a imagem Docker, que roda por `tsx`. É só o script agregador que falha | Sprint futuro |
+| Registro de tipo de manutenção fora da timeline | Criar/renomear/desativar tipo não gera evento — o tipo não é entidade referenciável. A auditoria indireta existe (a manutenção que usa o tipo registra o nome no evento) | Sprint futuro |
+| Instalar `react-leaflet` para mapa com marcadores custom | Bloqueado duas vezes pelo ambiente; o `CLAUDE.md` orienta a não insistir. Mapas seguem em iframe OSM com filtro CSS | Congelado |
+| Sem testes de frontend | Nenhum `*.test.*` em `apps/web`. O hub, os redirects e os atalhos não têm cobertura automatizada — por isso a lista de validação visual a cada sprint | Sprint futuro |
 
 ## Roadmap — próximos sprints sugeridos
 
-### Sprint 13 (frentes restantes do plano) — próximo
+Com as pendências do Sprint 13 finalmente zeradas, o que sobra é escolha de
+rumo, não dívida:
 
-Ver [`docs/sprint13-plan.md`](sprint13-plan.md) para especificação completa.
-
-**Frente A — Componente `<Abas>` unificado**
-Um só estilo (sublinhado), URL como fonte da verdade (`?aba=`), lazy preservado.
-Nasce do `Ativos.tsx` que já tem 90% da lógica.
-
-**Frente B — Sidebar em seções**
-`OPERAÇÃO · FINANCEIRO · SISTEMA`. Seção sem itens visíveis não renderiza.
-"Dashboard $" e "Relatórios" saem da sidebar (absorvidos pelo hub financeiro).
-
-**Frente C — Hub financeiro com abas internas**
-`/financeiro?aba=lancamentos|painel|planilha|por-ativo|dre`.
-Redirects de `/dashboard-financeiro` e `/relatorios` preservam bookmarks.
-
-**Frente D — Melhorias de densidade**
-Atalhos de teclado (`g a` → Ativos, `g f` → Financeiro, `/` foca busca),
-persistir filtros por sessão (`sessionStorage`), contadores nas abas.
-
-### Sprint 15 e além
-
-- Copiloto Fase 3: escrever com confirmação humana (criar operação, fechar manutenção).
-- Mapa com Leaflet + marcadores gold (quando o Bash classifier liberar o `pnpm add`).
-- Estabilização SSH do VPS (mover para porta alta, afrouxar fail2ban).
-- Notificações push (PWA ServiceWorker) para guinchos iniciados fora do horário.
-- Gestão de tipos de manutenção na UI (renomear/desativar).
+- **Copiloto Fase 3 completa**: concluir manutenção e baixar lançamento, no
+  mesmo padrão proposta → confirmação.
+- **Notificações push (PWA ServiceWorker)** para guinchos iniciados fora do
+  horário e devoluções atrasadas.
+- **Testes de frontend** (Vitest + Testing Library) começando pelo hub
+  financeiro e pelos redirects — o que mais quebraria em silêncio.
+- **Mapa com Leaflet + marcadores gold**, se o ambiente liberar o `pnpm add`.
+- **Tabela FIPE** (aba já existe marcada como "em breve" em Ativos).

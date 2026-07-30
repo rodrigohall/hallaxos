@@ -69,6 +69,20 @@ sudo fail2ban-client unban --all
 A :22 recebe varredura constante de bots, que alimenta o fail2ban e gera os
 banimentos que às vezes pegam o runner. Mover para uma porta alta corta quase
 todo esse ruído. O `deploy.yml` já lê a porta da variável `VPS_PORT`.
+
+> **Atalho (Sprint 16):** os passos abaixo estão empacotados em
+> **`deploy/ssh-porta-alta.sh`**, idempotente e seguro — ele mantém a :22 aberta
+> até você confirmar que a porta nova funciona, valida a config com `sshd -t`
+> antes de recarregar (config inválida aborta sem derrubar o sshd atual) e
+> imprime no fim os passos que só existem fora do servidor. Rode pelo **Console
+> web da Hostinger**, que não depende do SSH:
+> ```bash
+> cd ~/hallaxos && sudo bash deploy/ssh-porta-alta.sh 2222
+> ```
+> Depois: libere a 2222 no firewall do **painel** da Hostinger e crie a variável
+> `VPS_PORT = 2222` no GitHub. Só feche a :22 depois de um deploy verde.
+>
+> Preferindo fazer na mão, os comandos são estes:
 ```bash
 # 1) escolha uma porta (ex.: 2222) e habilite no sshd
 echo 'Port 2222' | sudo tee /etc/ssh/sshd_config.d/porta.conf

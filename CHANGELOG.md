@@ -1,5 +1,79 @@
 # Changelog
 
+## Sprint 16 — Um só caminho (2026-07-30)
+
+Sprint de coerência: nenhuma funcionalidade nova por funcionalidade, e sim
+**um destino por assunto, um lugar por estado**. Zerou todas as pendências
+funcionais e técnicas em aberto no `docs/pendencias.md`.
+
+### O hub financeiro (a mudança que mais se sente)
+
+Financeiro, Dashboard $ e Relatórios eram três itens de menu para ver o mesmo
+dinheiro de ângulos diferentes. Viraram **cinco abas de `/financeiro`**:
+Lançamentos · Painel · Planilha · Por Ativo · DRE.
+
+- A aba vive na URL; F5, botão voltar e link compartilhado caem no mesmo lugar.
+- `/dashboard-financeiro` e `/relatorios` redirecionam para a aba certa —
+  nenhum bookmark se perde.
+- Só o painel ativo é montado, preservando a carga sob demanda de cada tela.
+- **Contrato de params**: Lançamentos mantém os nomes legados sem prefixo
+  (contrato dos sete deep-links das fichas e dos KPIs); as demais abas usam
+  `p_`, `pl_` e `dre_`, porque `status`/`tipo`/`ano` significam coisas
+  diferentes em cada uma.
+- O formulário de editar lançamento existia duplicado nas duas telas grandes —
+  virou `componentes/financeiro/ModalEditarLancamento` (REGRA MÁXIMA).
+
+### Navegação
+
+- **Sidebar em três seções**: Operação · Financeiro · Sistema. A lista saiu de
+  dentro do Layout e virou dado em `componentes/navegacao.ts`, com permissão,
+  item primário e tecla de atalho declarados no próprio item. Sidebar, menu
+  mobile, barra inferior e atalhos leem da mesma fonte.
+- **Rotas com permissão**: o `pode(...)` só escondia o item de menu — quem
+  digitasse `/usuarios` renderizava a tela. Agora a rota também recusa.
+- **Atalhos de teclado**: `g` + letra navega, `/` foca a busca, `?` mostra a
+  folha de atalhos, `⌘K` segue como era. Um listener só, e teclas nuas são
+  ignoradas enquanto você digita num campo.
+- **Trilha (breadcrumb)** nas quatro fichas de detalhe — até aqui a única saída
+  era o botão voltar do navegador.
+- Filtros de Operações foram para a URL, o que **conserta o redirect
+  `/guinchos?tipo=guincho`**: existia desde o Sprint 5 apontando para um estado
+  que a tela ignorava, e o filtro sempre abria em "todos".
+
+### Copiloto Fase 3 — propor operação
+
+O copiloto entende "abre um guincho pro cliente X" e monta a proposta. O
+guardrail da decisão #43 continua inteiro: a ferramenta não escreve, e a
+operação nasce no formulário oficial de Nova Operação, pré-preenchido, com a
+autoria do humano. Ids fora do formato uuid são descartados — se o modelo
+inventar um id, o campo fica em branco para você preencher.
+
+### Busca global
+
+- **Manutenções passam a ser indexadas.** A busca ⌘K e a ferramenta
+  `busca_global` do copiloto anunciavam manutenções e nunca as encontravam.
+  Agora acham por descrição, código do ativo e placa.
+- **A reindexação deixa de ser tarefa manual no VPS**: a versão do formato
+  viaja no código e fica gravada em `meta_sistema`; divergiu, a API reindexa
+  sozinha no arranque. Some a pendência "rodar `pnpm busca:reindexar` uma vez".
+- De quebra, a reindexação virou transacional — antes havia uma janela em que a
+  busca respondia vazio para todo mundo.
+
+### Manutenções
+
+Tipos customizados agora podem ser **renomeados e desativados pela UI** (antes
+só por SQL no VPS). O rename se propaga ao histórico pelo `ON UPDATE CASCADE`
+da FK; desativar tira do seletor sem apagar nada. Os quatro tipos padrão são
+imutáveis, para não brigarem com o seed do arranque.
+
+### Infraestrutura
+
+`deploy/ssh-porta-alta.sh`: script idempotente que move o SSH do VPS para uma
+porta alta e afrouxa o fail2ban — a correção definitiva do deploy intermitente.
+Mantém a :22 aberta até você confirmar a porta nova e valida a config antes de
+recarregar o sshd. Execução no servidor é manual (runbook em
+`docs/operacao-vps.md §1`).
+
 ## Sprint 15 — Repaginada Visual (2026-07-05)
 
 Reformulação 100% estética — zero mudança de comportamento, rota, dado ou

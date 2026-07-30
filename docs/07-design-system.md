@@ -125,6 +125,7 @@ Regras de ouro:
 | `useToast`/`ProvedorToast` | Toast.tsx | 4 tipos, auto-dismiss, canto inferior |
 | `Skeleton`/`SkeletonLinhas` | Estados.tsx | Loading — nunca spinner em tela cheia |
 | `EstadoVazio`/`EstadoErro` | Estados.tsx | Ícone + título + descrição + ação |
+| `Trilha` | Trilha.tsx | Breadcrumb das fichas de detalhe: `Ativos / KAB-1234`, com o último passo como texto |
 | `Timeline` | Timeline.tsx | Assinatura visual do sistema (§8) |
 | `dinheiro`/`dataCurta`/`dataHora`/`horaCurta` | formato.ts | Formatação única pt-BR |
 
@@ -133,6 +134,37 @@ Regras de ouro:
 > atributo — o override falha em silêncio. Se um componente do kit não cobre o
 > caso, adicione uma prop ao componente (como `tamanho="sm"` em `Entrada`) ou
 > crie a moldura própria com os utilitários canônicos.
+
+## 6b. Estado de tela na URL e atalhos (Sprint 16)
+
+**A URL é a fonte da verdade da aba e dos filtros.** Nenhuma tela guarda isso em
+`useState`: os dois hooks de `hooks/estadoUrl.ts` derivam o valor de
+`useSearchParams` a cada render, então voltar/avançar no navegador, recarregar e
+compartilhar o link levam sempre ao mesmo lugar.
+
+| Hook | Uso |
+|---|---|
+| `useAbaUrl(abas, padrao, { param, manter })` | Aba de página. Valor fora da lista cai no padrão; a aba padrão não suja a URL. `manter` decide quais outros params sobrevivem à troca de aba |
+| `useParamUrl(nome, padrao?)` | Um filtro isolado. Valor igual ao padrão sai do endereço |
+
+`<Abas>` continua **puramente visual** — quem fala com a URL é o hook. Assim o
+componente serve tanto a uma aba linkável quanto a um caso sem URL.
+
+**Contrato de params quando várias abas dividem um endereço** (hoje só o hub
+financeiro): a aba principal fica com os nomes sem prefixo — que são contrato
+público dos deep-links — e cada aba nova ganha um prefixo (`p_`, `pl_`, `dre_`).
+Sem isso, `status` ou `ano` de uma aba produz estado inválido na outra.
+
+**Atalhos de teclado** têm um dono só: `ProvedorAtalhos` (montado no Layout)
+escuta o `keydown` global, inclusive o ⌘K. Regras:
+
+- `g` + letra navega; os destinos saem de `componentes/navegacao.ts`, então o
+  atalho nunca leva a uma tela que o papel não enxerga.
+- `/` foca a busca global; `?` abre a folha de atalhos; `Esc` cancela a sequência.
+- **Tecla nua nunca é capturada com o foco num campo** (`INPUT`, `TEXTAREA`,
+  `SELECT`, `contenteditable`) — senão digitar "g" num filtro navegaria.
+- Item novo na navegação ganha atalho declarando `atalho:` no próprio item; a
+  folha de ajuda se atualiza sozinha.
 
 ## 7. Padrões de tela
 
