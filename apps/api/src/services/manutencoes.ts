@@ -11,6 +11,8 @@ import { manutencoes, manutencaoTipos, ativos, ativosVeiculos } from "../db/sche
 import { novoId } from "../lib/ids";
 import { conflito, naoEncontrado, regraNegocio } from "../lib/erros";
 import { registrarEvento } from "./timeline";
+import { indexar, removerDoIndice } from "./busca";
+import { entradaManutencao } from "../db/reindexar";
 import { garantirPapel } from "./pessoas";
 import { gerarLancamentosOrigem } from "./origemFinanceira";
 
@@ -165,6 +167,29 @@ async function exigirTipoManutencao(tipo: string) {
   return t;
 }
 
+/**
+ * Mantém a manutenção no índice da busca global (Sprint 16).
+ *
+ * Até aqui manutenção era a única entidade citada na busca ⌘K e na ferramenta
+ * busca_global do copiloto que nunca entrava no índice — prometida e nunca
+ * encontrada. Relê a linha já com ativo e placa para indexar pelo mesmo formato
+ * da reindexação em massa (entradaManutencao é a fonte única do formato).
+ */
+async function reindexarManutencao(conn: DbConn, id: string) {
+  const [linha] = (await conn.execute(sql`
+    SELECT m.id, m.descricao, m.tipo, m.status, a.nome AS ativo, a.codigo AS ativo_codigo, v.placa
+    FROM manutencoes m
+    JOIN ativos a ON a.id = m.ativo_id
+    LEFT JOIN ativos_veiculos v ON v.ativo_id = a.id
+    WHERE m.id = ${id} AND m.deleted_at IS NULL
+  `)).rows as Record<string, string | null>[];
+  if (!linha) {
+    await removerDoIndice(conn, "manutencao", id);
+    return;
+  }
+  await indexar(conn, entradaManutencao(linha));
+}
+
 export async function criarManutencao(input: ManutencaoCriarInput, usuarioId: string) {
   const [ativo] = await db.select().from(ativos).where(and(eq(ativos.id, input.ativo_id), isNull(ativos.deletedAt)));
   if (!ativo) throw naoEncontrado("Ativo");
@@ -217,6 +242,7 @@ export async function criarManutencao(input: ManutencaoCriarInput, usuarioId: st
         : `Manutenção (${input.tipo}) agendada para ${ativo.nome}`,
       usuarioId,
     });
+    await reindexarManutencao(tx, id);
     return criada!;
   });
 }
@@ -250,6 +276,7 @@ export async function editarManutencao(id: string, input: ManutencaoEditarInput,
       entidadeTipo: "manutencao", entidadeId: id, evento: "atualizado",
       descricao: "Manutenção atualizada", usuarioId,
     });
+    await reindexarManutencao(tx, id);
     return ed!;
   });
 }
@@ -282,6 +309,7 @@ export async function iniciarManutencao(id: string, usuarioId: string, dataInici
       descricao: "Manutenção iniciada", usuarioId,
     });
   });
+  await reindexarManutencao(db, id);
   // Lido APÓS o commit (como em concluir/cancelar): ler de dentro da transação,
   // por uma 2ª conexão da pool enquanto ela segura locks de escrita, devolvia o
   // estado pré-commit e podia falhar — era a causa do "erro interno" ao iniciar.
@@ -322,6 +350,7 @@ export async function concluirManutencao(id: string, input: ManutencaoConcluirIn
       descricao: "Manutenção concluída", usuarioId,
     });
   });
+  await reindexarManutencao(db, id);
   return obterManutencao(id);
 }
 
@@ -342,5 +371,6 @@ export async function cancelarManutencao(id: string, motivo: string, usuarioId: 
       descricao: `Manutenção cancelada: ${motivo}`, usuarioId,
     });
   });
+  await reindexarManutencao(db, id);
   return obterManutencao(id);
 }

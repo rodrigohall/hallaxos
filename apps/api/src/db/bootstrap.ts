@@ -3,11 +3,15 @@
 // Nunca roda de novo (idempotente por construção).
 import { eq } from "drizzle-orm";
 import { db } from "./client";
-import { usuarios, categoriasFinanceiras, manutencaoTipos } from "./schema";
+import { usuarios, categoriasFinanceiras, manutencaoTipos, metaSistema } from "./schema";
+import { reindexarTudo, BUSCA_INDICE_VERSAO } from "./reindexar";
 import { TIPOS_MANUTENCAO } from "@hallaxos/shared";
 import { novoId } from "../lib/ids";
 import { hashSenha } from "../services/auth";
 import { registrarEvento } from "../services/timeline";
+
+/** Chave em meta_sistema que guarda a versão do formato do índice de busca. */
+const CHAVE_INDICE = "busca_indice_versao";
 
 const CATEGORIAS_PADRAO: { nome: string; tipo: "receita" | "despesa" }[] = [
   // Receitas operacionais
@@ -84,4 +88,46 @@ export async function garantirAdminInicial(): Promise<void> {
     });
   });
   console.log(`Administrador inicial criado: ${email}`);
+}
+
+/**
+ * Mantém o índice da busca global no formato do código (Sprint 16).
+ *
+ * O índice é derivado — reconstruí-lo é sempre seguro. O que faltava era um
+ * gatilho: quando o formato mudava, alguém precisava lembrar de rodar
+ * `pnpm busca:reindexar` no VPS na mão, e enquanto não rodava a busca ficava
+ * com dado velho (foi exatamente o que aconteceu depois do Sprint 14).
+ *
+ * Agora a versão do formato viaja no código e fica gravada em meta_sistema: se
+ * a gravada for diferente, a API reindexa no arranque e regrava. No boot comum
+ * é uma consulta a uma tabela de uma linha e um early-return, como os outros
+ * dois seeds.
+ */
+export async function garantirIndiceBusca(): Promise<void> {
+  const [atual] = await db
+    .select()
+    .from(metaSistema)
+    .where(eq(metaSistema.chave, CHAVE_INDICE));
+
+  if (atual && Number(atual.valor) === BUSCA_INDICE_VERSAO) return;
+
+  const motivo = atual
+    ? `formato mudou (v${atual.valor} → v${BUSCA_INDICE_VERSAO})`
+    : "índice ainda não versionado";
+  console.log(`Reindexando a busca global: ${motivo}…`);
+
+  const r = await reindexarTudo();
+  await db
+    .insert(metaSistema)
+    .values({ chave: CHAVE_INDICE, valor: String(BUSCA_INDICE_VERSAO) })
+    .onConflictDoUpdate({
+      target: metaSistema.chave,
+      set: { valor: String(BUSCA_INDICE_VERSAO), atualizadoEm: new Date() },
+    });
+
+  console.log(
+    `Busca reindexada (v${BUSCA_INDICE_VERSAO}): ${r.pessoas} pessoas, ${r.ativos} ativos, ` +
+      `${r.operacoes} operações, ${r.manutencoes} manutenções, ${r.documentos} documentos, ` +
+      `${r.lancamentos} lançamentos.`
+  );
 }
