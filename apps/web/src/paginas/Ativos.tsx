@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, CarFront, BarChart3, Table2, SlidersHorizontal } from "lucide-react";
 import { STATUS_ATIVO } from "@hallaxos/shared";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Abas, Botao, Card, Chip, Entrada, Selecao, Selo, SkeletonLinhas, EstadoVazio, dinheiro } from "../componentes/ui";
+import { useAbaUrl, useParamUrl } from "../hooks/estadoUrl";
 import { RelatorioPatrimonio } from "./RelatorioPatrimonio";
 
 interface AtivoLista {
@@ -28,14 +29,13 @@ const ROTULOS: Record<string, string> = {
 };
 
 type Aba = "lista" | "relatorio" | "fipe";
+const ABAS_IDS = ["lista", "relatorio", "fipe"] as const;
 
 export function Ativos() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const abaInicial = (searchParams.get("aba") as Aba) ?? "lista";
-  const [aba, setAba] = useState<Aba>(abaInicial);
-  const [busca, setBusca] = useState(searchParams.get("busca") ?? "");
-  const [status, setStatus] = useState<string | null>(searchParams.get("status") ?? null);
-  const [categoriaId, setCategoriaId] = useState<string | null>(null);
+  const [aba, mudarAba] = useAbaUrl<Aba>(ABAS_IDS, "lista");
+  const [busca, setBusca] = useParamUrl("busca", "");
+  const [status, setStatus] = useParamUrl("status");
+  const [categoriaId, setCategoriaId] = useParamUrl("categoria");
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const { pode } = useAuth();
 
@@ -55,11 +55,6 @@ export function Ativos() {
     queryKey: ["ativo-categorias"],
     queryFn: () => api.get<{ dados: Categoria[] }>("/ativos/categorias").then((r) => r.dados),
   });
-
-  const mudarAba = (a: Aba) => {
-    setAba(a);
-    setSearchParams(a === "lista" ? {} : { aba: a }, { replace: true });
-  };
 
   const ABAS: { id: Aba; rotulo: string; icone: typeof CarFront; breve?: boolean }[] = [
     { id: "lista", rotulo: "Ativos", icone: CarFront },
@@ -113,7 +108,7 @@ export function Ativos() {
             <div className="flex gap-2">
               <Entrada
                 placeholder="Buscar por nome, código, placa, marca ou modelo…"
-                value={busca}
+                value={busca ?? ""}
                 onChange={(e) => setBusca(e.target.value)}
                 className="flex-1"
               />
