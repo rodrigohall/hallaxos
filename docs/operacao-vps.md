@@ -33,10 +33,28 @@
 
 ## Problemas que já enfrentamos (e como resolver)
 
-### 1. Deploy falha com `ssh: connect to host *** port 22: Connection timed out`
-Conexão do GitHub até o VPS instável/intermitente — o `verificar` passa, mas o
-job `deploy` não consegue enviar o código. **O sistema em produção continua no
-ar**; só a atualização não foi aplicada.
+### 1. Deploy falha ao conectar no VPS (porta 22)
+O `verificar` passa, mas o job `deploy` não consegue enviar o código. **O sistema
+em produção continua no ar**; só a atualização não foi aplicada.
+
+> **Leia a mensagem antes de agir — são dois problemas diferentes** (descoberto
+> no Sprint 16, quando o segundo caso foi tratado como o primeiro por engano):
+>
+> | Mensagem | O que é | Onde resolver |
+> |---|---|---|
+> | `ssh: connect to host *** port 22: Connection timed out` | Pacote **descartado**. A tentativa fica pendurada até o timeout (~30s). Rede, firewall do painel ou sshd fora do ar | §1 abaixo |
+> | `kex_exchange_identification: read: Connection reset by peer` | Conexão **recusada ativamente**: o TCP é aceito e o socket morre em ~150ms, na troca de banner. Algo dentro do servidor rejeita — fail2ban com regra de reject, CrowdSec, `hosts.deny` ou `MaxStartups` estourado | `deploy/ssh-destravar.sh` |
+>
+> Para o caso *reset*, um paste só no Console web da Hostinger:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/rodrigohall/hallaxos/main/deploy/ssh-destravar.sh | sudo bash
+> ```
+> O script só afrouxa (desbanir, comentar bloqueio, aumentar limite) e imprime
+> diagnóstico antes/depois. Se o `auth.log` não mostrar a conexão chegando, o
+> bloqueio está no firewall do **painel** da Hostinger — nada dentro do servidor
+> resolve.
+
+O resto desta seção trata do caso **timeout**.
 
 **O que já corrigimos:** o `sshd` não subia sozinho após reboot. Resolvido com
 `sudo systemctl enable --now ssh` (agora sobe no boot). Mesmo assim a conexão
