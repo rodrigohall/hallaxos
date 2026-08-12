@@ -6,7 +6,7 @@ export const RECURSOS = [
   "pessoas", "ativos", "operacoes", "manutencoes",
   "lancamentos", "contas", "categorias_financeiras",
   "dashboard_operacional", "dashboard_financeiro",
-  "relatorios_operacionais", "relatorios_financeiros",
+  "relatorios_operacionais", "relatorios_financeiros", "pro_labore",
   "documentos", "comentarios", "tags", "agenda",
   "timeline", "busca", "usuarios", "overrides",
 ] as const;
@@ -20,13 +20,15 @@ type Permissoes = Record<Recurso, readonly Acao[]>;
 const TUDO = ["criar", "ler", "editar", "arquivar", "transicionar"] as const;
 const LER = ["ler"] as const;
 const NADA = [] as const;
+/** Ver o cálculo e ajustar os parâmetros do acordo — só dono e gestão. */
+const LER_EDITAR = ["ler", "editar"] as const;
 
 const MATRIZ: Record<PapelUsuario, Permissoes> = {
   admin: {
     pessoas: TUDO, ativos: TUDO, operacoes: TUDO, manutencoes: TUDO,
     lancamentos: TUDO, contas: TUDO, categorias_financeiras: TUDO,
     dashboard_operacional: LER, dashboard_financeiro: LER,
-    relatorios_operacionais: LER, relatorios_financeiros: LER,
+    relatorios_operacionais: LER, relatorios_financeiros: LER, pro_labore: LER_EDITAR,
     documentos: TUDO, comentarios: TUDO, tags: TUDO, agenda: TUDO,
     timeline: LER, busca: LER, usuarios: TUDO, overrides: ["transicionar"],
   },
@@ -34,7 +36,7 @@ const MATRIZ: Record<PapelUsuario, Permissoes> = {
     pessoas: TUDO, ativos: TUDO, operacoes: TUDO, manutencoes: TUDO,
     lancamentos: TUDO, contas: TUDO, categorias_financeiras: TUDO,
     dashboard_operacional: LER, dashboard_financeiro: LER,
-    relatorios_operacionais: LER, relatorios_financeiros: LER,
+    relatorios_operacionais: LER, relatorios_financeiros: LER, pro_labore: LER_EDITAR,
     documentos: TUDO, comentarios: TUDO, tags: TUDO, agenda: TUDO,
     timeline: LER, busca: LER, usuarios: LER, overrides: NADA,
   },
@@ -44,7 +46,7 @@ const MATRIZ: Record<PapelUsuario, Permissoes> = {
     manutencoes: ["criar", "ler", "editar", "transicionar"],
     lancamentos: NADA, contas: NADA, categorias_financeiras: NADA,
     dashboard_operacional: LER, dashboard_financeiro: NADA,
-    relatorios_operacionais: LER, relatorios_financeiros: NADA,
+    relatorios_operacionais: LER, relatorios_financeiros: NADA, pro_labore: NADA,
     documentos: TUDO, comentarios: TUDO, tags: TUDO, agenda: TUDO,
     timeline: LER, busca: LER, usuarios: NADA, overrides: NADA,
   },
@@ -52,7 +54,7 @@ const MATRIZ: Record<PapelUsuario, Permissoes> = {
     pessoas: LER, ativos: LER, operacoes: LER, manutencoes: LER,
     lancamentos: TUDO, contas: TUDO, categorias_financeiras: TUDO,
     dashboard_operacional: LER, dashboard_financeiro: LER,
-    relatorios_operacionais: LER, relatorios_financeiros: LER,
+    relatorios_operacionais: LER, relatorios_financeiros: LER, pro_labore: NADA,
     documentos: TUDO, comentarios: TUDO, tags: TUDO, agenda: LER,
     timeline: LER, busca: LER, usuarios: NADA, overrides: NADA,
   },

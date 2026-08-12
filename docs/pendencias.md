@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 16 — Um só caminho —
-> 2026-07-30, conferida contra o código.
+> assumida — não esquecimento. Última revisão: Sprint 17 — Pró-labore —
+> 2026-08-12, conferida contra o código.
 
 ## Estado atual — o que está em produção
 
@@ -37,6 +37,7 @@
 | **Copiloto Fase 3**: propor operação com confirmação humana no formulário oficial | ✅ Sprint 16 |
 | **Tipos de manutenção**: renomear e desativar pela UI | ✅ Sprint 16 |
 | **Busca**: manutenções indexadas + reindexação automática versionada no arranque | ✅ Sprint 16 |
+| **Pró-labore**: 6ª aba do hub calcula o acordo salarial (fixo + 30% das vendas + 20% do excedente de guincho+locação), com memória de cálculo mês a mês e parâmetros editáveis em `meta_sistema` | ✅ Sprint 17 |
 
 ## Pendências em aberto
 
@@ -44,7 +45,7 @@
 
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| **Destravar o SSH do VPS** (deploy do Sprint 16 parado) | O deploy do `926a580` falhou nas duas execuções — 8 tentativas, todas com `kex_exchange_identification: read: Connection reset by peer`. **Não é o timeout que o runbook documentava**: a conexão morre em ~150ms, o que indica rejeição ativa no servidor (fail2ban/CrowdSec/`hosts.deny`/`MaxStartups`), não pacote descartado. Rodar `deploy/ssh-destravar.sh` pelo Console web e reexecutar o deploy | VPS · 1 min |
+| **Destravar o SSH do VPS** (deploy dos Sprints 16 e 17 parado) | O deploy do `926a580` falhou nas duas execuções — 8 tentativas, todas com `kex_exchange_identification: read: Connection reset by peer`. **Não é o timeout que o runbook documentava**: a conexão morre em ~150ms, o que indica rejeição ativa no servidor (fail2ban/CrowdSec/`hosts.deny`/`MaxStartups`), não pacote descartado. Rodar `deploy/ssh-destravar.sh` pelo Console web e reexecutar o deploy | VPS · 1 min |
 | **Estabilizar o SSH do VPS** (porta alta) | Correção definitiva, para o problema acima não voltar. O `deploy.yml` já lê `VPS_PORT`; o script `deploy/ssh-porta-alta.sh` empacota a mudança no servidor (idempotente, mantém a :22 até você confirmar a porta nova). Falta rodar no Console web da Hostinger, liberar a porta no firewall do painel e criar a variável `VPS_PORT` no GitHub. Runbook em `docs/operacao-vps.md §1` | VPS · ~10 min |
 | **Apagar 10 branches órfãos no remoto** | Deleção segue bloqueada para sessões remotas (o proxy responde "Everything up-to-date" sem apagar). Todos com prefixo `claude/`: `admiring-meitner-9m9ks9`, `admiring-wright-03b5np`, `event-hall-operational-planning-3rtgki`, `hallaxos-dev-status-ohoo7m`, `hallaxos-dev-status-w0bskq`, `hallaxos-repo-sprint14-srh9ct`, `inspiring-goldberg-vzsjgd`, `stoic-shannon-d3fxpi`, `test-coverage-analysis-wby40m`, `zealous-mayer-iwls56` | GitHub · 2 min |
 | Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
@@ -54,6 +55,8 @@
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
 | Copiloto Fase 3 — demais ações de escrita | Propor operação entregue no Sprint 16. Ficaram fora, por escolha: concluir manutenção, agendar manutenção e baixar lançamento. Todas cabem no mesmo padrão (ferramenta `propor_*` + card de confirmação) | Sprint futuro |
+| Despesa do ativo conta nas duas comissões | Um ativo que foi **locado e depois vendido** tem a manutenção descontada duas vezes: no lucro da locação (base dos 20%) e de novo no lucro da venda (base dos 30%), porque a venda olha a vida inteira do ativo. Desconta duas vezes **contra** o Rodrigo, nunca a favor. Resolver exigiria marcar quais despesas já foram comissionadas — decisão do Rodrigo se compensa | Sprint futuro |
+| Pró-labore não gera lançamento | A aba calcula e mostra; pagar ainda é criar o lançamento na mão em Lançamentos. Um botão "gerar despesa de pró-labore do período" fecharia o ciclo, mas escrever dinheiro a partir de um relatório merece decisão à parte | Sprint futuro |
 | Filtros por sessão nas telas restantes | Operações, Ativos e Manutenções já levam filtro na URL. Financeiro/Lançamentos ainda usa `useState` — de propósito: os params sem prefixo são contrato dos deep-links e mudá-los exige cuidado maior que o resto | Sprint futuro |
 
 ### Técnico (dívida pequena)

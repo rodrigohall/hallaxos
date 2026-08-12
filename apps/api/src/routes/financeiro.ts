@@ -12,6 +12,7 @@ import {
   pagarLancamentosLote, vincularLancamentos, faturamentoPorTipo, custoPorAtivo,
 } from "../services/financeiro";
 import { dre, resultadoPorAtivo, planilhaPivot } from "../services/relatorios";
+import { lerParametros, montarProLabore, salvarParametros } from "../services/proLabore";
 import { exigirLogin, exigirPermissao } from "../plugins/auth";
 import { semPermissao } from "../lib/erros";
 
@@ -149,5 +150,33 @@ export default async function rotasFinanceiro(app: FastifyInstance) {
   app.get("/financeiro/custo-por-ativo", { preHandler: exigirPermissao("dashboard_financeiro", "ler") }, async (req) => {
     const { meses } = z.object({ meses: z.coerce.number().int().min(1).max(24).default(3) }).parse(req.query);
     return { dados: await custoPorAtivo(meses) };
+  });
+
+  // ── Pró-labore ───────────────────────────────────────────────────────────
+  // Recurso próprio (não `relatorios_financeiros`): quem cuida do financeiro
+  // enxerga todo o resto do hub, mas o acordo salarial é do dono e da gestão.
+  app.get("/relatorios/pro-labore", { preHandler: exigirPermissao("pro_labore", "ler") }, async (req) => {
+    const q = z.object({ de: z.string().date(), ate: z.string().date() }).parse(req.query);
+    // Período invertido é engano de digitação, não erro: reordena e segue.
+    const [de, ate] = q.de <= q.ate ? [q.de, q.ate] : [q.ate, q.de];
+    return { dados: await montarProLabore(de, ate) };
+  });
+
+  app.get("/relatorios/pro-labore/parametros", { preHandler: exigirPermissao("pro_labore", "ler") }, async () => ({
+    dados: await lerParametros(),
+  }));
+
+  app.patch("/relatorios/pro-labore/parametros", { preHandler: exigirPermissao("pro_labore", "editar") }, async (req) => {
+    const valor = z.coerce.number().min(0).max(99_999_999);
+    const pct = z.coerce.number().min(0).max(100);
+    const input = z
+      .object({
+        fixoMensal: valor.optional(),
+        pctVenda: pct.optional(),
+        pctExcedente: pct.optional(),
+        pisoMensal: valor.optional(),
+      })
+      .parse(req.body);
+    return { dados: await salvarParametros(input) };
   });
 }

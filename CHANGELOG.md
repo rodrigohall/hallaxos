@@ -1,5 +1,73 @@
 # Changelog
 
+## Sprint 17 — Pró-labore (2026-08-12)
+
+### A aba que responde "quanto eu tiro esse mês?"
+
+Sexta aba de `/financeiro`, ao lado de Lançamentos · Painel · Planilha · Por
+Ativo · DRE. Calcula o acordo salarial do Rodrigo sobre o dinheiro que já está
+no sistema:
+
+```
+pró-labore = fixo mensal
+           + 30% do lucro das vendas de ativos
+           + 20% do que o lucro de guincho+locação passar de 10.000/mês
+```
+
+A tela mostra o total, as três parcelas, e — o que faz o número ser confiável —
+a **memória de cálculo mês a mês**: lucro, piso, excedente. Abaixo, as três
+listas que alimentam a conta, todas clicáveis até a ficha: guincho do período
+operação por operação, ativos locados com receita/despesa/lucro e somatório, e
+cada venda com `venda − compra − despesas do ativo`.
+
+### As quatro definições do acordo
+
+Decididas pelo Rodrigo e gravadas em código, porque cada uma muda o valor:
+
+1. **Base dos 20%: lucro**, não receita bruta — guincho e locação entram
+   líquidos de suas despesas.
+2. **Lucro da venda = venda − compra − despesas do ativo**, contando as
+   despesas da vida inteira dele, não só as do período: o lucro da venda é o
+   resultado do ciclo todo.
+3. **Piso de 10.000 é mensal.** Um trimestre tem piso de 30.000, e o total do
+   trimestre bate com a soma dos três meses vistos separadamente. Mês forte não
+   cobre o piso do mês fraco. Período parcial rateia fixo e piso pelos dias.
+4. **Regime de competência**: conta previsto + pago (só `cancelado` fica de
+   fora), pela data `COALESCE(pagamento, vencimento)` — a mesma da planilha.
+
+### Cada lançamento entra uma vez
+
+`ativo_id` coexiste com `operacao_id` (decisão #53), então somar por vínculo
+contaria o mesmo dinheiro duas vezes. A classificação é uma cascata de
+precedência — operação de guincho/locação, depois manutenção de ativo que
+serviu no período, depois lançamento direto no ativo — e o primeiro vínculo que
+casa define o balde. Lançamento de operação de venda/compra fica fora de
+propósito: venda tem linha própria nos 30%, e contá-la também no excedente
+pagaria duas vezes pelo mesmo dinheiro.
+
+### Sem tabela nova
+
+Nenhuma migration (REGRA MÁXIMA): a aba inteira é leitura sobre `lancamentos`,
+`operacoes` e `ativos`. Só os **parâmetros do acordo** (1.200 / 30% / 20% /
+10.000) foram para `meta_sistema`, porque são combinado entre pessoas e não
+derivam de nenhum dado do sistema — e ficam editáveis num card da própria aba,
+sem deploy.
+
+### Permissão própria
+
+Recurso `pro_labore`, não `relatorios_financeiros`: quem cuida do financeiro no
+dia a dia enxerga todo o resto do hub, mas o acordo salarial do dono é de
+`admin` e `gestor`. Como as rotas passaram a recusar por permissão no Sprint 16,
+a aba some do hub e o endpoint nega — as duas pontas.
+
+### Testes
+
+11 casos novos cobrindo a aritmética (`calcularParcelas` é função pura, sem
+banco): piso mensal contra piso de período, prejuízo que não vira excedente
+negativo, mês parcial, venda no prejuízo, e a soma das três parcelas. O teste do
+mês parcial pegou uma imprecisão real antes do deploy — o fixo estava sendo
+calculado sobre a fração já arredondada para exibição.
+
 ## Sprint 16 — Um só caminho (2026-07-30)
 
 Sprint de coerência: nenhuma funcionalidade nova por funcionalidade, e sim

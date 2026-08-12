@@ -13,7 +13,7 @@
 // porque `status`, `tipo` e `ano` significam coisas diferentes em cada uma.
 // Ao trocar de aba, só sobrevivem os params da aba de destino.
 import { useQuery } from "@tanstack/react-query";
-import { CircleDollarSign, TrendingUp, TableProperties, CarFront, BarChart3 } from "lucide-react";
+import { CircleDollarSign, TrendingUp, TableProperties, CarFront, BarChart3, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -24,8 +24,10 @@ import { PainelVisaoGeral } from "./PainelVisaoGeral";
 import { PainelPlanilha } from "./PainelPlanilha";
 import { PainelPorAtivo } from "./PainelPorAtivo";
 import { PainelDre } from "./PainelDre";
+import { PainelProLabore } from "./PainelProLabore";
 
-export type AbaFinanceiro = "lancamentos" | "painel" | "planilha" | "por-ativo" | "dre";
+export type AbaFinanceiro =
+  | "lancamentos" | "painel" | "planilha" | "por-ativo" | "dre" | "pro-labore";
 
 interface DefinicaoAba {
   id: AbaFinanceiro;
@@ -43,6 +45,7 @@ const ABAS: DefinicaoAba[] = [
   { id: "planilha",    rotulo: "Planilha",    icone: TableProperties,  permissao: ["relatorios_financeiros", "ler"], prefixo: "pl_" },
   { id: "por-ativo",   rotulo: "Por Ativo",   icone: CarFront,         permissao: ["relatorios_financeiros", "ler"], prefixo: "" },
   { id: "dre",         rotulo: "DRE",         icone: BarChart3,        permissao: ["relatorios_financeiros", "ler"], prefixo: "dre_" },
+  { id: "pro-labore",  rotulo: "Pró-labore",  icone: Wallet,           permissao: ["pro_labore", "ler"], prefixo: "pro_" },
 ];
 
 /** Params legados da aba de Lançamentos — contrato público dos deep-links. */
@@ -115,6 +118,7 @@ export function HubFinanceiro() {
       {aba === "planilha" && <PainelPlanilha />}
       {aba === "por-ativo" && <PainelPorAtivo />}
       {aba === "dre" && <PainelDre />}
+      {aba === "pro-labore" && <PainelProLabore />}
     </div>
   );
 }
