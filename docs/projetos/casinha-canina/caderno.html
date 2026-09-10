@@ -1,0 +1,1737 @@
+<title>Canil CM-01</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#EDEEEA; --sheet:#FBFBF8; --sheet-2:#F3F4EF;
+  --ink:#1B1F1D; --ink-2:#4B534F; --muted:#79817C;
+  --rule:#C6CBC2; --rule-2:#DFE2DA; --rule-3:#E8EAE3;
+  --steel:#2E5EAA; --steel-fill:#E3EAF6;
+  --block:#B4682B; --block-fill:#F6E9DB;
+  --alert:#A8321F; --ok:#3D6B4E;
+  --shadow:0 1px 2px rgba(27,31,29,.07), 0 8px 24px -18px rgba(27,31,29,.5);
+  --f-disp:"Barlow Condensed",Haettenschweiler,"Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",-apple-system,Segoe UI,Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --gut:clamp(16px,4vw,40px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#121513; --sheet:#181C1A; --sheet-2:#1E2320;
+    --ink:#E6E9E3; --ink-2:#B3BAB2; --muted:#8B938B;
+    --rule:#39413A; --rule-2:#282F2A; --rule-3:#212724;
+    --steel:#4E93DE; --steel-fill:#182634;
+    --block:#C9822F; --block-fill:#2A2119;
+    --alert:#E2745C; --ok:#7FB894;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px #000;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#121513; --sheet:#181C1A; --sheet-2:#1E2320;
+  --ink:#E6E9E3; --ink-2:#B3BAB2; --muted:#8B938B;
+  --rule:#39413A; --rule-2:#282F2A; --rule-3:#212724;
+  --steel:#4E93DE; --steel-fill:#182634;
+  --block:#C9822F; --block-fill:#2A2119;
+  --alert:#E2745C; --ok:#7FB894;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px #000;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:var(--gut);padding-block:0}
+.col{max-width:66ch}
+h1,h2,h3,h4{font-family:var(--f-disp);text-wrap:balance;margin:0;line-height:1.05;letter-spacing:.005em}
+p{margin:0 0 .9em}
+a{color:var(--steel)}
+strong{font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+.capa{border-bottom:2px solid var(--ink);padding-block:clamp(28px,6vw,64px) 0}
+.capa-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.9fr);gap:clamp(20px,4vw,48px);align-items:end}
+@media(max-width:800px){.capa-grid{grid-template-columns:1fr}}
+.capa h1{font-size:clamp(42px,9vw,86px);font-weight:700;letter-spacing:-.01em;text-transform:uppercase}
+.capa h1 span{display:block;color:var(--muted);font-weight:500}
+.capa .lead{font-size:clamp(16px,2.2vw,19px);color:var(--ink-2);max-width:46ch;margin-top:18px}
+.sysbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.syschip{font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;padding:7px 12px;border:1px solid;border-radius:2px;display:flex;gap:8px;align-items:center}
+.syschip::before{content:"";width:9px;height:9px;border-radius:1px;background:currentColor;flex:none}
+.chip-a{color:var(--steel);border-color:color-mix(in srgb,var(--steel) 40%,transparent);background:var(--steel-fill)}
+.chip-b{color:var(--block);border-color:color-mix(in srgb,var(--block) 40%,transparent);background:var(--block-fill)}
+.carimbo{border:1px solid var(--rule);background:var(--sheet);font-family:var(--f-mono);font-size:11.5px;line-height:1.35}
+.carimbo dl{display:grid;grid-template-columns:auto 1fr;gap:0;margin:0}
+.carimbo dt{padding:6px 10px;color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+.carimbo dd{margin:0;padding:6px 10px;border-bottom:1px solid var(--rule-2);border-left:1px solid var(--rule-2);font-variant-numeric:tabular-nums}
+.carimbo dl>:nth-last-child(1),.carimbo dl>:nth-last-child(2){border-bottom:0}
+
+.nav{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--paper) 92%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.nav-in{max-width:1180px;margin:0 auto;padding-inline:var(--gut);display:flex;gap:18px;align-items:center;height:44px;overflow-x:auto;scrollbar-width:none}
+.nav-in::-webkit-scrollbar{display:none}
+.nav a{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  text-decoration:none;white-space:nowrap;padding:4px 0;border-bottom:2px solid transparent}
+.nav a:hover,.nav a:focus-visible{color:var(--ink);border-bottom-color:var(--ink)}
+.nav .tag{font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--ink);letter-spacing:.08em;flex:none}
+
+section{padding-block:clamp(34px,6vw,60px);border-bottom:1px solid var(--rule-2)}
+section:last-of-type{border-bottom:0}
+.sec-head{display:flex;gap:16px;align-items:baseline;margin-bottom:22px;border-bottom:1px solid var(--ink);padding-bottom:8px}
+.sec-num{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--muted);flex:none;padding-top:4px}
+.sec-head h2{font-size:clamp(24px,4vw,34px);font-weight:600;text-transform:uppercase;letter-spacing:.01em}
+h3{font-size:19px;font-weight:600;margin:28px 0 8px;text-transform:uppercase;letter-spacing:.03em}
+h4{font-family:var(--f-body);font-size:14px;font-weight:600;margin:18px 0 6px;letter-spacing:.01em}
+.col ul,.col ol{margin:0 0 1em;padding-left:1.1em}
+.col li{margin-bottom:.35em}
+
+.tbl-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--rule);background:var(--sheet)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+caption{text-align:left;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--rule-2);background:var(--sheet-2)}
+th,td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--rule-3);vertical-align:top}
+thead th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  font-weight:500;border-bottom:1px solid var(--rule);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tfoot td{font-weight:600;border-top:1px solid var(--rule);background:var(--sheet-2)}
+.t-a{color:var(--steel)} .t-b{color:var(--block)}
+tbody th{font-weight:500;font-family:var(--f-body)}
+
+.nota{border-left:3px solid var(--rule);padding:2px 0 2px 16px;margin:18px 0;color:var(--ink-2);font-size:14px}
+.nota .k{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px}
+.nota.crit{border-left-color:var(--alert)}
+.nota.crit .k{color:var(--alert)}
+.nota.ok{border-left-color:var(--ok)} .nota.ok .k{color:var(--ok)}
+
+.prancha{margin:26px 0 30px;border:1px solid var(--rule);background:var(--sheet);box-shadow:var(--shadow)}
+.prancha-top{display:flex;gap:14px;align-items:baseline;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--rule-2);flex-wrap:wrap}
+.prancha-top h3{margin:0;font-size:16px;letter-spacing:.05em}
+.prancha-top .cod{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+.prancha-body{padding:6px 8px;overflow-x:auto}
+.prancha svg{display:block;width:100%;height:auto;min-width:860px}
+.prancha-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border-top:1px solid var(--rule-2)}
+.prancha-foot div{padding:7px 12px;border-right:1px solid var(--rule-3);font-family:var(--f-mono);font-size:11px}
+.prancha-foot div:last-child{border-right:0}
+.prancha-foot b{display:block;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.legenda{display:flex;flex-wrap:wrap;gap:8px 20px;padding:9px 14px;border-top:1px solid var(--rule-2);
+  font-family:var(--f-mono);font-size:11px;color:var(--ink-2)}
+.legenda span{display:flex;align-items:center;gap:7px}
+.legenda i{width:14px;height:10px;border:1px solid var(--ink);display:block;flex:none}
+
+.dw{stroke-linecap:square}
+.l0{stroke:var(--rule);stroke-width:.6;fill:none}
+.l1{stroke:var(--ink-2);stroke-width:1.1;fill:none}
+.l2{stroke:var(--ink);stroke-width:2;fill:none}
+.l3{stroke:var(--ink);stroke-width:3.4;fill:none}
+.ld{stroke:var(--ink-2);stroke-width:1.1;fill:none;stroke-dasharray:14 8}
+.la{stroke:var(--muted);stroke-width:.9;fill:none;stroke-dasharray:26 6 3 6}
+.dim{stroke:var(--muted);stroke-width:.8;fill:none}
+.tdim{font-family:var(--f-mono);fill:var(--ink-2)}
+.ttl{font-family:var(--f-disp);fill:var(--ink);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.tlb{font-family:var(--f-mono);fill:var(--muted)}
+.fA{stroke:var(--steel);stroke-width:1.6;fill:none}
+.fB{stroke:var(--block);stroke-width:1.6;fill:none}
+
+.viewer{border:1px solid var(--rule);background:var(--sheet);box-shadow:var(--shadow);margin:24px 0}
+#cv3d{display:block;width:100%;height:clamp(360px,58vh,600px);touch-action:none;cursor:grab;background:var(--sheet-2)}
+#cv3d:active{cursor:grabbing}
+.v-toolbar{display:flex;flex-wrap:wrap;gap:8px 10px;padding:10px 12px;border-bottom:1px solid var(--rule-2);align-items:center}
+.seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.seg button{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.05em;padding:7px 13px;border:0;cursor:pointer;
+  background:var(--sheet);color:var(--muted);text-transform:uppercase}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.seg.sysA button[aria-pressed="true"]{background:var(--steel);color:#fff}
+.seg.sysB button[aria-pressed="true"]{background:var(--block);color:#fff}
+.tgl{font-family:var(--f-mono);font-size:11.5px;display:flex;align-items:center;gap:6px;cursor:pointer;
+  border:1px solid var(--rule);border-radius:2px;padding:6px 10px;color:var(--muted);user-select:none}
+.tgl input{accent-color:var(--steel);margin:0}
+.tgl[data-on="1"]{color:var(--ink);border-color:var(--ink-2)}
+.v-slider{display:flex;align-items:center;gap:9px;font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.v-slider input{width:112px;accent-color:var(--ink)}
+.v-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:9px 13px;border-top:1px solid var(--rule-2);
+  font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.v-legend{display:flex;flex-wrap:wrap;gap:6px 16px}
+.v-legend span{display:flex;align-items:center;gap:6px}
+.v-legend i{width:11px;height:11px;border-radius:1px;display:block;border:1px solid rgba(128,128,128,.45)}
+button:focus-visible,a:focus-visible,input:focus-visible,.tgl:focus-within{outline:2px solid var(--steel);outline-offset:2px}
+
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin:22px 0}
+.card{border:1px solid var(--rule);background:var(--sheet);padding:16px 18px}
+.card h4{margin-top:0}
+.card.A{border-top:3px solid var(--steel)}
+.card.B{border-top:3px solid var(--block)}
+.smx{display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:14px;margin:20px 0}
+.mini{border:1px solid var(--rule);background:var(--sheet);padding:13px 15px 11px}
+.mini .lab{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.mini .row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:9px;
+  margin-top:9px;font-family:var(--f-mono);font-size:12px}
+.mini .row .nm{color:var(--ink-2)}
+.mini .bar{display:block;height:11px;border-radius:0 2px 2px 0;min-width:2px}
+.mini .vl{color:var(--ink);font-variant-numeric:tabular-nums;text-align:right}
+.gantt{width:100%;height:auto;display:block;margin:20px 0 6px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--rule-2);border:1px solid var(--rule);margin:20px 0}
+.kpi{background:var(--sheet);padding:14px 16px}
+.kpi .lab{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kpi .val{font-family:var(--f-disp);font-size:29px;font-weight:600;margin-top:4px;line-height:1}
+.kpi .sub{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-top:2px}
+footer{padding-block:34px 60px;color:var(--muted);font-size:12.5px;font-family:var(--f-mono);border-top:2px solid var(--ink)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <pattern id="hConc" width="56" height="56" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="56" height="56" fill="var(--sheet-2)"/>
+    <line x1="0" y1="0" x2="0" y2="56" stroke="var(--muted)" stroke-width="3"/>
+    <circle cx="28" cy="28" r="5" fill="var(--muted)"/></pattern>
+  <pattern id="hBloco" width="52" height="52" patternUnits="userSpaceOnUse">
+    <rect width="52" height="52" fill="var(--block-fill)"/>
+    <path d="M0 0 L52 52 M52 0 L0 52" stroke="var(--block)" stroke-width="2.6" opacity=".5"/></pattern>
+  <pattern id="hSolo" width="58" height="34" patternUnits="userSpaceOnUse">
+    <rect width="58" height="34" fill="none"/>
+    <path d="M0 34 L17 11 M23 34 L40 11 M46 34 L63 11" stroke="var(--muted)" stroke-width="3"/></pattern>
+  <pattern id="hLa" width="64" height="28" patternUnits="userSpaceOnUse">
+    <rect width="64" height="28" fill="#F4E7B8" opacity=".4"/>
+    <path d="M0 14 q16 -14 32 0 q16 14 32 0" fill="none" stroke="var(--block)" stroke-width="2.6" opacity=".7"/></pattern>
+  <pattern id="hEps" width="30" height="30" patternUnits="userSpaceOnUse">
+    <rect width="30" height="30" fill="var(--steel-fill)"/>
+    <circle cx="15" cy="15" r="8" fill="none" stroke="var(--steel)" stroke-width="2.2" opacity=".6"/></pattern>
+</defs></svg>
+
+<header class="capa">
+ <div class="wrap">
+  <div class="capa-grid">
+   <div>
+    <p class="eyebrow">Caderno de projeto executivo · Rev. 00</p>
+    <h1>Canil CM-01<span>dois sistemas</span></h1>
+    <p class="lead">Um único partido arquitetônico resolvido em <strong>Light Steel Frame</strong> e em
+    <strong>alvenaria estrutural</strong>, com a mesma envoltória externa de 1,39 × 0,99 m — para que a comparação
+    entre os sistemas seja de engenharia, e não de programa.</p>
+    <div class="sysbar">
+      <span class="syschip chip-a">MÉTODO A · LIGHT STEEL FRAME</span>
+      <span class="syschip chip-b">MÉTODO B · ALVENARIA ESTRUTURAL</span>
+    </div>
+   </div>
+   <div class="carimbo">
+    <dl>
+      <dt>Projeto</dt><dd>Canil individual CM-01</dd>
+      <dt>Usuário</dt><dd>Cão de porte médio-grande<br>até 35 kg · cernelha 57 cm</dd>
+      <dt>Local</dt><dd>Dourados / MS · ZB 6</dd>
+      <dt>Área externa</dt><dd>1,39 × 0,99 m = 1,38 m²</dd>
+      <dt>Escalas</dt><dd>1:10 / 1:5 (indicadas)</dd>
+      <dt>Data</dt><dd>10 set. 2026</dd>
+      <dt>Revisão</dt><dd>00 — emissão inicial</dd>
+    </dl>
+   </div>
+  </div>
+ </div>
+</header>
+
+<nav class="nav" aria-label="Sumário do caderno">
+ <div class="nav-in">
+  <span class="tag">CM-01</span>
+  <a href="#s1">1 · Premissas</a>
+  <a href="#s2">2 · Partido</a>
+  <a href="#s3">3 · Arquitetura</a>
+  <a href="#s4">4 · Método A · LSF</a>
+  <a href="#s5">5 · Método B · Alvenaria</a>
+  <a href="#s6">6 · Fundações</a>
+  <a href="#s7">7 · Cálculo</a>
+  <a href="#s8">8 · Térmico</a>
+  <a href="#s9">9 · 3D</a>
+  <a href="#s10">10 · Quantitativos</a>
+  <a href="#s11">11 · Cronograma</a>
+  <a href="#s12">12 · Execução</a>
+  <a href="#s13">13 · Comparativo</a>
+ </div>
+</nav>
+
+<main class="wrap">
+
+<section id="s1">
+ <div class="sec-head"><span class="sec-num">01</span><h2>Objeto, premissas e normas</h2></div>
+ <div class="col">
+  <p>O objeto é um <strong>canil individual abrigado</strong> para um cão de porte médio-grande (até 35 kg,
+  altura de cernelha 57 cm, comprimento de corpo 75 cm), implantado em quintal residencial em Dourados/MS.
+  O mesmo partido arquitetônico foi resolvido em dois sistemas construtivos para efeito comparativo:
+  Light Steel Frame (Método A) e alvenaria estrutural de blocos de concreto (Método B).</p>
+  <p>A envoltória externa é <strong>idêntica nos dois métodos</strong> (1,39 × 0,99 m) e a cobertura é a mesma
+  peça em ambos. Assim, tudo que difere entre A e B — peso, fundação, área útil, inércia térmica, prazo e custo —
+  é consequência do sistema, e não de uma mudança de programa. É essa a base metodológica do caderno.</p>
+ </div>
+
+ <h3>1.1 Programa e dimensionamento zootécnico</h3>
+ <div class="col"><p>Não há norma ABNT para abrigo canino. O dimensionamento parte das medidas do animal e das
+ recomendações consagradas de bem-estar (as Cinco Liberdades, FAWC), com um critério importante em sentido
+ contrário ao senso comum: <strong>o abrigo não deve ser grande</strong>. Volume interno excessivo impede que o
+ próprio calor do animal aqueça o ar nas noites de friagem. Adota-se o mínimo confortável, não o máximo possível.</p></div>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 1.1 — Verificação dimensional contra as medidas do animal</caption>
+  <thead><tr><th>Grandeza</th><th>Critério adotado</th><th class="num">Exigido</th><th class="num t-a">Método A</th><th class="num t-b">Método B</th><th>Situação</th></tr></thead>
+  <tbody>
+   <tr><td>Comprimento interno</td><td>≥ 1,25 × corpo (0,75 m)</td><td class="num">0,94 m</td><td class="num t-a">1,15</td><td class="num t-b">1,11</td><td>atende</td></tr>
+   <tr><td>Profundidade interna</td><td>≥ 1,15 × cernelha (giro do animal)</td><td class="num">0,66 m</td><td class="num t-a">0,75</td><td class="num t-b">0,71</td><td>atende</td></tr>
+   <tr><td>Pé-direito interno</td><td>≥ 1,20 × cernelha (posição sentada)</td><td class="num">0,68 m</td><td class="num t-a">0,80</td><td class="num t-b">0,80</td><td>atende</td></tr>
+   <tr><td>Largura da porta</td><td>≥ 1,25 × largura do peito (0,25 m)</td><td class="num">0,31 m</td><td class="num t-a">0,39</td><td class="num t-b">0,39</td><td>atende</td></tr>
+   <tr><td>Altura da porta</td><td>≥ 0,85 × cernelha</td><td class="num">0,48 m</td><td class="num t-a">0,60</td><td class="num t-b">0,60</td><td>atende</td></tr>
+   <tr><td>Soleira (peitoril da porta)</td><td>0,15–0,25 m — retém a cama, barra escorrimento</td><td class="num">—</td><td class="num t-a">0,20</td><td class="num t-b">0,20</td><td>atende</td></tr>
+   <tr><td>Piso acima do terreno</td><td>≥ 0,10 m — respingo e empoçamento</td><td class="num">0,10 m</td><td class="num t-a">0,15</td><td class="num t-b">0,15</td><td>atende</td></tr>
+   <tr><td>Área útil interna</td><td>deitar esticado + girar</td><td class="num">0,66 m²</td><td class="num t-a">0,86</td><td class="num t-b">0,79</td><td>atende</td></tr>
+  </tbody></table></div>
+
+ <h3>1.2 Condicionantes climáticas e implantação</h3>
+ <div class="col">
+  <p>Dourados/MS (22°13′S, 54°49′W, altitude ≈ 430 m) está na <strong>Zona Bioclimática 6</strong> da
+  NBR 15220-3, cujas diretrizes construtivas são explícitas: <em>vedações externas pesadas</em>,
+  <em>cobertura leve e isolada</em>, sombreamento das aberturas e ventilação seletiva no verão.
+  O regime local combina verões com máximas de 33–40 °C, invernos secos com friagens de 2–5 °C e
+  amplitude térmica diária elevada — condição em que a inércia térmica trabalha a favor.</p>
+  <p><strong>Implantação obrigatória:</strong> fachada da porta voltada para o <strong>Norte</strong> (± 20°),
+  com o fundo cego para o Sul. O sol baixo de inverno alcança o interior pela manhã e à tarde; as frentes frias
+  de S/SE batem na face sem abertura. O beiral frontal de 0,30 m corta o sol alto de verão sobre a soleira.</p>
+ </div>
+ <div class="nota"><span class="k">Nota NT-01 · escopo normativo</span>
+  A edificação é acessória, de uso animal, com 1,38 m² e altura máxima de 1,52 m — dispensada de licenciamento
+  e de ART/RRT. As normas abaixo são adotadas <strong>como método</strong>, não por obrigação legal: são elas que
+  garantem que a peça resista ao vento de Dourados e não vire lixo em dois anos.</div>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 1.2 — Referências normativas adotadas</caption>
+  <thead><tr><th>Norma</th><th>Título abreviado</th><th>Onde incide neste caderno</th></tr></thead>
+  <tbody>
+   <tr><td class="mono">NBR 6120:2019</td><td>Ações para o cálculo de estruturas</td><td>§7.1 cargas permanentes e sobrecarga de cobertura</td></tr>
+   <tr><td class="mono">NBR 6123:1988</td><td>Forças devidas ao vento em edificações</td><td>§7.2 — verificação que governa todo o projeto</td></tr>
+   <tr><td class="mono">NBR 8681:2003</td><td>Ações e segurança nas estruturas</td><td>§7 coeficientes de ponderação (0,9 G / 1,4 W)</td></tr>
+   <tr><td class="mono">NBR 6118:2023</td><td>Projeto de estruturas de concreto</td><td>§6 radier, sapata corrida, vergas e cintas</td></tr>
+   <tr><td class="mono">NBR 6122:2019</td><td>Projeto e execução de fundações</td><td>§6 assentamento e profundidade mínima</td></tr>
+   <tr><td class="mono">NBR 14762:2010</td><td>Perfis de aço formados a frio — dimensionamento</td><td>§4 montantes, guias e caibros do Método A</td></tr>
+   <tr><td class="mono">NBR 6355:2012</td><td>Perfis estruturais formados a frio — padronização</td><td>§4 designação dos perfis Ue e U</td></tr>
+   <tr><td class="mono">NBR 15253:2014</td><td>Perfis de aço para painéis reticulados (LSF)</td><td>§4 revestimento Z275 e espessura mínima</td></tr>
+   <tr><td class="mono">NBR 16868-1/2:2020</td><td>Alvenaria estrutural — projeto e execução</td><td>§5 e §7.5 modulação, graute, tração na flexão</td></tr>
+   <tr><td class="mono">NBR 6136:2016</td><td>Blocos vazados de concreto para alvenaria</td><td>§5 bloco Classe A, f<sub>bk</sub> ≥ 6,0 MPa</td></tr>
+   <tr><td class="mono">NBR 15220-2/3:2005</td><td>Desempenho térmico de edificações</td><td>§8 cálculo de U e C<sub>T</sub>; diretrizes da ZB 6</td></tr>
+   <tr><td class="mono">NBR 15575:2021</td><td>Edificações habitacionais — desempenho</td><td>§8 usada como <em>referência</em> de aferição (ver NT-05)</td></tr>
+   <tr><td class="mono">NBR 9575:2010</td><td>Impermeabilização — seleção e projeto</td><td>§12 barreira na base das paredes</td></tr>
+   <tr><td class="mono">NBR 5674:2012</td><td>Manutenção de edificações</td><td>§12.4 plano de manutenção e VUP</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="s2">
+ <div class="sec-head"><span class="sec-num">02</span><h2>Partido arquitetônico</h2></div>
+ <div class="col">
+  <p>O partido resolve cinco problemas simultâneos com uma única forma: proteger da chuva de vento, não superaquecer
+  sob o sol de Dourados, permitir lavagem sem empoçar, dissipar o calor acumulado na cobertura e resistir ao
+  arrancamento pelo vento.</p>
+ </div>
+ <div class="duo">
+  <div class="card"><h4>Caixa compacta, porta centrada e recuada</h4>
+   <p style="margin:0;font-size:14px;color:var(--ink-2)">Vão de 0,39 × 0,60 m sob beiral de 0,30 m, com cortina de tiras
+   de PVC transparente. O beiral sombreia a soleira o ano todo e a cortina barra vento e chuva sem prender o animal.</p></div>
+  <div class="card"><h4>Piso elevado 0,15 m com caimento de 1,5%</h4>
+   <p style="margin:0;font-size:14px;color:var(--ink-2)">A água de lavagem corre para a soleira e sai pela porta;
+   cantos em meia-cana evitam acúmulo de sujeira. Estrado removível de madeira plástica isola o cão do piso frio.</p></div>
+  <div class="card"><h4>Forro a +0,95 e ático ventilado</h4>
+   <p style="margin:0;font-size:14px;color:var(--ink-2)">O forro fecha um volume dormitório de apenas 0,63–0,69 m³, fácil de
+   aquecer. Acima dele, a fresta contínua entre a cinta e a telha ventila por efeito chaminé e descarrega o calor da cobertura.</p></div>
+  <div class="card"><h4>Cobertura de uma água, i = 20%</h4>
+   <p style="margin:0;font-size:14px;color:var(--ink-2)">Telha termoacústica com núcleo de EPS 30 mm, caimento para os fundos,
+   sem calha. A mesma peça serve aos dois métodos — é a variável controlada da comparação.</p></div>
+ </div>
+
+ <div class="kpis">
+  <div class="kpi"><div class="lab">Envoltória externa</div><div class="val mono">1,39×0,99</div><div class="sub">m · comum a A e B</div></div>
+  <div class="kpi"><div class="lab">Pé-direito interno</div><div class="val mono">0,80</div><div class="sub">m · piso +0,15 → forro +0,95</div></div>
+  <div class="kpi"><div class="lab">Área útil · Método A</div><div class="val mono t-a">0,86</div><div class="sub">m² · parede de 12 cm</div></div>
+  <div class="kpi"><div class="lab">Área útil · Método B</div><div class="val mono t-b">0,79</div><div class="sub">m² · parede de 14 cm</div></div>
+  <div class="kpi"><div class="lab">Cobertura</div><div class="val mono">2,48</div><div class="sub">m² inclinados · i = 20%</div></div>
+ </div>
+
+ <figure class="prancha">
+  <div class="prancha-top"><h3>Planta baixa — Métodos A e B</h3><span class="cod">PR-01 · esc. 1:10 · corte a +0,50</span></div>
+  <div class="prancha-body"><svg id="pr01" role="img" aria-label="Planta baixa comparada dos dois métodos construtivos, com cotas em metros"></svg></div>
+  <div class="legenda">
+    <span><i style="background:var(--steel-fill);border-color:var(--steel)"></i>perfis + vedação LSF (12 cm)</span>
+    <span><i style="background:var(--block-fill);border-color:var(--block)"></i>bloco estrutural 14×19×39</span>
+    <span><i style="background:var(--block);border-color:var(--block)"></i>furo grauteado com armadura</span>
+    <span>cotas em metros · nível de referência = terreno ±0,00</span>
+  </div>
+  <div class="prancha-foot">
+   <div><b>Prancha</b>PR-01</div><div><b>Escala</b>1:10</div><div><b>Cotas</b>metros</div>
+   <div><b>Revisão</b>00</div><div><b>Data</b>10.09.2026</div>
+  </div>
+ </figure>
+ <div class="nota"><span class="k">Leitura da prancha</span>
+  A mesma caixa externa produz 0,86 m² úteis em LSF e 0,79 m² em alvenaria — <strong>9% a mais de área útil</strong>
+  para o mesmo terreno ocupado, porque a parede é 2 cm mais fina de cada lado. É a primeira consequência mensurável
+  da escolha do sistema.</div>
+</section>
+
+<section id="s3">
+ <div class="sec-head"><span class="sec-num">03</span><h2>Arquitetura — cortes, elevações e cobertura</h2></div>
+ <div class="col">
+  <p>O corte longitudinal é a peça que explica o projeto: nele aparecem os quatro planos que fazem o desempenho
+  térmico — piso elevado, forro a +0,95, fresta de ventilação do ático e telha inclinada — e é nele que os dois
+  sistemas se distinguem, da fundação ao respaldo.</p>
+ </div>
+
+ <figure class="prancha">
+  <div class="prancha-top"><h3>Corte BB — longitudinal, pela porta</h3><span class="cod">PR-02 · esc. 1:10 · Métodos A e B</span></div>
+  <div class="prancha-body"><svg id="pr02" role="img" aria-label="Corte longitudinal comparado: Light Steel Frame à esquerda, alvenaria estrutural à direita"></svg></div>
+  <div class="legenda">
+   <span><i style="background:var(--steel-fill);border-color:var(--steel)"></i>perfil de aço galvanizado</span>
+   <span><i style="background:var(--block-fill);border-color:var(--block)"></i>bloco de concreto / graute</span>
+   <span><i style="background:#F4E7B8;border-color:var(--block)"></i>lã de vidro 50 mm</span>
+   <span><i style="background:var(--sheet-2);border-color:var(--muted)"></i>concreto estrutural</span>
+   <span>níveis em metros a partir do terreno ±0,00</span>
+  </div>
+  <div class="prancha-foot"><div><b>Prancha</b>PR-02</div><div><b>Escala</b>1:10</div><div><b>Cotas</b>metros</div><div><b>Revisão</b>00</div><div><b>Data</b>10.09.2026</div></div>
+ </figure>
+
+ <div class="nota"><span class="k">Detalhe que decide o verão</span>
+  A fresta contínua entre o topo da parede (+1,15) e a face inferior do caibro abre 0,18 m na frente e se fecha
+  nos fundos. O ar quente do ático sai por ela por efeito chaminé, e a telha deixa de irradiar para o forro.
+  Fechamento obrigatório com tela de 1,2 mm e testeira perfurada — é a fresta que evita ninho de vespa e entrada
+  de morcego.</div>
+
+ <figure class="prancha">
+  <div class="prancha-top"><h3>Elevações e planta de cobertura</h3><span class="cod">PR-03 · esc. 1:10 · comum aos dois métodos</span></div>
+  <div class="prancha-body"><svg id="pr03" role="img" aria-label="Elevação frontal norte, elevação lateral, elevação posterior e planta de cobertura"></svg></div>
+  <div class="legenda"><span>Volumetria idêntica nos dois métodos · variação dimensional restrita à espessura da parede</span></div>
+  <div class="prancha-foot"><div><b>Prancha</b>PR-03</div><div><b>Escala</b>1:10</div><div><b>Cotas</b>metros</div><div><b>Revisão</b>00</div><div><b>Data</b>10.09.2026</div></div>
+ </figure>
+</section>
+
+<section id="s4">
+ <div class="sec-head"><span class="sec-num">04</span><h2>Método A — Light Steel Frame</h2></div>
+ <div class="col">
+  <p>Estrutura reticulada de perfis de aço galvanizado formados a frio, com fechamento em placa cimentícia e
+  contraventamento por diafragma de OSB. Painéis pré-montados em bancada e fixados a um radier de concreto armado.
+  Massa total da superestrutura: <strong>258 kgf</strong> — e é exatamente essa leveza que impõe a verificação
+  crítica do §7.3.</p>
+ </div>
+
+ <h3>4.1 Composição da parede — 120 mm</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 4.1 — Camadas da vedação vertical, do exterior para o interior</caption>
+  <thead><tr><th class="num">#</th><th>Camada</th><th class="num">e (mm)</th><th class="num">λ (W/m·K)</th><th>Função</th></tr></thead>
+  <tbody>
+   <tr><td class="num">1</td><td>Placa cimentícia, pintura acrílica cor clara (α ≤ 0,4)</td><td class="num">8,0</td><td class="num">0,95</td><td>proteção mecânica e da chuva</td></tr>
+   <tr><td class="num">2</td><td>EPS tipo II — isolante contínuo</td><td class="num">20,0</td><td class="num">0,040</td><td>quebra a ponte térmica dos montantes</td></tr>
+   <tr><td class="num">3</td><td>Membrana hidrófuga permeável ao vapor</td><td class="num">0,2</td><td class="num">—</td><td>barreira de água líquida</td></tr>
+   <tr><td class="num">4</td><td>OSB estrutural, classe 3</td><td class="num">11,1</td><td class="num">0,130</td><td>diafragma de contraventamento</td></tr>
+   <tr><td class="num">5</td><td>Montante Ue 70×40×12×0,95 c/ 400 mm + lã de vidro</td><td class="num">70,0</td><td class="num">0,045</td><td>estrutura e isolamento de cavidade</td></tr>
+   <tr><td class="num">6</td><td>Compensado plastificado, face interna lavável</td><td class="num">10,0</td><td class="num">0,150</td><td>higiene e resistência à mordida</td></tr>
+  </tbody>
+  <tfoot><tr><td class="num"></td><td>Espessura total</td><td class="num">119,3</td><td class="num">≈120</td><td>U = 0,58 W/m²·K (§8)</td></tr></tfoot>
+ </table></div>
+ <div class="nota"><span class="k">Por que a camada 2 existe</span>
+  Sem o EPS contínuo, o montante de aço atravessa o isolamento e curto-circuita a parede: a transmitância
+  sobe de 0,58 para <strong>0,93 W/m²·K</strong> (+60%), calculado no §8. Vinte milímetros de EPS por fora
+  custam pouco e devolvem todo o desempenho da lã de vidro. Em LSF, isolante de cavidade sem isolante contínuo
+  é dinheiro jogado fora.</div>
+
+ <h3>4.2 Painéis e lista de perfis</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 4.2 — Relação de painéis (altura útil 1,00 m, do topo do radier ao respaldo)</caption>
+  <thead><tr><th>Painel</th><th>Posição</th><th class="num">Dimensões (m)</th><th>Aberturas</th><th>Montantes</th></tr></thead>
+  <tbody>
+   <tr><td class="mono">PN-01</td><td>Frontal (Norte)</td><td class="num">1,39 × 1,00</td><td>porta 0,39 × 0,60, soleira a 0,20</td><td>4 de campo + 2 ombreiras duplas + 1 sub-montante sobre a verga</td></tr>
+   <tr><td class="mono">PN-02</td><td>Posterior (Sul)</td><td class="num">1,39 × 1,00</td><td>—</td><td>4 c/ 400 mm</td></tr>
+   <tr><td class="mono">PN-03</td><td>Lateral leste</td><td class="num">0,75 × 1,00</td><td>ventilação 0,19 × 0,19 junto ao fundo</td><td>3 c/ 375 mm</td></tr>
+   <tr><td class="mono">PN-04</td><td>Lateral oeste</td><td class="num">0,75 × 1,00</td><td>ventilação 0,19 × 0,19 junto ao fundo</td><td>3 c/ 375 mm</td></tr>
+   <tr><td class="mono">CB-01</td><td>Caibros da cobertura</td><td class="num">3 × 1,47</td><td>—</td><td>Ue 70 apoiados na cinta ao fundo e em calço de 0,17 m na frente</td></tr>
+  </tbody></table></div>
+ <div class="col">
+  <p><strong>Ligações.</strong> Parafusos autobrocantes cabeça lentilha 4,2 × 13 mm entre perfis (2 por nó, em diagonal);
+  OSB fixado com autobrocantes 4,2 × 32 mm a cada <strong>150 mm nas bordas</strong> e 300 mm no campo — é essa densidade
+  de fixação que autoriza considerar o painel como diafragma e dispensar a fita em X. Todos os perfis em aço
+  ZAR-230 com revestimento <strong>Z275</strong> (NBR 15253), mínimo exigido para peça exposta a lavagem frequente.</p>
+ </div>
+
+ <figure class="prancha">
+  <div class="prancha-top"><h3>Painéis PN-01 e PN-03 · detalhe de ancoragem</h3><span class="cod">PR-04 · esc. 1:10 e 1:5</span></div>
+  <div class="prancha-body"><svg id="pr04" role="img" aria-label="Elevação dos painéis de Light Steel Frame e detalhe de ancoragem ao radier"></svg></div>
+  <div class="legenda">
+   <span><i style="background:var(--steel-fill);border-color:var(--steel)"></i>perfil Ue 70 / guia U 72</span>
+   <span>DET-01 em escala 1:5 · chumbador mecânico M8 inox, h<sub>ef</sub> = 60 mm</span>
+  </div>
+  <div class="prancha-foot"><div><b>Prancha</b>PR-04</div><div><b>Escala</b>1:10 / 1:5</div><div><b>Cotas</b>metros</div><div><b>Revisão</b>00</div><div><b>Data</b>10.09.2026</div></div>
+ </figure>
+</section>
+
+<section id="s5">
+ <div class="sec-head"><span class="sec-num">05</span><h2>Método B — Alvenaria estrutural</h2></div>
+ <div class="col">
+  <p>Blocos vazados de concreto <strong>14 × 19 × 39 cm, Classe A, f<sub>bk</sub> ≥ 6,0 MPa</strong> (NBR 6136),
+  assentados com juntas amarradas sobre sapata corrida, com graute e armadura vertical nos quatro cantos.
+  Massa da superestrutura: <strong>1.211 kgf</strong> — 4,7 vezes o Método A. A casinha é, ela própria, sua ancoragem.</p>
+ </div>
+
+ <h3>5.1 Modulação — família 15</h3>
+ <div class="col">
+  <p>A modulação é o coração do projeto em alvenaria estrutural: define-se a malha de 20 cm e <strong>a parede se
+  resolve sem cortar bloco</strong>. Com blocos de 14 cm, o canto não fecha só com o bloco inteiro (39) e o meio-bloco (19):
+  entra o <strong>compensador de 34 cm</strong>, peça própria da família 15 e a razão de o projeto ter duas plantas de fiada.</p>
+  <p>Dimensão modular externa: <strong>1,40 × 1,00 m</strong>; dimensão real: <strong>1,39 × 0,99 m</strong> — a diferença
+  de 1 cm é a junta que pertence ao módulo seguinte. Altura: 7 fiadas de 20 cm (2 de embasamento + 4 correntes +
+  1 canaleta de respaldo), topo em +1,15.</p>
+ </div>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 5.1 — Composição das fiadas (parede de 14 cm, junta de 10 mm)</caption>
+  <thead><tr><th>Parede</th><th>Fiada A (ímpar)</th><th>Fiada B (par)</th></tr></thead>
+  <tbody>
+   <tr><td>Frontal e posterior (1,39 m)</td><td class="mono">39 + 39 + 39 + 19 = 139 cm</td><td class="mono">[14] + 39 + 34 + 34 + [14] = 139 cm</td></tr>
+   <tr><td>Laterais (0,99 m)</td><td class="mono">[14] + 34 + 34 + [14] = 99 cm</td><td class="mono">39 + 39 + 19 = 99 cm</td></tr>
+   <tr><td>Trecho com o vão da porta</td><td class="mono">34 + 14 + <b>vão 39</b> + 34 + 14</td><td class="mono">34 + <b>vão 39</b> + 34</td></tr>
+   <tr><td>Blocos por fiada</td><td class="num">12 (11 com o vão)</td><td class="num">12 (11 com o vão)</td></tr>
+  </tbody></table></div>
+
+ <h3>5.2 Elementos armados</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 5.2 — Graute, armadura e elementos de amarração</caption>
+  <thead><tr><th>Elemento</th><th>Posição</th><th>Armadura</th><th>Função estrutural</th></tr></thead>
+  <tbody>
+   <tr><td>Grauteamento de canto</td><td>2 furos por canto, todas as fiadas</td><td class="mono">1 Ø 8,0 mm CA-50 vertical</td><td>costura a parede à sapata e à cinta; absorve a tração de flexão do vento</td></tr>
+   <tr><td>Embasamento</td><td>2 primeiras fiadas, integralmente</td><td class="mono">—</td><td>massa, resistência ao choque e barreira de umidade</td></tr>
+   <tr><td>Verga = cinta de respaldo</td><td>7ª fiada, canaleta J/U contínua</td><td class="mono">2 Ø 8,0 mm CA-50 + graute</td><td>vence o vão da porta (apoio de 0,50 m de cada lado) e amarra as quatro paredes</td></tr>
+   <tr><td>Insertos da cobertura</td><td>6 pontos na canaleta de respaldo</td><td class="mono">Ø 8,0 mm CA-50 dobrado em L</td><td>transfere o arrancamento da telha para a massa da alvenaria</td></tr>
+  </tbody></table></div>
+ <div class="nota"><span class="k">Regra de execução</span>
+  A canaleta de respaldo é <strong>uma peça só</strong>: verga da porta e cinta de amarração no mesmo elemento,
+  concretada em uma única etapa, sem junta fria. Emendar a concretagem sobre o vão da porta é o erro clássico —
+  cria a única fissura possível desta edificação.</div>
+
+ <figure class="prancha">
+  <div class="prancha-top"><h3>Plantas da 1ª e 2ª fiadas · elevação de fiadas da fachada</h3><span class="cod">PR-05 · esc. 1:10</span></div>
+  <div class="prancha-body"><svg id="pr05" role="img" aria-label="Plantas de primeira e segunda fiada com identificação dos blocos e elevação de fiadas da parede frontal"></svg></div>
+  <div class="legenda">
+   <span><i style="background:var(--block-fill);border-color:var(--block)"></i>bloco assente em argamassa</span>
+   <span><i style="background:var(--block);border-color:var(--block)"></i>grauteado (canto, embasamento, canaleta)</span>
+   <span>39 · 34 · 19 · 14 = comprimento real do bloco em centímetros</span>
+  </div>
+  <div class="prancha-foot"><div><b>Prancha</b>PR-05</div><div><b>Escala</b>1:10</div><div><b>Cotas</b>metros</div><div><b>Revisão</b>00</div><div><b>Data</b>10.09.2026</div></div>
+ </figure>
+</section>
+
+<section id="s6">
+ <div class="sec-head"><span class="sec-num">06</span><h2>Fundações</h2></div>
+ <div class="col">
+  <p>Os dois sistemas exigem fundações de naturezas opostas. O Método B apoia peso; o Método A
+  <strong>ancora leveza</strong>. É a diferença mais cara entre eles e a menos evidente na hora de orçar.</p>
+ </div>
+ <div class="duo">
+  <div class="card A"><h4>Método A — radier de concreto armado</h4>
+   <p style="font-size:14px;color:var(--ink-2)">1,60 × 1,20 m, espessura 0,10 m com viga de borda embutida 0,20 × 0,25 m.
+   Concreto C25, malha Q-92 (Ø 4,2 mm, 15 × 15 cm) na meia-altura, lastro de brita nº 1 com 5 cm sobre lona de 150 µm.
+   Topo acabado em +0,15, com caimento de 1,5% para a soleira. Volume: <span class="mono">0,351 m³</span>.</p>
+   <p style="font-size:14px;color:var(--ink-2);margin:0"><strong>O radier não é fundação: é contrapeso.</strong> Sem ele,
+   a superestrutura de 258 kgf não resiste ao arrancamento (§7.3).</p></div>
+  <div class="card B"><h4>Método B — sapata corrida</h4>
+   <p style="font-size:14px;color:var(--ink-2)">Seção 0,30 × 0,20 m em concreto C25, fundo a −0,45 m, armada com
+   3 Ø 8,0 mm CA-50 longitudinais e estribos Ø 5,0 c/ 20 cm. Sobre ela, 2 fiadas de bloco integralmente grauteadas
+   até +0,15, com impermeabilização de argamassa polimérica (2 demãos cruzadas) no topo da 2ª fiada.
+   Volume de concreto: <span class="mono">0,252 m³</span>.</p>
+   <p style="font-size:14px;color:var(--ink-2);margin:0">Contrapiso interno de 6 cm sobre lastro de brita, com aditivo
+   impermeabilizante e caimento de 1,5%.</p></div>
+ </div>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 6.1 — Pressão transmitida ao solo (latossolo vermelho, σ<sub>adm</sub> ≥ 100 kPa)</caption>
+  <thead><tr><th>Método</th><th class="num">Carga total (kN)</th><th class="num">Área de contato (m²)</th><th class="num">σ transmitida (kPa)</th><th class="num">Utilização</th></tr></thead>
+  <tbody>
+   <tr><td class="t-a">A — radier</td><td class="num">11,30</td><td class="num">1,92</td><td class="num">5,9</td><td class="num">6%</td></tr>
+   <tr><td class="t-b">B — sapata corrida</td><td class="num">23,35</td><td class="num">1,26</td><td class="num">18,5</td><td class="num">19%</td></tr>
+  </tbody></table></div>
+ <div class="nota ok"><span class="k">Conclusão de projeto</span>
+  Nenhuma das duas fundações é dimensionada por capacidade de carga — as pressões estão uma ordem de grandeza
+  abaixo do que o solo suporta. O radier é dimensionado <strong>por peso</strong> (arrancamento) e a sapata,
+  <strong>por profundidade</strong> (proteção contra erosão superficial e escavação pelo próprio animal).</div>
+
+ <figure class="prancha">
+  <div class="prancha-top"><h3>Fundações comparadas — forma e armação</h3><span class="cod">PR-06 · esc. 1:10 · cortes 1:5</span></div>
+  <div class="prancha-body"><svg id="pr06" role="img" aria-label="Planta de forma do radier e da sapata corrida, com cortes de armação"></svg></div>
+  <div class="legenda">
+   <span><i style="background:var(--sheet-2);border-color:var(--muted)"></i>concreto C25</span>
+   <span><i style="background:var(--block);border-color:var(--block)"></i>armadura CA-50 / malha Q-92</span>
+   <span>cobrimento nominal 30 mm (face em contato com o solo: 40 mm)</span>
+  </div>
+  <div class="prancha-foot"><div><b>Prancha</b>PR-06</div><div><b>Escala</b>1:10 / 1:5</div><div><b>Cotas</b>metros</div><div><b>Revisão</b>00</div><div><b>Data</b>10.09.2026</div></div>
+ </figure>
+</section>
+
+<section id="s7">
+ <div class="sec-head"><span class="sec-num">07</span><h2>Memória de cálculo</h2></div>
+ <div class="col">
+  <p>Todo o dimensionamento desta edificação é governado por uma única ação: <strong>o vento</strong>.
+  As cargas gravitacionais são desprezíveis — a alvenaria trabalha a 1% da sua capacidade à compressão.
+  O que pode destruir a peça é a sucção da cobertura, e é ela que define a fundação de cada método.</p>
+ </div>
+
+ <h3>7.1 Ações</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 7.1 — Ações permanentes e variáveis adotadas</caption>
+  <thead><tr><th>Ação</th><th>Origem</th><th class="num">Valor</th><th class="num">Área/extensão</th><th class="num">Resultante</th></tr></thead>
+  <tbody>
+   <tr><td>Telha termoacústica (aço 0,43 + EPS 30)</td><td>catálogo do fabricante</td><td class="num">0,06 kN/m²</td><td class="num">2,48 m²</td><td class="num">0,15 kN</td></tr>
+   <tr><td>Estrutura de cobertura (3 caibros Ue 70)</td><td>NBR 6355</td><td class="num">0,04 kN/m²</td><td class="num">2,48 m²</td><td class="num">0,10 kN</td></tr>
+   <tr><td>Forro em placa cimentícia 6 mm</td><td>catálogo</td><td class="num">0,10 kN/m²</td><td class="num">2,48 m²</td><td class="num">0,25 kN</td></tr>
+   <tr><td>Parede — Método A (LSF completo)</td><td>composição da Tab. 4.1</td><td class="num t-a">0,35 kN/m²</td><td class="num">5,24 m²</td><td class="num t-a">1,83 kN</td></tr>
+   <tr><td>Parede — Método B (bloco 14 + revestimento)</td><td>NBR 6120, Anexo A</td><td class="num t-b">2,00 kN/m²</td><td class="num">5,24 m²</td><td class="num t-b">10,48 kN</td></tr>
+   <tr><td>Sobrecarga de cobertura sem acesso</td><td>NBR 6120:2019</td><td class="num">0,25 kN/m²</td><td class="num">2,43 m²</td><td class="num">0,61 kN</td></tr>
+  </tbody>
+  <tfoot>
+   <tr><td colspan="4">Superestrutura — Método A</td><td class="num t-a">2,53 kN · 258 kgf</td></tr>
+   <tr><td colspan="4">Superestrutura — Método B</td><td class="num t-b">11,88 kN · 1.211 kgf</td></tr>
+  </tfoot></table></div>
+
+ <h3>7.2 Vento — NBR 6123</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 7.2 — Determinação da pressão dinâmica</caption>
+  <thead><tr><th>Parâmetro</th><th>Critério</th><th class="num">Valor</th></tr></thead>
+  <tbody>
+   <tr><td class="mono">V₀</td><td>Isopletas — Dourados/MS (verificar Fig. 1 da norma na emissão para obra)</td><td class="num">45,0 m/s</td></tr>
+   <tr><td class="mono">S₁</td><td>Terreno plano ou fracamente acidentado</td><td class="num">1,00</td></tr>
+   <tr><td class="mono">S₂</td><td>Categoria III, Classe A, z ≤ 5 m → 0,94 × (5/10)<sup>0,10</sup></td><td class="num">0,877</td></tr>
+   <tr><td class="mono">S₃</td><td>Adotado conservadoramente (a norma permitiria 0,83 — Grupo 5)</td><td class="num">0,95</td></tr>
+   <tr><td class="mono">V<sub>k</sub></td><td>V₀ · S₁ · S₂ · S₃</td><td class="num">37,5 m/s</td></tr>
+   <tr><td class="mono">q</td><td>0,613 · V<sub>k</sub>²</td><td class="num">0,862 kN/m²</td></tr>
+   <tr><td class="mono">C<sub>pe</sub></td><td>Telhado de uma água, i = 20% (11,3°), borda a barlavento</td><td class="num">−0,90</td></tr>
+   <tr><td class="mono">C<sub>pi</sub></td><td><strong>Abertura dominante</strong>: a porta a barlavento pressuriza o interior</td><td class="num">+0,80</td></tr>
+   <tr><td class="mono">F<sub>arranc</sub></td><td>1,70 · q · A<sub>planta</sub> (2,434 m²)</td><td class="num">3,57 kN · 364 kgf</td></tr>
+  </tbody></table></div>
+ <div class="nota crit"><span class="k">O número que define o projeto</span>
+  A sucção sobre a cobertura vale <strong>364 kgf</strong> — mais do que a casinha inteira em LSF pesa (258 kgf).
+  O coeficiente interno +0,80 não é conservadorismo gratuito: a porta é uma abertura dominante e, com o vento
+  de frente, a peça infla como um paraquedas. Este é o caso que arranca telhado de galpão em Mato Grosso do Sul.</div>
+
+ <h3>7.3 Verificação ao arrancamento — 0,9·G ≥ 1,4·F<sub>arranc</sub></h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 7.3 — Estabilidade ao arrancamento (NBR 8681: G favorável com γ = 0,9; vento com γ = 1,4)</caption>
+  <thead><tr><th>Situação</th><th class="num">G (kN)</th><th class="num">0,9·G</th><th class="num">1,4·F</th><th class="num">FS</th><th>Situação</th></tr></thead>
+  <tbody>
+   <tr><td class="t-a">A — superestrutura solta sobre o piso</td><td class="num">2,53</td><td class="num">2,28</td><td class="num">5,00</td><td class="num">0,46</td><td style="color:var(--alert);font-weight:600">NÃO ATENDE</td></tr>
+   <tr><td class="t-a">A — ancorada ao radier</td><td class="num">11,30</td><td class="num">10,17</td><td class="num">5,00</td><td class="num">2,04</td><td style="color:var(--ok);font-weight:600">atende</td></tr>
+   <tr><td class="t-b">B — alvenaria + sapata + embasamento</td><td class="num">23,35</td><td class="num">21,02</td><td class="num">5,00</td><td class="num">4,21</td><td style="color:var(--ok);font-weight:600">atende</td></tr>
+  </tbody></table></div>
+
+ <h3>7.4 Verificação ao tombamento</h3>
+ <div class="col"><p class="mono" style="font-size:13px;color:var(--ink-2)">
+  F<sub>h</sub> = q · C<sub>a</sub> · A<sub>frontal</sub> = 0,862 × 1,2 × 2,02 = 2,09 kN &nbsp;·&nbsp;
+  M<sub>tomb</sub> = 2,09 × 0,725 = 1,51 kN·m</p></div>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 7.4 — Momento estabilizante × momento de tombamento</caption>
+  <thead><tr><th>Situação</th><th class="num">Braço (m)</th><th class="num">M<sub>est</sub> (kN·m)</th><th class="num">FS</th><th>Situação</th></tr></thead>
+  <tbody>
+   <tr><td class="t-a">A — sem fundação</td><td class="num">0,495</td><td class="num">1,25</td><td class="num">0,53</td><td style="color:var(--alert);font-weight:600">NÃO ATENDE</td></tr>
+   <tr><td class="t-a">A — com radier (base 1,20 m)</td><td class="num">0,600</td><td class="num">6,78</td><td class="num">2,89</td><td style="color:var(--ok);font-weight:600">atende</td></tr>
+   <tr><td class="t-b">B — alvenaria</td><td class="num">0,495</td><td class="num">11,56</td><td class="num">4,92</td><td style="color:var(--ok);font-weight:600">atende</td></tr>
+  </tbody></table></div>
+
+ <h3>7.5 Alvenaria — compressão e tração na flexão</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 7.5 — Verificações do Método B (NBR 16868-1, γ<sub>m</sub> = 2,0)</caption>
+  <thead><tr><th>Verificação</th><th>Formulação</th><th class="num">Solicitante</th><th class="num">Resistente</th><th class="num">Uso</th></tr></thead>
+  <tbody>
+   <tr><td>Compressão na base</td><td class="mono">σ = N/A · N = 2,32 kN/m · λ = 7,1 · R = 0,99</td><td class="num">0,017 MPa</td><td class="num">1,46 MPa</td><td class="num">1,1%</td></tr>
+   <tr><td>Tração na flexão ⊥ às juntas</td><td class="mono">M = wL²/8 · w = 1,38 kN/m² · L = 1,00 m</td><td class="num">0,053 MPa</td><td class="num">0,100 MPa</td><td class="num">53%</td></tr>
+   <tr><td>Tração na flexão ∥ às juntas</td><td class="mono">M = wL²/8 · L = 1,11 m (entre cantos)</td><td class="num">0,065 MPa</td><td class="num">0,200 MPa</td><td class="num">33%</td></tr>
+  </tbody></table></div>
+ <div class="col"><p>A compressão é irrelevante — a parede trabalha a 1% da capacidade. <strong>O que dimensiona a alvenaria
+ é a tração na flexão causada pelo vento</strong>, e mesmo essa fica em 53% do limite <em>sem contar</em> a compressão
+ favorável do peso próprio nem o efeito de placa em duas direções. O graute dos cantos com Ø 8,0 mm vertical é o que
+ transforma essa margem em segurança real, transferindo a flexão para a sapata.</p></div>
+
+ <h3>7.6 Ancoragens e fixações</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 7.6 — Elementos de fixação dimensionados</caption>
+  <thead><tr><th>Ligação</th><th>Especificação</th><th class="num">Solicitação</th><th class="num">Capacidade</th></tr></thead>
+  <tbody>
+   <tr><td class="t-a">Guia inferior × radier (Método A)</td><td>8 chumbadores mecânicos M8 A2, h<sub>ef</sub> = 60 mm, e ≤ 0,60 m</td><td class="num">0,63 kN/un</td><td class="num">≈ 4,5 kN/un</td></tr>
+   <tr><td class="t-b">Caibro × cinta de respaldo (Método B)</td><td>6 insertos Ø 8,0 CA-50 em L, grauteados na canaleta</td><td class="num">0,83 kN/un</td><td class="num">≈ 9,0 kN/un</td></tr>
+   <tr><td>Telha × caibro (ambos)</td><td>Autobrocante 6,3 × 25 c/ arruela EPDM, 2 por onda nas bordas</td><td class="num">0,26 kN/un</td><td class="num">≈ 1,5 kN/un</td></tr>
+   <tr><td>OSB × montante (Método A)</td><td>Autobrocante 4,2 × 32, c/ 150 mm nas bordas e 300 mm no campo</td><td class="num">diafragma</td><td class="num">—</td></tr>
+  </tbody></table></div>
+ <div class="nota"><span class="k">Zona de borda</span>
+  Nas faixas de 0,15 m junto às extremidades da cobertura, a NBR 6123 impõe coeficientes locais de até
+  C<sub>pe</sub> = −2,0. Por isso a densidade de parafusos <strong>dobra nas duas fileiras de borda</strong>:
+  é onde a telha começa a levantar, sempre.</div>
+</section>
+
+<section id="s8">
+ <div class="sec-head"><span class="sec-num">08</span><h2>Desempenho térmico</h2></div>
+ <div class="col">
+  <p>Cálculo conforme NBR 15220-2, com resistências superficiais R<sub>se</sub> = 0,04 e R<sub>si</sub> = 0,13 m²·K/W.
+  Para o LSF, a transmitância é ponderada entre a seção de cavidade (90% da área) e a seção do montante (10%),
+  que é uma ponte térmica de aço.</p>
+ </div>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 8.1 — Transmitância (U) e capacidade térmica (C<sub>T</sub>) das vedações</caption>
+  <thead><tr><th>Elemento</th><th class="num">R<sub>t</sub> (m²·K/W)</th><th class="num">U (W/m²·K)</th><th class="num">C<sub>T</sub> (kJ/m²·K)</th><th>Referência ZB 6 · NBR 15575</th></tr></thead>
+  <tbody>
+   <tr><td class="t-a">Parede A — seção de cavidade</td><td class="num">1,942</td><td class="num">0,515</td><td class="num">—</td><td>—</td></tr>
+   <tr><td class="t-a">Parede A — seção do montante</td><td class="num">0,831</td><td class="num">1,204</td><td class="num">—</td><td>ponte térmica</td></tr>
+   <tr><td class="t-a"><strong>Parede A — ponderada (90/10)</strong></td><td class="num">1,712</td><td class="num"><strong>0,584</strong></td><td class="num"><strong>43</strong></td><td>U atende (≤ 2,5) · <span style="color:var(--alert)">C<sub>T</sub> não atende (≥ 130)</span></td></tr>
+   <tr><td class="t-b"><strong>Parede B — bloco 14 + reboco 2 cm</strong></td><td class="num">0,405</td><td class="num"><strong>2,470</strong></td><td class="num"><strong>249</strong></td><td style="color:var(--ok)">atende aos dois critérios</td></tr>
+   <tr><td>Cobertura (comum) — telha + ático ventilado + forro</td><td class="num">1,187</td><td class="num">0,842</td><td class="num">—</td><td style="color:var(--ok)">atende (≤ 1,5)</td></tr>
+  </tbody></table></div>
+ <div class="duo">
+  <div class="card A"><h4>O LSF isola</h4><p style="font-size:14px;color:var(--ink-2);margin:0">
+   U = 0,58 — quatro vezes melhor que a alvenaria. Em noite de friagem, o calor do animal fica dentro.
+   Mas C<sub>T</sub> = 43 kJ/m²·K é um terço do referencial: a parede não armazena nada e acompanha a
+   temperatura externa em poucas horas. <strong>Correção de projeto:</strong> deixar o radier aparente sob o
+   estrado, sem isolamento — os 350 litros de concreto viram a inércia que a parede não tem.</p></div>
+  <div class="card B"><h4>A alvenaria armazena</h4><p style="font-size:14px;color:var(--ink-2);margin:0">
+   C<sub>T</sub> = 249 kJ/m²·K amortece a amplitude diária de Dourados e atrasa o pico de calor em cerca de
+   3 horas — chega ao interior quando a tarde já cedeu. É exatamente a diretriz da NBR 15220-3 para a ZB 6
+   (<em>vedação externa pesada</em>). Em compensação, U = 2,47 passa raspando no limite de 2,5,
+   o que <strong>torna a cor clara obrigatória</strong> (α ≤ 0,6), não opcional.</p></div>
+ </div>
+ <div class="nota"><span class="k">Nota NT-05 · uso da NBR 15575</span>
+  A NBR 15575 é norma de edificação habitacional e não se aplica a abrigo animal. Ela é usada aqui como
+  <strong>régua de aferição</strong> — se a envoltória atende ao que se exige de um dormitório humano em
+  Dourados, atende com folga a um cão. Nenhum valor desta seção deve ser reportado como conformidade normativa.</div>
+</section>
+
+<section id="s9">
+ <div class="sec-head"><span class="sec-num">09</span><h2>Modelo tridimensional</h2></div>
+ <div class="col">
+  <p>Modelo paramétrico dos dois métodos, gerado a partir das mesmas cotas das pranchas — a alvenaria é montada
+  bloco a bloco pela composição de fiadas da Tabela 5.1, e o LSF, perfil a perfil pela lista da Tabela 4.2.
+  Arraste para girar, use a roda para aproximar. O controle <em>explodir</em> separa as camadas na ordem de montagem.</p>
+ </div>
+
+ <div class="viewer">
+  <div class="v-toolbar">
+   <div class="seg sysA" id="segSys" role="group" aria-label="Sistema construtivo">
+     <button id="btnA" aria-pressed="true">Método A · LSF</button>
+     <button id="btnB" aria-pressed="false">Método B · Alvenaria</button>
+   </div>
+   <label class="tgl" data-on="1"><input type="checkbox" id="lFund" checked> Fundação</label>
+   <label class="tgl" data-on="1"><input type="checkbox" id="lEstr" checked> Estrutura</label>
+   <label class="tgl" data-on="1"><input type="checkbox" id="lIsol" checked> Isolamento</label>
+   <label class="tgl" data-on="1"><input type="checkbox" id="lVed" checked> Vedação</label>
+   <label class="tgl" data-on="1"><input type="checkbox" id="lCob" checked> Cobertura</label>
+   <label class="tgl" data-on="0"><input type="checkbox" id="lCorte"> Corte</label>
+   <label class="tgl" data-on="1"><input type="checkbox" id="lDog" checked> Cão (escala)</label>
+   <div class="v-slider"><label for="exp">Explodir</label><input type="range" id="exp" min="0" max="100" value="0"></div>
+   <div class="seg"><button id="btnSpin" aria-pressed="false">Girar</button><button id="btnReset" aria-pressed="false">Reenquadrar</button></div>
+  </div>
+  <canvas id="cv3d"></canvas>
+  <div class="v-foot">
+   <div class="v-legend" id="v3dleg"></div>
+   <div id="v3dinfo">—</div>
+  </div>
+ </div>
+ <div class="nota"><span class="k">O que o modelo mostra e a prancha não</span>
+  Com a vedação desligada no Método B, aparece a razão de existirem duas plantas de fiada: os blocos de 34 cm
+  giram o canto a cada camada, e as barras de espera saem do graute dos quatro cantos. No Método A, o mesmo
+  comando revela a densidade de montantes em torno da porta — duas ombreiras duplas e a verga em caixa,
+  que é onde o painel realmente trabalha.</div>
+</section>
+
+<section id="s10">
+ <div class="sec-head"><span class="sec-num">10</span><h2>Quantitativos e orçamento</h2></div>
+ <div class="nota"><span class="k">Base de preços</span>
+  Estimativa referencial de mercado para <strong>Dourados/MS, base setembro de 2026</strong>, com material posto na obra
+  e mão de obra por diária de equipe (oficial + ajudante = R$ 450/dia). <strong>Não são preços SINAPI cotados</strong> —
+  antes de contratar, atualize com três cotações locais e com a tabela SINAPI-MS vigente. Os quantitativos, esses,
+  são exatos: saem da modulação e das pranchas.</div>
+
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 10.1 — Método A · Light Steel Frame</caption>
+  <thead><tr><th>Item</th><th>Especificação</th><th class="num">Qtd</th><th>Un</th><th class="num">R$ un</th><th class="num">R$ total</th></tr></thead>
+  <tbody>
+   <tr><td>1.1</td><td>Lastro de brita nº 1, e = 5 cm, sobre lona de 150 µm</td><td class="num">2,50</td><td>m²</td><td class="num">30,00</td><td class="num">75</td></tr>
+   <tr><td>1.2</td><td>Concreto C25 — radier 1,60×1,20×0,10 + viga de borda</td><td class="num">0,351</td><td>m³</td><td class="num">1.480,00</td><td class="num">520</td></tr>
+   <tr><td>1.3</td><td>Malha Q-92 (Ø 4,2 c/ 15×15 cm)</td><td class="num">1,92</td><td>m²</td><td class="num">38,00</td><td class="num">73</td></tr>
+   <tr><td>1.4</td><td>Aço CA-50 Ø 8,0 e CA-60 Ø 5,0 — viga de borda</td><td class="num">7,5</td><td>kg</td><td class="num">12,00</td><td class="num">90</td></tr>
+   <tr><td>2.1</td><td>Perfil Ue 70×40×12×0,95 — Z275 (montantes, ombreiras, caibros)</td><td class="num">23,0</td><td>m</td><td class="num">19,00</td><td class="num">437</td></tr>
+   <tr><td>2.2</td><td>Guia U 72×40×0,95 — Z275</td><td class="num">10,0</td><td>m</td><td class="num">17,00</td><td class="num">170</td></tr>
+   <tr><td>2.3</td><td>Parafusos autobrocantes 4,2×13 e 4,2×32</td><td class="num">550</td><td>un</td><td class="num">0,23</td><td class="num">125</td></tr>
+   <tr><td>2.4</td><td>Chumbador mecânico M8 A2, h<sub>ef</sub> 60 mm</td><td class="num">8</td><td>un</td><td class="num">12,00</td><td class="num">96</td></tr>
+   <tr><td>3.1</td><td>OSB estrutural 11,1 mm (2 chapas 1,20×2,40)</td><td class="num">5,76</td><td>m²</td><td class="num">57,30</td><td class="num">330</td></tr>
+   <tr><td>3.2</td><td>Membrana hidrófuga permeável ao vapor</td><td class="num">6,00</td><td>m²</td><td class="num">9,00</td><td class="num">54</td></tr>
+   <tr><td>3.3</td><td>EPS tipo II, 20 mm — isolante contínuo</td><td class="num">5,50</td><td>m²</td><td class="num">13,00</td><td class="num">72</td></tr>
+   <tr><td>3.4</td><td>Placa cimentícia 8 mm (2 chapas)</td><td class="num">5,76</td><td>m²</td><td class="num">50,30</td><td class="num">290</td></tr>
+   <tr><td>3.5</td><td>Lã de vidro 50 mm — cavidade dos montantes</td><td class="num">5,00</td><td>m²</td><td class="num">22,00</td><td class="num">110</td></tr>
+   <tr><td>3.6</td><td>Compensado plastificado 10 mm — face interna</td><td class="num">4,84</td><td>m²</td><td class="num">72,30</td><td class="num">350</td></tr>
+   <tr><td>4.0</td><td><strong>Cobertura</strong> (telha termoacústica 30 mm, forro, testeira, tela, parafusos)</td><td class="num">2,50</td><td>m²</td><td class="num">213,20</td><td class="num">533</td></tr>
+   <tr><td>5.0</td><td><strong>Acabamento e acessórios</strong> (pintura, cortina de PVC, estrado, grelhas)</td><td class="num">1</td><td>vb</td><td class="num">560,00</td><td class="num">560</td></tr>
+   <tr><td>6.0</td><td>Mão de obra — 3 diárias de equipe</td><td class="num">3</td><td>diária</td><td class="num">450,00</td><td class="num">1.350</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="5">Total Método A · material R$ 3.885 + mão de obra R$ 1.350</td><td class="num">R$ 5.235</td></tr></tfoot>
+ </table></div>
+
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 10.2 — Método B · Alvenaria estrutural</caption>
+  <thead><tr><th>Item</th><th>Especificação</th><th class="num">Qtd</th><th>Un</th><th class="num">R$ un</th><th class="num">R$ total</th></tr></thead>
+  <tbody>
+   <tr><td>1.1</td><td>Escavação manual de vala (0,30 × 0,20 × 4,20 m + folga)</td><td class="num">0,45</td><td>m³</td><td class="num">155,00</td><td class="num">70</td></tr>
+   <tr><td>1.2</td><td>Concreto C25 — sapata corrida 0,30 × 0,20</td><td class="num">0,252</td><td>m³</td><td class="num">1.480,00</td><td class="num">375</td></tr>
+   <tr><td>1.3</td><td>Aço CA-50 Ø 8,0 (3 barras) e CA-60 Ø 5,0 (estribos c/ 20)</td><td class="num">7,3</td><td>kg</td><td class="num">12,00</td><td class="num">88</td></tr>
+   <tr><td>1.4</td><td>Lastro de brita e lona</td><td class="num">1,50</td><td>m²</td><td class="num">30,00</td><td class="num">45</td></tr>
+   <tr><td>2.1</td><td>Bloco estrutural 14×19×39, Classe A, f<sub>bk</sub> ≥ 6,0 MPa</td><td class="num">31</td><td>un</td><td class="num">5,20</td><td class="num">161</td></tr>
+   <tr><td>2.2</td><td>Compensador 14×19×34</td><td class="num">26</td><td>un</td><td class="num">4,70</td><td class="num">122</td></tr>
+   <tr><td>2.3</td><td>Meio-bloco 14×19×19</td><td class="num">9</td><td>un</td><td class="num">3,40</td><td class="num">31</td></tr>
+   <tr><td>2.4</td><td>Bloco de amarração 14×19×14</td><td class="num">2</td><td>un</td><td class="num">3,10</td><td class="num">6</td></tr>
+   <tr><td>2.5</td><td>Canaleta J/U 39, 34 e 19 — verga e cinta de respaldo</td><td class="num">12</td><td>un</td><td class="num">5,90</td><td class="num">71</td></tr>
+   <tr><td>2.6</td><td>Perdas e quebras (5%)</td><td class="num">4</td><td>un</td><td class="num">5,00</td><td class="num">20</td></tr>
+   <tr><td>2.7</td><td>Argamassa de assentamento industrializada, f<sub>a</sub> ≥ 4,0 MPa</td><td class="num">7</td><td>sc 20 kg</td><td class="num">23,00</td><td class="num">161</td></tr>
+   <tr><td>2.8</td><td>Graute f<sub>ck</sub> ≥ 15 MPa — cantos, cinta e insertos</td><td class="num">6</td><td>sc 20 kg</td><td class="num">26,00</td><td class="num">156</td></tr>
+   <tr><td>2.9</td><td>Aço CA-50 Ø 8,0 — armadura vertical, cinta e insertos</td><td class="num">6,9</td><td>kg</td><td class="num">12,00</td><td class="num">83</td></tr>
+   <tr><td>3.1</td><td>Chapisco e reboco, e = 2 cm, faces interna e externa</td><td class="num">10,50</td><td>m²</td><td class="num">16,80</td><td class="num">176</td></tr>
+   <tr><td>3.2</td><td>Contrapiso 6 cm com aditivo + cimento alisado com endurecedor</td><td class="num">0,79</td><td>m²</td><td class="num">152,00</td><td class="num">120</td></tr>
+   <tr><td>3.3</td><td>Impermeabilização — argamassa polimérica, 2 demãos</td><td class="num">4,0</td><td>kg</td><td class="num">22,00</td><td class="num">88</td></tr>
+   <tr><td>4.0</td><td><strong>Cobertura</strong> — idêntica ao Método A</td><td class="num">2,50</td><td>m²</td><td class="num">213,20</td><td class="num">533</td></tr>
+   <tr><td>5.0</td><td><strong>Acabamento e acessórios</strong> — idênticos ao Método A</td><td class="num">1</td><td>vb</td><td class="num">560,00</td><td class="num">560</td></tr>
+   <tr><td>6.0</td><td>Mão de obra — 5 diárias de equipe</td><td class="num">5</td><td>diária</td><td class="num">450,00</td><td class="num">2.250</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="5">Total Método B · material R$ 2.866 + mão de obra R$ 2.250</td><td class="num">R$ 5.116</td></tr></tfoot>
+ </table></div>
+
+ <div class="nota ok"><span class="k">O achado do orçamento</span>
+  Os dois métodos custam praticamente o mesmo — <strong>diferença de 2,3%</strong>, dentro da margem de erro de
+  qualquer cotação. Mas a composição é invertida: o LSF gasta <strong>36% a mais em material</strong> e
+  <strong>40% a menos em mão de obra</strong>. Em obra pequena, onde a diária pesa mais que o insumo, essa inversão
+  é o que decide — e ela se acentua a favor do LSF conforme o custo da hora sobe.</div>
+</section>
+
+<section id="s11">
+ <div class="sec-head"><span class="sec-num">11</span><h2>Cronograma físico</h2></div>
+ <div class="col"><p>O prazo não é definido pela montagem, e sim pelas <strong>curas</strong>. É aí que os dois métodos se
+ separam de verdade: o Método A tem uma espera (radier); o Método B tem três (sapata, canaleta e reboco).</p></div>
+ <svg id="gantt" class="gantt" role="img" aria-label="Cronograma comparado dos dois métodos, em dias corridos"></svg>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 11.1 — Resumo de prazo</caption>
+  <thead><tr><th>Método</th><th class="num">Dias corridos</th><th class="num">Diárias de equipe</th><th class="num">Dias de espera (cura)</th><th>Caminho crítico</th></tr></thead>
+  <tbody>
+   <tr><td class="t-a">A — LSF</td><td class="num">8</td><td class="num">3</td><td class="num">3</td><td>cura do radier antes da ancoragem dos painéis</td></tr>
+   <tr><td class="t-b">B — Alvenaria</td><td class="num">13</td><td class="num">5</td><td class="num">7</td><td>cura da sapata → cura da canaleta com escoramento → cura do reboco</td></tr>
+  </tbody></table></div>
+ <div class="nota"><span class="k">Leitura do cronograma</span>
+  O abrigo do Método B fica <strong>utilizável no 13º dia</strong> (cobertura concluída); a pintura externa espera
+  mais três dias de cura do reboco e acontece no 16º, sem impedir o uso. O Método A entrega tudo no 8º dia porque
+  a placa cimentícia não tem cura a respeitar.</div>
+</section>
+
+<section id="s12">
+ <div class="sec-head"><span class="sec-num">12</span><h2>Execução, controle e manutenção</h2></div>
+
+ <h3>12.1 Sequência executiva</h3>
+ <div class="duo">
+  <div class="card A"><h4>Método A · 8 dias corridos</h4>
+   <ol style="margin:0;padding-left:1.1em;font-size:14px;color:var(--ink-2)">
+    <li>Locação, regularização e lastro de brita sobre lona.</li>
+    <li>Forma da viga de borda, malha Q-92 sobre espaçadores, chumbadores <strong>posicionados antes</strong> da concretagem — nunca perfurados depois.</li>
+    <li>Concretagem do radier com caimento de 1,5%; cura úmida por 3 dias.</li>
+    <li>Montagem dos painéis em bancada: guias, montantes c/ 400 mm, ombreiras duplas e verga em caixa.</li>
+    <li>Prumo, esquadro e aperto dos chumbadores; OSB fixado c/ 150 mm nas bordas.</li>
+    <li>Membrana hidrófuga em faixas sobrepostas de baixo para cima, EPS e placa cimentícia.</li>
+    <li>Caibros, calço frontal de 0,17 m, telha, testeira perfurada e tela.</li>
+    <li>Lã de vidro, compensado interno, pintura e acessórios.</li>
+   </ol></div>
+  <div class="card B"><h4>Método B · 13 dias corridos</h4>
+   <ol style="margin:0;padding-left:1.1em;font-size:14px;color:var(--ink-2)">
+    <li>Locação e escavação da vala a −0,45 m.</li>
+    <li>Armação e concretagem da sapata, com arranques Ø 8,0 deixados nos quatro cantos; cura por 2 dias.</li>
+    <li>2 fiadas de embasamento integralmente grauteadas; impermeabilização polimérica no topo, 2 demãos cruzadas.</li>
+    <li>Lastro, contrapiso com caimento de 1,5% e cantos em meia-cana.</li>
+    <li>Elevação das fiadas 1 a 4, alternando os tipos A e B, com prumo e nível a cada fiada.</li>
+    <li>Graute dos furos de canto acompanhando a elevação, adensado com haste.</li>
+    <li>Canaleta de respaldo: escoramento sobre o vão da porta, 2 Ø 8,0, insertos em L e concretagem <strong>em etapa única</strong>; cura por 2 dias antes de retirar o escoramento.</li>
+    <li>Cobertura idêntica ao Método A.</li>
+    <li>Chapisco, reboco, cura de 3 dias, pintura e acessórios.</li>
+   </ol></div>
+ </div>
+
+ <h3>12.2 Controle de qualidade — critérios de aceitação</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 12.1 — Verificações obrigatórias em obra</caption>
+  <thead><tr><th>Etapa</th><th>Verificação</th><th class="num">Tolerância</th><th>Método</th></tr></thead>
+  <tbody>
+   <tr><td>Fundação (ambos)</td><td>Nível do topo e caimento do piso</td><td class="num">1,5% ± 0,3%</td><td>mangueira de nível / régua</td></tr>
+   <tr><td class="t-a">Painéis LSF</td><td>Prumo e esquadro das diagonais</td><td class="num">± 3 mm</td><td>prumo e trena nas diagonais</td></tr>
+   <tr><td class="t-a">Chumbadores</td><td>Torque e ausência de fissura no concreto</td><td class="num">conforme fabricante</td><td>torquímetro</td></tr>
+   <tr><td class="t-b">Fiadas</td><td>Prumo, nível e espessura de junta</td><td class="num">10 ± 3 mm</td><td>nível de bolha a cada fiada</td></tr>
+   <tr><td class="t-b">Graute</td><td>Preenchimento total dos furos de canto</td><td class="num">sem vazio</td><td>adensamento com haste, em camadas</td></tr>
+   <tr><td>Cobertura</td><td>Estanqueidade e aperto das arruelas EPDM</td><td class="num">sem gotejamento</td><td>ensaio de mangueira, 15 min</td></tr>
+   <tr><td>Ático</td><td>Tela contínua, sem frestas na testeira</td><td class="num">malha ≤ 1,2 mm</td><td>inspeção visual</td></tr>
+  </tbody></table></div>
+
+ <h3>12.3 Segurança, resíduos e atoxicidade</h3>
+ <div class="col">
+  <p><strong>Segurança (NR-6).</strong> Óculos e protetor auricular no corte de placa cimentícia e de bloco —
+  a sílica do corte a seco é o risco real desta obra; corte úmido ou com aspiração sempre que possível.
+  Luvas de raspa no manuseio de perfis (a borda de aço galvanizado corta) e calçado de segurança.</p>
+  <p><strong>Resíduos (CONAMA 307).</strong> Classe A (bloco, concreto, argamassa): reaproveitar como material de
+  regularização no próprio terreno. Classe B (aço, OSB, EPS, embalagens): segregar e destinar à coleta seletiva.
+  Sobra estimada: 0,08 m³ no Método B, 0,03 m³ no Método A.</p>
+  <p><strong>Atoxicidade — requisito de projeto.</strong> Todas as tintas e vernizes em base d'água, sem chumbo e
+  de baixo COV. É <strong>proibido</strong> qualquer tratamento de madeira com CCA, creosoto ou pentaclorofenol
+  em peça acessível ao animal. O compensado interno recebe apenas verniz atóxico; a face que o cão pode morder
+  não leva selante nem massa corrida.</p>
+ </div>
+
+ <h3>12.4 Manutenção e vida útil</h3>
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 12.2 — Plano de manutenção (referência: NBR 5674)</caption>
+  <thead><tr><th>Elemento</th><th class="num">Periodicidade</th><th>Ação</th><th class="num">VUP estimada</th></tr></thead>
+  <tbody>
+   <tr><td>Estrado e piso interno</td><td class="num">semanal</td><td>remoção e lavagem; verificar empoçamento</td><td class="num">5 anos</td></tr>
+   <tr><td>Tela do ático e testeira</td><td class="num">6 meses</td><td>inspeção — ninho de vespa e entrada de morcego</td><td class="num">10 anos</td></tr>
+   <tr><td>Parafusos da telha</td><td class="num">12 meses</td><td>reaperto e troca de arruela EPDM ressecada</td><td class="num">15 anos</td></tr>
+   <tr><td class="t-a">Chumbadores do Método A</td><td class="num">12 meses</td><td>reaperto — a segurança ao vento depende deles</td><td class="num">20 anos</td></tr>
+   <tr><td class="t-b">Impermeabilização da base</td><td class="num">60 meses</td><td>inspeção de umidade ascendente no reboco</td><td class="num">20 anos</td></tr>
+   <tr><td>Pintura externa</td><td class="num">36 meses</td><td>repintura — mantém α ≤ 0,6, requisito térmico</td><td class="num">3 anos</td></tr>
+   <tr><td>Cortina de tiras de PVC</td><td class="num">24 meses</td><td>substituição por amarelamento e enrijecimento</td><td class="num">2 anos</td></tr>
+   <tr><td class="t-a">Estrutura LSF (Z275)</td><td class="num">—</td><td>inspeção de corte sem retoque galvânico</td><td class="num">20 anos</td></tr>
+   <tr><td class="t-b">Alvenaria estrutural</td><td class="num">—</td><td>inspeção de fissura na verga</td><td class="num">30+ anos</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="s13">
+ <div class="sec-head"><span class="sec-num">13</span><h2>Comparativo e recomendação</h2></div>
+ <div class="v-legend" style="font-family:var(--f-mono);font-size:11.5px;margin-bottom:4px">
+   <span><i style="background:var(--steel)"></i>Método A · LSF</span>
+   <span><i style="background:var(--block)"></i>Método B · Alvenaria estrutural</span>
+ </div>
+ <div class="smx">
+  <div class="mini"><div class="lab">Massa da superestrutura · kgf ↓</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:21%;background:var(--steel)"></span><span class="vl">258</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:100%;background:var(--block)"></span><span class="vl">1.211</span></div></div>
+  <div class="mini"><div class="lab">Custo total · R$ ↓</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:100%;background:var(--steel)"></span><span class="vl">5.235</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:98%;background:var(--block)"></span><span class="vl">5.116</span></div></div>
+  <div class="mini"><div class="lab">Material · R$ ↓</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:100%;background:var(--steel)"></span><span class="vl">3.885</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:74%;background:var(--block)"></span><span class="vl">2.866</span></div></div>
+  <div class="mini"><div class="lab">Mão de obra · R$ ↓</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:60%;background:var(--steel)"></span><span class="vl">1.350</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:100%;background:var(--block)"></span><span class="vl">2.250</span></div></div>
+  <div class="mini"><div class="lab">Prazo · dias corridos ↓</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:62%;background:var(--steel)"></span><span class="vl">8</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:100%;background:var(--block)"></span><span class="vl">13</span></div></div>
+  <div class="mini"><div class="lab">Área útil interna · m² ↑</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:100%;background:var(--steel)"></span><span class="vl">0,86</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:92%;background:var(--block)"></span><span class="vl">0,79</span></div></div>
+  <div class="mini"><div class="lab">Transmitância U · W/m²·K ↓</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:24%;background:var(--steel)"></span><span class="vl">0,58</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:100%;background:var(--block)"></span><span class="vl">2,47</span></div></div>
+  <div class="mini"><div class="lab">Capacidade térmica · kJ/m²·K ↑</div>
+   <div class="row"><span class="nm">A</span><span class="bar" style="width:17%;background:var(--steel)"></span><span class="vl">43</span></div>
+   <div class="row"><span class="nm">B</span><span class="bar" style="width:100%;background:var(--block)"></span><span class="vl">249</span></div></div>
+ </div>
+
+ <div class="tbl-wrap"><table>
+  <caption>Tabela 13.1 — Comparativo qualitativo</caption>
+  <thead><tr><th>Critério</th><th class="t-a">Método A · LSF</th><th class="t-b">Método B · Alvenaria</th><th>Vantagem</th></tr></thead>
+  <tbody>
+   <tr><td>Estabilidade ao vento</td><td>depende integralmente da ancoragem</td><td>auto-estável pelo peso próprio</td><td class="t-b">B</td></tr>
+   <tr><td>Mobilidade / reposicionamento</td><td>desmontável em painéis; 258 kgf</td><td>obra definitiva; demolição para remover</td><td class="t-a">A</td></tr>
+   <tr><td>Resistência a mordida e escavação</td><td>face interna em compensado — vulnerável</td><td>bloco e reboco — praticamente imune</td><td class="t-b">B</td></tr>
+   <tr><td>Comportamento em noite de friagem</td><td>isola melhor, esfria rápido ao amanhecer</td><td>inércia mantém a temperatura estável</td><td class="t-b">B</td></tr>
+   <tr><td>Comportamento em tarde de 38 °C</td><td>aquece rápido; depende do ático</td><td>atraso térmico de ≈ 3 h a favor</td><td class="t-b">B</td></tr>
+   <tr><td>Tolerância a erro de execução</td><td>baixa — modulação e prumo são críticos</td><td>alta — corrige-se na junta e no reboco</td><td class="t-b">B</td></tr>
+   <tr><td>Limpeza do canteiro e resíduo</td><td>obra seca, 0,03 m³ de resíduo</td><td>obra úmida, 0,08 m³</td><td class="t-a">A</td></tr>
+   <tr><td>Prazo e diárias de equipe</td><td>3 diárias, 8 dias corridos</td><td>5 diárias, 13 dias corridos</td><td class="t-a">A</td></tr>
+   <tr><td>Sensibilidade à alta do custo da hora</td><td>baixa — pouca mão de obra</td><td>alta — mão de obra é 44% do total</td><td class="t-a">A</td></tr>
+  </tbody></table></div>
+
+ <h3>13.1 Recomendação</h3>
+ <div class="col">
+  <p><strong>Para instalação fixa em Dourados, recomenda-se o Método B — alvenaria estrutural.</strong>
+  Quatro razões, em ordem de peso: (1) atende à diretriz de <em>vedação externa pesada</em> da ZB 6, que é a
+  resposta correta para amplitude térmica diária alta; (2) é auto-estável ao vento, sem depender de oito
+  chumbadores permanecerem apertados por vinte anos; (3) é imune a mordida e escavação, o modo de falha mais
+  provável de um abrigo canino; (4) custa 26% menos em material, e material não falta em obra pequena — diária, sim.</p>
+  <p><strong>O Método A passa à frente em três cenários:</strong> se o quintal for alugado ou a peça precisar mudar
+  de lugar; se o prazo for a restrição dominante (8 dias contra 13); ou se não houver pedreiro disponível e a
+  montagem for feita pelo próprio proprietário — o LSF é o único dos dois que se monta com parafusadeira e trena.</p>
+  <p>Se a decisão for pelo Método A, <strong>duas correções são obrigatórias</strong>, e não opcionais: o EPS
+  contínuo de 20 mm (§4.1) e o radier deixado aparente sob o estrado, sem isolamento, para dar ao interior a
+  inércia térmica que a parede leve não tem (§8).</p>
+ </div>
+</section>
+
+<section id="s14">
+ <div class="sec-head"><span class="sec-num">14</span><h2>Pendências e validações em campo</h2></div>
+ <div class="col">
+  <p>Este caderno é de projeto executivo, mas quatro verificações só se fecham no local. Nenhuma delas altera o
+  partido; todas alteram números do §7 ou do §10.</p>
+  <ol>
+   <li><strong>Velocidade básica do vento.</strong> V₀ = 45 m/s foi lido nas isopletas da NBR 6123 para o sul de MS.
+   Confirmar na Figura 1 da norma antes da emissão para obra — cada 5 m/s a mais eleva a sucção em cerca de 24%.</li>
+   <li><strong>Capacidade do solo.</strong> Adotou-se latossolo vermelho com σ<sub>adm</sub> ≥ 100 kPa. Como a
+   utilização é de 6 a 19%, apenas um poço de inspeção de 0,60 m já resolve: verificar ausência de aterro solto
+   ou entulho enterrado no ponto de implantação.</li>
+   <li><strong>Orientação real do terreno.</strong> A porta a Norte é premissa de projeto (§1.2). Se a única
+   posição disponível no quintal obrigar outra orientação, priorizar <em>fundo cego para o Sul</em>; se nem isso
+   for possível, acrescentar anteparo interno em L junto à porta.</li>
+   <li><strong>Preços.</strong> Toda a §10 é estimativa de mercado, não cotação. Três cotações locais fecham o orçamento.</li>
+  </ol>
+  <p>Validação visual que depende de você, em obra: prumo dos painéis (Método A) ou das fiadas (Método B),
+  caimento efetivo do piso com um balde d'água, e o ensaio de mangueira na cobertura por 15 minutos antes de
+  instalar o forro — depois do forro, vazamento vira mistério.</p>
+ </div>
+</section>
+
+</main>
+
+<footer class="wrap">
+  CANIL CM-01 · Caderno de projeto executivo · Rev. 00 · 10 set. 2026 · Dourados/MS<br>
+  Pranchas PR-01 a PR-06 · Memória de cálculo §7 · Quantitativos §10 · Cotas em metros salvo indicação
+</footer>
+
+<script>
+/* ============================================================
+   Motor de desenho técnico — coordenadas em milímetros reais
+   ============================================================ */
+const NS="http://www.w3.org/2000/svg";
+function E(t,a,txt){const e=document.createElementNS(NS,t);
+  for(const k in a){if(a[k]!==null&&a[k]!==undefined)e.setAttribute(k,a[k]);}
+  if(txt!=null)e.textContent=txt;return e;}
+function SHEET(id,vb){
+  const s=document.getElementById(id); if(!s)return null;
+  s.setAttribute("viewBox",vb.join(" ")); s.setAttribute("class","dw");
+  const F=vb[2]/95;
+  const api={
+    F,
+    add(e){s.appendChild(e);return e;},
+    ln:(x1,y1,x2,y2,c)=>api.add(E("line",{x1,y1,x2,y2,class:c||"l1"})),
+    rc:(x,y,w,h,c,f)=>api.add(E("rect",{x,y,width:w,height:h,class:c||"l1",style:"fill:"+(f||"none")})),
+    pg:(p,c,f)=>api.add(E("polygon",{points:p.map(q=>q.join(",")).join(" "),class:c||"l1",style:"fill:"+(f||"none")})),
+    pl:(p,c)=>api.add(E("polyline",{points:p.map(q=>q.join(",")).join(" "),class:c||"l1",style:"fill:none"})),
+    ci:(x,y,r,c,f)=>api.add(E("circle",{cx:x,cy:y,r,class:c||"l1",style:"fill:"+(f||"none")})),
+    tx(x,y,t,o){o=o||{};return api.add(E("text",{x,y,class:o.c||"tdim","text-anchor":o.a||"middle",
+      "dominant-baseline":o.b||"middle",transform:o.r?"rotate("+o.r+" "+x+" "+y+")":null,
+      style:"font-size:"+(o.s||F)+"px"+(o.w?";font-weight:"+o.w:"")+(o.fill?";fill:"+o.fill:"")},t));},
+    dimH(x1,x2,y,t,ye){
+      const e=(ye===undefined)?y:ye;
+      api.ln(x1,e,x1,y+F*.35,"dim"); api.ln(x2,e,x2,y+F*.35,"dim");
+      api.ln(x1,y,x2,y,"dim");
+      api.ln(x1-F*.3,y+F*.3,x1+F*.3,y-F*.3,"dim"); api.ln(x2-F*.3,y+F*.3,x2+F*.3,y-F*.3,"dim");
+      api.tx((x1+x2)/2,y-F*.62,t,{s:F*.86});},
+    dimV(y1,y2,x,t,xe){
+      const e=(xe===undefined)?x:xe;
+      api.ln(e,y1,x-F*.35,y1,"dim"); api.ln(e,y2,x-F*.35,y2,"dim");
+      api.ln(x,y1,x,y2,"dim");
+      api.ln(x-F*.3,y1+F*.3,x+F*.3,y1-F*.3,"dim"); api.ln(x-F*.3,y2+F*.3,x+F*.3,y2-F*.3,"dim");
+      api.tx(x-F*.55,(y1+y2)/2,t,{s:F*.86,r:-90});},
+    lvl(x,y,t,dir){
+      const d=(dir||1)*F*.55;
+      api.pg([[x,y],[x-Math.abs(d)*.6,y-Math.abs(d)],[x+Math.abs(d)*.6,y-Math.abs(d)]],"l1","var(--ink)");
+      api.ln(x,y,x+F*2.4*(dir===-1?-1:1),y,"l0");
+      api.tx(x+F*1.4*(dir===-1?-1:1),y-Math.abs(d)*1.5,t,{s:F*.8,c:"tlb"});},
+    lead(x,y,tx2,ty,t,anchor){
+      api.ci(x,y,F*.16,"l1","var(--ink)");
+      api.pl([[x,y],[tx2,ty],[tx2+(anchor==="end"?-F*.8:F*.8),ty]],"l0");
+      api.tx(tx2+(anchor==="end"?-F*1.1:F*1.1),ty,t,{s:F*.76,a:anchor==="end"?"end":"start",c:"tlb"});},
+    corte(x,y,letra,vert,flip){
+      const r=F*.9;
+      api.ci(x,y,r,"l2","var(--sheet)"); api.tx(x,y,letra,{s:F*.9,w:600});
+      const d=F*1.9*(flip?-1:1);
+      if(vert) api.pl([[x,y+(flip?-r:r)],[x,y+d]],"l2"); else api.pl([[x+(flip?-r:r),y],[x+d,y]],"l2");},
+    norte(x,y){
+      const r=F*1.5;
+      api.ci(x,y,r,"l1","var(--sheet)");
+      api.pg([[x,y-r*.95],[x-r*.38,y+r*.5],[x,y+r*.16],[x+r*.38,y+r*.5]],"l1","var(--ink)");
+      api.tx(x,y-r*1.7,"N",{s:F*.9,w:600});},
+    titulo(x,y,t,sub){ api.tx(x,y,t,{c:"ttl",a:"start",s:F*1.15,w:600});
+      if(sub)api.tx(x,y+F*1.1,sub,{c:"tlb",a:"start",s:F*.82});}
+  };
+  return api;
+}
+
+/* ============================================================
+   PR-01 — PLANTA BAIXA
+   ============================================================ */
+(function(){
+  const p=SHEET("pr01",[0,0,4560,2260]); if(!p)return; const F=p.F;
+  const L=1390,P=990,g0=500,g1=890;
+  function planta(ox,oy,tit,cls,fill,area,ti,mir){
+    const W=(x,y,w,h)=>p.rc(ox+x,oy+y,w,h,cls,fill);
+    W(0,0,L,ti); W(0,P-ti,g0,ti); W(g1,P-ti,L-g1,ti);
+    W(0,ti,ti,P-2*ti); W(L-ti,ti,ti,P-2*ti);
+    p.rc(ox,oy+ti+60,ti,190,"l1","var(--sheet)");
+    p.rc(ox+L-ti,oy+ti+60,ti,190,"l1","var(--sheet)");
+    p.tx(ox+ti+30,oy+ti+155,"0,19",{s:F*.58,a:"start",c:"tlb"});
+    // contornos (interrompidos no vão)
+    [[0,0,L,0],[0,0,0,P],[L,0,L,P]].forEach(l=>p.ln(ox+l[0],oy+l[1],ox+l[2],oy+l[3],"l2"));
+    p.ln(ox,oy+P,ox+g0,oy+P,"l2"); p.ln(ox+g1,oy+P,ox+L,oy+P,"l2");
+    [[ti,ti,L-ti,ti],[ti,ti,ti,P-ti],[L-ti,ti,L-ti,P-ti]].forEach(l=>p.ln(ox+l[0],oy+l[1],ox+l[2],oy+l[3],"l2"));
+    p.ln(ox+ti,oy+P-ti,ox+g0,oy+P-ti,"l2"); p.ln(ox+g1,oy+P-ti,ox+L-ti,oy+P-ti,"l2");
+    // ocupação do animal
+    p.add(E("ellipse",{cx:ox+L/2,cy:oy+P/2-30,rx:375,ry:175,class:"ld",fill:"none",opacity:".8"}));
+    p.tx(ox+L/2,oy+P/2-30,"cão deitado 0,75 × 0,35",{s:F*.58,c:"tlb"});
+    p.rc(ox+ti+30,oy+ti+30,L-2*ti-60,P-2*ti-60,"l0");
+    p.tx(ox+ti+45,oy+P-ti-55,"estrado removível",{s:F*.56,a:"start",c:"tlb"});
+    for(let i=0;i<=6;i++){const x=ox+g0+8+i*374/6; p.ln(x,oy+P-ti+10,x,oy+P+40,"l1");}
+    p.tx(ox+695,oy+P+95,"cortina de tiras de PVC",{s:F*.58,c:"tlb"});
+    p.ln(ox+L/2,oy+ti+110,ox+L/2,oy+P-ti-130,"l0");
+    p.pg([[ox+L/2,oy+P-ti-100],[ox+L/2-26,oy+P-ti-155],[ox+L/2+26,oy+P-ti-155]],"l0","var(--muted)");
+    p.tx(ox+L/2+40,oy+ti+180,"i = 1,5%",{s:F*.62,a:"start",c:"tlb"});
+    // cotas verticais e eixos (espelhados no método B)
+    const v1=mir?ox+L+300:ox-300, v2=mir?ox+L+180:ox-180, ax=mir?ox+L+430:ox-430, ex=mir?ox+L:ox;
+    p.dimV(oy,oy+P,v1,"0,99",ex);
+    p.dimV(oy+ti,oy+P-ti,v2,((P-2*ti)/1000).toFixed(2).replace(".",","),ex);
+    ["A","B"].forEach((n,i)=>{const y=oy+(i?P-ti/2:ti/2);
+      p.ln(mir?ox+L-40:ox+40,y,ax,y,"la"); p.ci(ax,y,F*.8,"l1","var(--sheet)"); p.tx(ax,y,n,{s:F*.76,w:600});});
+    ["1","2"].forEach((n,i)=>{const x=ox+(i?L-ti/2:ti/2);
+      p.ln(x,oy-200,x,oy+40,"la"); p.ci(x,oy-240,F*.8,"l1","var(--sheet)"); p.tx(x,oy-240,n,{s:F*.76,w:600});});
+    // cotas horizontais
+    p.dimH(ox+ti,ox+L-ti,oy-80,((L-2*ti)/1000).toFixed(2).replace(".",","),oy+ti);
+    p.dimH(ox,ox+g0,oy+P+200,"0,50",oy+P);
+    p.dimH(ox+g0,ox+g1,oy+P+200,"0,39",oy+P);
+    p.dimH(ox+g1,ox+L,oy+P+200,"0,50",oy+P);
+    p.dimH(ox,ox+L,oy+P+330,"1,39",oy+P);
+    p.titulo(ox,oy+P+560,tit,"esc. 1:10 · área útil "+area);
+  }
+  planta(560,470,"PLANTA · MÉTODO A — LSF","fA","var(--steel-fill)","0,86 m² · parede 12 cm",120,false);
+  planta(2360,470,"PLANTA · MÉTODO B — ALVENARIA","fB","url(#hBloco)","0,79 m² · parede 14 cm",140,true);
+  /* modulação e graute no método B */
+  (function(){const ox=2360,oy=470,ti=140;
+    [400,800,1200].forEach(x=>p.ln(ox+x-10,oy,ox+x-10,oy+ti,"l1"));
+    [400].forEach(x=>p.ln(ox+x-10,oy+P-ti,ox+x-10,oy+P,"l1"));
+    p.ln(ox+1250,oy+P-ti,ox+1250,oy+P,"l1");
+    [350,700].forEach(y=>{p.ln(ox,oy+y,ox+ti,oy+y,"l1"); p.ln(ox+L-ti,oy+y,ox+L,oy+y,"l1");});
+    [[70,70],[L-70,70],[70,P-70],[L-70,P-70]].forEach(c=>p.rc(ox+c[0]-45,oy+c[1]-45,90,90,"l1","var(--block)"));
+    p.lead(ox+L-70,oy+70,ox+L+110,oy-180,"graute + Ø8 nos cantos","start");
+  })();
+  /* indicação dos cortes — sobre a planta do Método A */
+  (function(){const ox=560,oy=470;
+    p.corte(ox+695,oy-360,"B",true,false); p.corte(ox+695,oy+P+450,"B",true,true);
+    p.ln(ox+695,oy-320,ox+695,oy+P+410,"la");
+    p.corte(ox-120,oy+300,"A",false,false); p.corte(ox+L+120,oy+300,"A",false,true);
+    p.ln(ox-80,oy+300,ox+L+80,oy+300,"la");
+    p.norte(ox+L+220,oy-180);})();
+  p.tx(560,2180,"Nível do piso interno acabado +0,15 · terreno natural ±0,00 · cotas em metros · cortes indicados na planta do Método A (geometria comum)",{s:F*.66,a:"start",c:"tlb"});
+})();
+
+/* ============================================================
+   PR-02 — CORTE BB LONGITUDINAL (A e B)
+   ============================================================ */
+(function(){
+  const p=SHEET("pr02",[0,0,5850,3140]); if(!p)return; const F=p.F;
+  function corte(ox,oy,tit,ti,metodo,mir){
+    const Y=m=>oy-m*1000, P=990;
+    const u=x=>Y(1.334-0.20*x/1000);                 // face inferior do caibro
+    const CH=mir?ox+P+400:ox-400;                    // coluna de chamadas (lado externo)
+    const AN=mir?"start":"end";
+    const NX=mir?ox-250:ox+P+150, ND=mir?-1:1;       // marcas de nível (lado interno)
+    const DV=mir?ox+P+210:ox-210;                    // cota vertical da parede
+    p.add(E("rect",{x:ox-470,y:Y(0),width:P+940,height:130,fill:"url(#hSolo)",stroke:"none"}));
+    p.ln(ox-470,Y(0),ox+P+470,Y(0),"l2");
+    if(metodo==="A"){
+      p.rc(ox-105,Y(0.15),P+210,150,"l2","url(#hConc)");
+      p.rc(ox-105,Y(0),100,250,"l2","url(#hConc)"); p.rc(ox+P+5,Y(0),100,250,"l2","url(#hConc)");
+      p.lead(ox-55,Y(-0.10),CH,Y(-0.20),"radier C25 · viga de borda 20×25",AN);
+    }else{
+      p.rc(ox-80,Y(-0.25),160,200,"l2","url(#hConc)"); p.rc(ox+P-80,Y(-0.25),160,200,"l2","url(#hConc)");
+      p.rc(ox,Y(0.15),ti,400,"l2","url(#hBloco)"); p.rc(ox+P-ti,Y(0.15),ti,400,"l2","url(#hBloco)");
+      p.ln(ox-30,Y(0.15),ox+ti+30,Y(0.15),"l3"); p.ln(ox+P-ti-30,Y(0.15),ox+P+30,Y(0.15),"l3");
+      p.lead(ox+P-ti/2,Y(0.15),CH,Y(0.06),"impermeabilização polimérica",AN);
+      p.lead(ox+P-40,Y(-0.15),CH,Y(-0.26),"sapata corrida 30×20 · C25",AN);
+    }
+    p.rc(ox+ti,Y(0.15),P-2*ti,60,"l1","url(#hConc)");
+    p.rc(ox,Y(1.15),ti,1000,"l2",metodo==="A"?"url(#hEps)":"url(#hBloco)");
+    p.rc(ox+P-ti,Y(1.15),ti,1000,"l2",metodo==="A"?"url(#hEps)":"url(#hBloco)");
+    p.rc(ox,Y(0.95),ti,600,"l2","var(--sheet)");
+    p.ln(ox,Y(0.95),ox+ti,Y(0.95),"l3"); p.ln(ox,Y(0.35),ox+ti,Y(0.35),"l3");
+    if(metodo==="B"){
+      for(let i=1;i<4;i++){const y=Y(0.15+0.2*i);
+        p.ln(ox,y,ox+ti,y,"l1"); p.ln(ox+P-ti,y,ox+P,y,"l1");}
+      p.rc(ox,Y(1.15),ti,200,"l2","var(--block-fill)"); p.rc(ox+P-ti,Y(1.15),ti,200,"l2","var(--block-fill)");
+      [45,95].forEach(dx=>{p.ci(ox+dx,Y(1.05),26,"l1","var(--block)"); p.ci(ox+P-dx,Y(1.05),26,"l1","var(--block)");});
+      p.lead(ox+P-70,Y(1.05),CH,Y(1.34),"canaleta de respaldo = verga · 2 Ø8",AN);
+      p.lead(ox+P-ti/2,Y(0.62),CH,Y(0.62),"bloco 14×19×39 · Classe A",AN);
+    }else{
+      p.rc(ox+28,Y(1.15),70,1000,"l1","url(#hLa)"); p.rc(ox+P-98,Y(1.15),70,1000,"l1","url(#hLa)");
+      [28,98].forEach(dx=>{p.ln(ox+dx,Y(1.15),ox+dx,Y(0.15),"l1"); p.ln(ox+P-dx,Y(1.15),ox+P-dx,Y(0.15),"l1");});
+      p.lead(ox+63,Y(0.74),CH,Y(0.88),"montante Ue 70 + lã de vidro 50",AN);
+      p.lead(ox+8,Y(0.36),CH,Y(0.34),"placa cimentícia 8 + EPS 20 + OSB 11",AN);
+      p.lead(ox+P-6,Y(0.60),CH,Y(0.60),"compensado plastificado 10 mm",AN);
+    }
+    p.rc(ox+ti,Y(0.95),P-2*ti,26,"l2","var(--sheet-2)");
+    p.lead(ox+P/2,Y(0.95),CH,Y(1.06),"forro em placa cimentícia 6 mm",AN);
+    p.pg([[ox-300,u(-300)],[ox+1140,u(1140)],[ox+1140,u(1140)-70],[ox-300,u(-300)-70]],"l1","var(--steel-fill)");
+    p.pg([[ox-300,u(-300)-70],[ox+1140,u(1140)-70],[ox+1140,u(1140)-125],[ox-300,u(-300)-125]],"l2","var(--sheet-2)");
+    for(let x=-260;x<1140;x+=95)p.ln(ox+x,u(x)-125,ox+x,u(x)-95,"l1");
+    p.rc(ox+ti/2-35,Y(1.32),70,170,"l2","var(--steel-fill)");
+    p.lead(ox+ti/2,Y(1.24),CH,Y(1.78),"calço de 0,17 m — origem do caimento",AN);
+    p.lead(ox+380,u(380)-100,CH,Y(1.62),"telha termoacústica EPS 30 · i = 20%",AN);
+    p.pg([[ox,Y(1.15)],[ox+P,Y(1.15)],[ox+P,u(990)],[ox,u(0)]],"ld","none");
+    p.pg([[ox-150,Y(1.22)],[ox-70,Y(1.245)],[ox-70,Y(1.195)]],"l1","var(--muted)");
+    p.ln(ox-70,Y(1.22),ox+60,Y(1.22),"l1");
+    p.lead(ox+170,Y(1.235),CH,Y(1.46),"fresta ventilada 0,18 → 0,00 · tela 1,2 mm",AN);
+    const dx=ox+P/2+40,dy=Y(0.15)-24;
+    p.pl([[dx-300,dy],[dx-292,dy-118],[dx-250,dy-163],[dx-120,dy-178],[dx+40,dy-170],[dx+140,dy-184],
+          [dx+186,dy-248],[dx+232,dy-242],[dx+238,dy-194],[dx+280,dy-174],[dx+286,dy-138],[dx+150,dy-118],
+          [dx+60,dy-94],[dx-60,dy-90],[dx-160,dy-98],[dx-240,dy-58],[dx-300,dy]],"l0");
+    p.tx(dx-30,dy-212,"cão deitado",{s:F*.56,c:"tlb"});
+    const niv=[[0,"±0,00"],[0.15,"+0,15"],[0.35,"+0,35"],[0.95,"+0,95"],[1.15,"+1,15"],[1.46,"+1,46"]];
+    if(metodo==="B")niv.unshift([-0.45,"−0,45"]);
+    niv.forEach(n=>p.lvl(NX,Y(n[0]),n[1],ND));
+    p.dimV(Y(1.15),Y(0.15),DV,"1,00",mir?ox+P:ox);
+    p.dimH(ox,ox+P,Y(0)+560,"0,99",Y(0)+120);
+    p.dimH(ox-300,ox+P+150,Y(0)+690,"1,44 (projeção da cobertura)",Y(0)+120);
+    p.titulo(ox-300,Y(0)+900,tit,"esc. 1:10 · corte pela porta");
+  }
+  corte(1480,2060,"CORTE BB · MÉTODO A — LSF",120,"A",false);
+  corte(3380,2060,"CORTE BB · MÉTODO B — ALVENARIA",140,"B",true);
+})();
+
+
+/* ============================================================
+   PR-03 — ELEVAÇÕES E PLANTA DE COBERTURA
+   ============================================================ */
+(function(){
+  const p=SHEET("pr03",[0,0,5300,5150]); if(!p)return; const F=p.F;
+  const u=x=>1.334-0.20*x/1000;
+  /* elevação frontal (Norte) */
+  (function(ox,oy){
+    const Y=m=>oy-m*1000, L=1390;
+    p.add(E("rect",{x:ox-320,y:Y(0),width:L+640,height:120,fill:"url(#hSolo)",stroke:"none"}));
+    p.ln(ox-320,Y(0),ox+L+320,Y(0),"l2");
+    p.rc(ox,Y(1.15),L,1000,"l2","var(--sheet-2)");
+    p.rc(ox,Y(0.15),L,150,"l1","url(#hConc)");
+    p.rc(ox+500,Y(0.95),390,600,"l2","var(--sheet)");
+    for(let i=0;i<=6;i++){const x=ox+508+i*374/6; p.ln(x,Y(0.95)+14,x,Y(0.35)-8,"l0");}
+    p.tx(ox+695,Y(0.66),"0,39 × 0,60",{s:F*.62,c:"tlb"});
+    // testeira + telha na frente
+    p.rc(ox-150,Y(1.52),L+300,60,"l2","var(--sheet-2)");
+    p.rc(ox-150,Y(1.46),L+300,140,"l1","var(--sheet)");
+    for(let x=ox-120;x<ox+L+150;x+=58)p.ln(x,Y(1.44),x,Y(1.34),"l0");
+    p.lead(ox+L-200,Y(1.39),ox+140,Y(1.74),"testeira perfurada + tela","start");
+    p.dimH(ox,ox+L,Y(0)+300,"1,39",Y(0));
+    p.dimH(ox-150,ox+L+150,Y(0)+430,"1,69 (cobertura)",Y(0));
+    p.dimV(Y(1.52),Y(0),ox-420,"1,52",ox-150);
+    p.dimV(Y(0.95),Y(0.35),ox+420,"0,60",ox+500);
+    p.dimV(Y(0.35),Y(0.15),ox+420,"0,20",ox+500);
+    p.titulo(ox-420,Y(0)+640,"ELEVAÇÃO FRONTAL — NORTE","esc. 1:10 · fachada da porta");
+  })(700,1830);
+  /* elevação lateral (Leste) */
+  (function(ox,oy){
+    const Y=m=>oy-m*1000, P=990;
+    p.add(E("rect",{x:ox-420,y:Y(0),width:P+740,height:120,fill:"url(#hSolo)",stroke:"none"}));
+    p.ln(ox-420,Y(0),ox+P+320,Y(0),"l2");
+    p.rc(ox,Y(1.15),P,1000,"l2","var(--sheet-2)");
+    p.rc(ox,Y(0.15),P,150,"l1","url(#hConc)");
+    p.rc(ox+P-250,Y(0.95),190,190,"l1","var(--sheet)");
+    p.lead(ox+P-155,Y(0.86),ox+120,Y(1.74),"ventilação 0,19 × 0,19 c/ tela","start");
+    p.pg([[ox-300,Y(u(-300)+0.125)],[ox+P+150,Y(u(P+150)+0.125)],[ox+P+150,Y(u(P+150)+0.070)],[ox-300,Y(u(-300)+0.070)]],"l2","var(--sheet-2)");
+    p.pg([[ox-300,Y(u(-300)+0.070)],[ox+P+150,Y(u(P+150)+0.070)],[ox+P+150,Y(u(P+150))],[ox-300,Y(u(-300))]],"l1","var(--steel-fill)");
+    p.pg([[ox,Y(1.15)],[ox+P,Y(1.15)],[ox+P,Y(u(P))],[ox,Y(u(0))]],"l1","var(--sheet)");
+    p.tx(ox+P/2-80,Y(1.23),"fresta ventilada do ático",{s:F*.56,c:"tlb"});
+    p.tx(ox+P/2+140,Y(1.40),"i = 20%",{s:F*.68,c:"tlb",r:-11.3});
+    p.dimH(ox,ox+P,Y(0)+300,"0,99",Y(0));
+    p.dimV(Y(1.15),Y(0.15),ox-210,"1,00",ox);
+    p.titulo(ox-420,Y(0)+640,"ELEVAÇÃO LATERAL — LESTE","esc. 1:10 · caimento para o Sul");
+  })(2750,1830);
+  /* elevação posterior (Sul) */
+  (function(ox,oy){
+    const Y=m=>oy-m*1000, L=1390;
+    p.add(E("rect",{x:ox-320,y:Y(0),width:L+640,height:120,fill:"url(#hSolo)",stroke:"none"}));
+    p.ln(ox-320,Y(0),ox+L+320,Y(0),"l2");
+    p.rc(ox,Y(1.15),L,1000,"l2","var(--sheet-2)");
+    p.rc(ox,Y(0.15),L,150,"l1","url(#hConc)");
+    p.rc(ox-150,Y(1.26),L+300,60,"l2","var(--sheet-2)");
+    p.tx(ox+L/2,Y(0.65),"fachada cega — frentes frias de S/SE",{s:F*.64,c:"tlb"});
+    p.dimH(ox,ox+L,Y(0)+300,"1,39",Y(0));
+    p.dimV(Y(1.26),Y(0),ox-420,"1,26",ox-150);
+    p.titulo(ox-420,Y(0)+560,"ELEVAÇÃO POSTERIOR — SUL","esc. 1:10 · sem aberturas");
+  })(700,3900);
+  /* planta de cobertura */
+  (function(ox,oy){
+    const L=1690,P=1440;
+    p.rc(ox,oy,L,P,"l2","var(--sheet-2)");
+    for(let x=ox+70;x<ox+L;x+=140)p.ln(x,oy,x,oy+P,"l0");
+    p.rc(ox+150,oy+300,1390,990,"ld");
+    [oy+60,oy+P-60].forEach(y=>{for(let x=ox+70;x<ox+L;x+=140)p.ci(x,y,16,"l1","var(--ink)");});
+    for(let x=ox+70;x<ox+L;x+=280)p.ci(x,oy+P/2,16,"l1","var(--ink)");
+    p.ln(ox+L/2,oy+180,ox+L/2,oy+P-250,"l0");
+    p.pg([[ox+L/2,oy+P-120],[ox+L/2-45,oy+P-260],[ox+L/2+45,oy+P-260]],"l1","var(--muted)");
+    p.tx(ox+L/2+70,oy+P/2,"i = 20%",{s:F*.7,a:"start",c:"tlb"});
+    p.lead(ox+70,oy+60,ox+L+170,oy-90,"2 parafusos/onda na borda","start");
+    p.lead(ox+70,oy+P/2,ox+L+170,oy+P/2,"1 parafuso a cada 2 ondas","start");
+    p.dimH(ox,ox+L,oy+P+250,"1,69",oy+P);
+    p.dimV(oy,oy+P,ox-210,"1,44",ox);
+    p.dimV(oy,oy+300,ox-90,"0,30",ox);
+    p.titulo(ox-210,oy+P+490,"PLANTA DE COBERTURA","esc. 1:10 · beiral 0,30 frontal / 0,15 demais");
+  })(2750,2950);
+})();
+
+/* ============================================================
+   PR-04 — PAINÉIS LSF + DETALHE DE ANCORAGEM
+   ============================================================ */
+(function(){
+  const p=SHEET("pr04",[0,0,4750,2050]); if(!p)return; const F=p.F;
+  (function(ox,oy){
+    const L=1390,H=1000,g=72;
+    p.rc(ox,oy,L,g,"fA","var(--steel-fill)"); p.rc(ox,oy+H-g,L,g,"fA","var(--steel-fill)");
+    [0,400,800,1318].forEach(x=>p.rc(ox+x,oy+g,70,H-2*g,"fA","var(--steel-fill)"));
+    [[360,430],[890,960]].forEach(pr=>pr.forEach(x=>p.rc(ox+x,oy+g,70,H-2*g,"fA","var(--steel-fill)")));
+    p.rc(ox+430,oy+200,530,90,"fA","var(--steel-fill)");
+    p.rc(ox+620,oy+g,70,128,"fA","var(--steel-fill)");
+    p.rc(ox+500,oy+290,390,510,"l2","var(--sheet)");
+    p.rc(ox,oy,L,H,"l2");
+    p.tx(ox+695,oy+545,"VÃO 0,39 × 0,60",{s:F*.66,c:"tlb"});
+    p.lead(ox+465,oy+400,ox-80,oy-140,"ombreira dupla (2 Ue 70)","end");
+    p.lead(ox+695,oy+245,ox+L+100,oy-140,"verga em caixa · 2 Ue 70 + chapa","start");
+    p.lead(ox+40,oy+H-g/2,ox-80,oy+H+230,"guia U 72 · chumbador M8 c/ 0,60 m","end");
+    p.dimH(ox,ox+400,oy+H+90,"0,40",oy+H); p.dimH(ox+400,ox+800,oy+H+90,"0,40",oy+H);
+    p.dimH(ox,ox+L,oy+H+330,"1,39",oy+H);
+    p.dimV(oy,oy+H,ox-170,"1,00",ox);
+    p.titulo(ox-170,oy+H+560,"PN-01 · PAINEL FRONTAL","esc. 1:10 · montantes c/ 400 mm");
+  })(700,470);
+  (function(ox,oy){
+    const L=750,H=1000,g=72;
+    p.rc(ox,oy,L,g,"fA","var(--steel-fill)"); p.rc(ox,oy+H-g,L,g,"fA","var(--steel-fill)");
+    [0,340,680].forEach(x=>p.rc(ox+x,oy+g,70,H-2*g,"fA","var(--steel-fill)"));
+    p.rc(ox,oy,L,H,"l2");
+    p.rc(ox+90,oy+200,190,190,"l2","var(--sheet)");
+    p.lead(ox+185,oy+295,ox+L+120,oy+120,"ventilação 0,19","start");
+    p.dimH(ox,ox+L,oy+H+90,"0,75",oy+H);
+    p.dimV(oy,oy+H,ox-170,"1,00",ox);
+    p.titulo(ox-170,oy+H+560,"PN-03 · PAINEL LATERAL","esc. 1:10 · c/ 375 mm");
+  })(2450,470);
+  (function(ox,oy){
+    const k=2.1;
+    p.rc(ox,oy,300*k,60*k,"l2","url(#hConc)");
+    p.rc(ox+40*k,oy-8*k,180*k,8*k,"fA","var(--steel-fill)");
+    p.rc(ox+40*k,oy-100*k,28*k,92*k,"l1","url(#hLa)");
+    p.rc(ox+70*k,oy-100*k,12*k,92*k,"fA","var(--steel-fill)");
+    p.rc(ox+95*k,oy-100*k,11*k,92*k,"l1","url(#hEps)");
+    p.rc(ox+106*k,oy-100*k,20*k,92*k,"l1","url(#hEps)");
+    p.rc(ox+126*k,oy-100*k,8*k,92*k,"l1","var(--sheet-2)");
+    p.ln(ox+110*k,oy-10*k,ox+110*k,oy+42*k,"l3");
+    p.rc(ox+104*k,oy-15*k,12*k,7*k,"l2","var(--ink)");
+    p.pl([[ox+134*k,oy-8*k],[ox+152*k,oy-8*k],[ox+152*k,oy+12*k]],"l2");
+    p.lead(ox+110*k,oy+24*k,ox-90,oy+70*k,"chumbador M8 A2 · h_ef 60 mm","end");
+    p.lead(ox+152*k,oy+2*k,ox-90,oy+40*k,"pingadeira","end");
+    p.lead(ox+130*k,oy-70*k,ox+300*k+90,oy-96*k,"placa cimentícia 8 mm","start");
+    p.lead(ox+116*k,oy-84*k,ox+300*k+90,oy-136*k,"EPS 20 mm contínuo","start");
+    p.lead(ox+100*k,oy-50*k,ox+300*k+90,oy-56*k,"OSB 11 mm","start");
+    p.lead(ox+54*k,oy-40*k,ox-90,oy-100*k,"lã de vidro 50 mm","end");
+    p.lead(ox+45*k,oy-4*k,ox-90,oy-20,"guia U 72 fixada antes do fechamento","end");
+    p.dimV(oy-100*k,oy,ox-160,"0,10",ox);
+    p.titulo(ox-160,oy+130*k,"DET-01 · ANCORAGEM AO RADIER","esc. 1:5");
+  })(3450,1180);
+})();
+
+/* ============================================================
+   PR-05 — FIADAS DA ALVENARIA
+   ============================================================ */
+(function(){
+  const p=SHEET("pr05",[0,0,4050,4200]); if(!p)return; const F=p.F;
+  const L=1390,P=990,t=140;
+  function fiada(ox,oy,tipo,titulo){
+    const seg={A:{h:[[0,390],[400,390],[800,390],[1200,190]],v:[[150,340],[500,340]]},
+               B:{h:[[150,390],[550,340],[900,340]],        v:[[0,390],[400,390],[800,190]]}}[tipo];
+    const lab=w=>w===390?"39":w===340?"34":"19";
+    seg.h.forEach(s=>{[oy,oy+P-t].forEach(y=>{p.rc(ox+s[0],y,s[1],t,"l1","url(#hBloco)");
+      if(s[1]>=180)p.tx(ox+s[0]+s[1]/2,y+t/2,lab(s[1]),{s:F*.58,c:"tlb"});});});
+    seg.v.forEach(s=>{[ox,ox+L-t].forEach(x=>{p.rc(x,oy+s[0],t,s[1],"l1","url(#hBloco)");
+      if(s[1]>=180)p.tx(x+t/2,oy+s[0]+s[1]/2,lab(s[1]),{s:F*.58,c:"tlb",r:-90});});});
+    if(tipo==="A")[[0,0],[L-t,0],[0,P-t],[L-t,P-t]].forEach(c=>{
+      p.rc(ox+c[0],oy+c[1],t,t,"l1","url(#hBloco)"); p.tx(ox+c[0]+t/2,oy+c[1]+t/2,"14",{s:F*.5,c:"tlb"});});
+    p.rc(ox,oy,L,P,"l2"); p.rc(ox+t,oy+t,L-2*t,P-2*t,"l2");
+    [[70,70],[L-70,70],[70,P-70],[L-70,P-70]].forEach(c=>p.rc(ox+c[0]-42,oy+c[1]-42,84,84,"l1","var(--block)"));
+    p.dimH(ox,ox+L,oy+P+250,"1,39 real · 1,40 modular",oy+P);
+    p.dimV(oy,oy+P,ox-190,"0,99",ox);
+    p.titulo(ox-190,oy+P+450,titulo,"esc. 1:10 · junta de 10 mm");
+  }
+  fiada(680,340,"A","1ª FIADA (TIPO A) — ÍMPARES");
+  fiada(2430,340,"B","2ª FIADA (TIPO B) — PARES");
+  p.tx(2430+L/2,240,"o compensador de 34 cm gira o canto a cada fiada",{s:F*.64,c:"tlb"});
+  (function(ox,oy){
+    const h=200, cursos=[
+      {n:"F0a",k:"A0",lab:"embasamento grauteado"},{n:"F0b",k:"B0",lab:"impermeabilização no topo"},
+      {n:"F1",k:"A0",lab:""},{n:"F2",k:"B1",lab:""},{n:"F3",k:"A1",lab:""},
+      {n:"F4",k:"B1",lab:"ventilação nas laterais"},{n:"F5",k:"C0",lab:"canaleta = verga + cinta · 2 Ø8"}];
+    const comp={
+      A0:[[0,390,"39"],[400,390,"39"],[800,390,"39"],[1200,190,"19"]],
+      B0:[[0,140,"·"],[150,390,"39"],[550,340,"34"],[900,340,"34"],[1250,140,"·"]],
+      A1:[[0,340,"34"],[350,140,"14"],[900,340,"34"],[1250,140,"14"]],
+      B1:[[0,140,"·"],[150,340,"34"],[900,340,"34"],[1250,140,"·"]],
+      C0:[[0,390,"C39"],[400,390,"C39"],[800,390,"C39"],[1200,190,"C19"]]};
+    cursos.forEach((c,i)=>{
+      const y=oy-(i+1)*h;
+      comp[c.k].forEach(b=>{
+        const gr=(c.k==="C0")||(i<2)||(b[0]<150)||(b[0]>=1250);
+        p.rc(ox+b[0],y,b[1],h-10,"l1",gr?"var(--block)":"url(#hBloco)");
+        if(b[1]>=180)p.tx(ox+b[0]+b[1]/2,y+(h-10)/2,b[2],{s:F*.56,c:"tlb",fill:gr?"var(--sheet)":null});});
+      p.tx(ox-100,y+h/2,c.n,{s:F*.6,a:"end",c:"tlb"});
+      if(c.lab)p.tx(ox+L+100,y+h/2,c.lab,{s:F*.58,a:"start",c:"tlb"});});
+    p.rc(ox+500,oy-6*h,390,3*h-10,"l2","var(--sheet)");
+    p.tx(ox+695,oy-4.5*h,"VÃO 0,39 × 0,60",{s:F*.64,c:"tlb"});
+    p.rc(ox,oy-7*h,L,7*h,"l2");
+    p.ln(ox-140,oy-2*h,ox+L+60,oy-2*h,"la");
+    p.tx(ox-150,oy-2*h-34,"+0,15 piso",{s:F*.56,a:"end",c:"tlb"});
+    p.dimV(oy-7*h,oy,ox-340,"1,40 (7 fiadas × 0,20)",ox);
+    p.dimH(ox,ox+L,oy+190,"1,39",oy);
+    p.titulo(ox-340,oy+400,"ELEVAÇÃO DE FIADAS — PAREDE FRONTAL","esc. 1:10 · sequência de assentamento");
+  })(950,3620);
+})();
+
+/* ============================================================
+   PR-06 — FUNDAÇÕES COMPARADAS
+   ============================================================ */
+(function(){
+  const p=SHEET("pr06",[0,0,4450,2900]); if(!p)return; const F=p.F;
+  (function(ox,oy){
+    const L=1600,P=1200;
+    p.rc(ox,oy,L,P,"l2","url(#hConc)");
+    for(let x=ox+150;x<ox+L;x+=150)p.ln(x,oy+50,x,oy+P-50,"l0");
+    for(let y=oy+150;y<oy+P;y+=150)p.ln(ox+50,y,ox+L-50,y,"l0");
+    p.rc(ox+105,oy+105,L-210,P-210,"ld");
+    p.tx(ox+L/2,oy+P/2,"malha Q-92 · Ø 4,2 c/ 15×15",{s:F*.62,c:"tlb"});
+    [[210,270],[610,270],[1010,270],[1390,270],[210,930],[610,930],[1010,930],[1390,930]].forEach(c=>
+      p.ci(ox+c[0],oy+c[1],26,"l2","var(--ink)"));
+    p.lead(ox+610,oy+270,ox+L+150,oy-90,"8 chumbadores M8 · e ≤ 0,60 m","start");
+    p.lead(ox+105,oy+600,ox-150,oy+P+120,"viga de borda 20 × 25 embutida","end");
+    p.dimH(ox,ox+L,oy+P+300,"1,60",oy+P);
+    p.dimV(oy,oy+P,ox-210,"1,20",ox);
+    p.titulo(ox-210,oy+P+500,"FORMA DO RADIER — MÉTODO A","esc. 1:10 · C25 · e = 0,10 m");
+  })(700,360);
+  (function(ox,oy){
+    const L=1390,P=990;
+    p.rc(ox-80,oy-80,L+160,P+160,"l2","url(#hConc)");
+    p.rc(ox+220,oy+220,L-440,P-440,"l2","var(--sheet)");
+    p.tx(ox+L/2,oy+P/2,"vazio interno · lastro + contrapiso",{s:F*.6,c:"tlb"});
+    p.rc(ox,oy,L,P,"ld");
+    p.lead(ox+L/2,oy-80,ox+L+180,oy-200,"sapata corrida 0,30 × 0,20","start");
+    p.lead(ox+L-80,oy+P/2,ox+L+180,oy+P/2,"eixo da parede de 14 cm","start");
+    p.dimH(ox-80,ox+L+80,oy+P+300,"1,55",oy+P+80);
+    p.dimV(oy-80,oy+P+80,ox-210,"1,15",ox-80);
+    p.titulo(ox-210,oy+P+500,"FORMA DA SAPATA — MÉTODO B","esc. 1:10 · C25 · fundo a −0,45");
+  })(2620,440);
+  (function(ox,oy){
+    const k=1.9;
+    p.add(E("rect",{x:ox-80,y:oy,width:300*k+160,height:90,fill:"url(#hSolo)",stroke:"none"}));
+    p.rc(ox,oy-100*k,300*k,100*k,"l2","url(#hConc)");
+    p.ln(ox-80,oy,ox+300*k+80,oy,"l2");
+    for(let i=0;i<6;i++)p.ci(ox+30*k+i*48*k,oy-50*k,8,"l1","var(--block)");
+    p.dimV(oy-100*k,oy,ox-110,"0,10",ox);
+    p.dimH(ox,ox+300*k,oy+220,"1,60 × 1,20",ox+300*k);
+    p.titulo(ox-110,oy+400,"CORTE · RADIER","esc. 1:5 · brita 0,05 + lona");
+  })(800,2280);
+  (function(ox,oy){
+    const k=1.9;
+    p.add(E("rect",{x:ox-80,y:oy-20*k,width:300*k+160,height:80,fill:"url(#hSolo)",stroke:"none"}));
+    p.rc(ox,oy-20*k,300*k,200*k,"l2","url(#hConc)");
+    [0,1,2].forEach(i=>p.ci(ox+60*k+i*90*k,oy+150*k,10,"l1","var(--block)"));
+    p.rc(ox+40*k,oy+30*k,220*k,140*k,"l0");
+    p.dimV(oy-20*k,oy+180*k,ox-110,"0,20",ox);
+    p.dimH(ox,ox+300*k,oy+230*k,"0,30",ox+300*k);
+    p.titulo(ox-110,oy+300*k,"CORTE · SAPATA CORRIDA","esc. 1:5 · 3 Ø8 + estribos Ø5 c/ 20");
+  })(2900,2100);
+})();
+
+/* ============================================================
+   CRONOGRAMA
+   ============================================================ */
+(function(){
+  const s=document.getElementById("gantt"); if(!s)return;
+  const W=1220,rowH=30,pad={l:250,r:34,t:52,b:34};
+  const tarefas=[
+   {m:"A",n:"Locação, lastro, forma e armação",a:0,b:1},
+   {m:"A",n:"Concretagem do radier",a:1,b:2},
+   {m:"A",n:"Cura do radier",a:2,b:5,cura:1},
+   {m:"A",n:"Montagem e ancoragem dos painéis",a:5,b:6},
+   {m:"A",n:"Fechamentos e cobertura",a:6,b:7},
+   {m:"A",n:"Isolamento, forro, pintura e acessórios",a:7,b:8},
+   {m:"B",n:"Locação e escavação da vala",a:0,b:1},
+   {m:"B",n:"Armação e concretagem da sapata",a:1,b:2},
+   {m:"B",n:"Cura da sapata",a:2,b:4,cura:1},
+   {m:"B",n:"Embasamento, impermeabilização, contrapiso",a:4,b:5},
+   {m:"B",n:"Elevação das fiadas 1 a 4 + graute",a:5,b:7},
+   {m:"B",n:"Canaleta de respaldo (etapa única)",a:7,b:8},
+   {m:"B",n:"Cura da canaleta (escoramento mantido)",a:8,b:10,cura:1},
+   {m:"B",n:"Cobertura",a:10,b:11},
+   {m:"B",n:"Chapisco e reboco",a:11,b:13},
+   {m:"B",n:"Cura do reboco → pintura (16º dia)",a:13,b:16,cura:1}];
+  const dias=16, H=pad.t+tarefas.length*rowH+pad.b+18;
+  s.setAttribute("viewBox","0 0 "+W+" "+H);
+  const X=d=>pad.l+d*(W-pad.l-pad.r)/dias;
+  const g=t=>s.appendChild(t);
+  for(let d=0;d<=dias;d+=2){
+    g(E("line",{x1:X(d),y1:pad.t-16,x2:X(d),y2:H-pad.b+4,stroke:"var(--rule-2)","stroke-width":1}));
+    g(E("text",{x:X(d),y:pad.t-24,"text-anchor":"middle",style:"font-size:11px;fill:var(--muted);font-family:var(--f-mono)"},"d"+d));}
+  tarefas.forEach((t,i)=>{
+    const y=pad.t+i*rowH, cor=t.m==="A"?"var(--steel)":"var(--block)";
+    g(E("text",{x:pad.l-14,y:y+rowH/2,"text-anchor":"end","dominant-baseline":"middle",
+      style:"font-size:11.5px;fill:var(--ink-2);font-family:var(--f-body)"},t.n));
+    g(E("text",{x:14,y:y+rowH/2,"dominant-baseline":"middle",
+      style:"font-size:11px;fill:"+cor+";font-family:var(--f-mono);font-weight:600"},t.m));
+    g(E("rect",{x:X(t.a)+1,y:y+6,width:Math.max(4,X(t.b)-X(t.a)-2),height:rowH-14,rx:3,
+      fill:t.cura?"none":cor,stroke:cor,"stroke-width":t.cura?1.4:0,
+      "stroke-dasharray":t.cura?"5 4":null}));
+    g(E("text",{x:X(t.b)+8,y:y+rowH/2,"dominant-baseline":"middle",
+      style:"font-size:10.5px;fill:var(--muted);font-family:var(--f-mono)"},(t.b-t.a)+"d"));});
+  g(E("line",{x1:X(8),y1:pad.t-16,x2:X(8),y2:H-pad.b+4,stroke:"var(--steel)","stroke-width":1.6,"stroke-dasharray":"6 4"}));
+  g(E("text",{x:X(8)-6,y:H-8,"text-anchor":"end",style:"font-size:11px;fill:var(--steel);font-family:var(--f-mono)"},"A concluído · d8"));
+  g(E("line",{x1:X(13),y1:pad.t-16,x2:X(13),y2:H-pad.b+4,stroke:"var(--block)","stroke-width":1.6,"stroke-dasharray":"6 4"}));
+  g(E("text",{x:X(13)+6,y:H-8,style:"font-size:11px;fill:var(--block);font-family:var(--f-mono)"},"B utilizável · d13"));
+  g(E("text",{x:14,y:H-8,style:"font-size:11px;fill:var(--muted);font-family:var(--f-mono)"},"traço vazado = cura (sem equipe em obra)"));
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   MODELO 3D — gerado a partir das mesmas cotas das pranchas
+   ============================================================ */
+(function(){
+  const cv=document.getElementById("cv3d"); if(!cv)return;
+  const info=document.getElementById("v3dinfo");
+  if(typeof THREE==="undefined"){info.textContent="Modelo 3D indisponível — biblioteca não carregada.";return;}
+  const CSS=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  /* cotas do projeto (m) */
+  const L=1.39, P=0.99, H=1.00, PISO=0.15, TOPO=1.15, FORRO=0.95;
+  const DOOR={x0:-0.195,w:0.39,y0:0.35,h:0.60};
+  const uR=z=>1.334-0.20*(P/2-z);            // face inferior do caibro
+  const ang=Math.atan(0.20);
+
+  const M={
+    solo:  new THREE.MeshLambertMaterial({color:0x7e8b63}),
+    conc:  new THREE.MeshLambertMaterial({color:0xb9b9ae}),
+    bloco: new THREE.MeshLambertMaterial({color:0xa9a49a}),
+    canal: new THREE.MeshLambertMaterial({color:0x8d867a}),
+    graute:new THREE.MeshLambertMaterial({color:0xb4682b}),
+    aco:   new THREE.MeshLambertMaterial({color:0x9fb3c8}),
+    aco2:  new THREE.MeshLambertMaterial({color:0x6f8ba6}),
+    osb:   new THREE.MeshLambertMaterial({color:0xd6b98a}),
+    eps:   new THREE.MeshLambertMaterial({color:0xe8e6df}),
+    placa: new THREE.MeshLambertMaterial({color:0xf2f1ec}),
+    comp:  new THREE.MeshLambertMaterial({color:0xd9c4a1}),
+    la:    new THREE.MeshLambertMaterial({color:0xf0d97a,transparent:true,opacity:.72}),
+    telha: new THREE.MeshLambertMaterial({color:0xe6e8e6}),
+    forro: new THREE.MeshLambertMaterial({color:0xdcdcd6}),
+    reb:   new THREE.MeshLambertMaterial({color:0xf3f1ea}),
+    dog:   new THREE.MeshLambertMaterial({color:0xa8783f}),
+    dog2:  new THREE.MeshLambertMaterial({color:0x2e2a26})
+  };
+  for(const k in M){M[k].side=THREE.DoubleSide;}
+
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(42,1,0.05,60);
+  const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  const plane=new THREE.Plane(new THREE.Vector3(-1,0,0),0.001);
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f7a,0.62));
+  const sun=new THREE.DirectionalLight(0xfff6e8,0.85);
+  sun.position.set(2.6,4.2,2.2); sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);
+  const d=3.2; Object.assign(sun.shadow.camera,{left:-d,right:d,top:d,bottom:-d,near:0.5,far:14});
+  scene.add(sun);
+
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(14,14),M.solo);
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+  const root=new THREE.Group(); scene.add(root);
+  const G={fund:new THREE.Group(),estr:new THREE.Group(),isol:new THREE.Group(),
+           ved:new THREE.Group(),cob:new THREE.Group(),dog:new THREE.Group()};
+  const EXP={fund:0,estr:0.16,isol:0.34,ved:0.52,cob:0.95,dog:0};
+  for(const k in G){root.add(G[k]);}
+
+  function box(g,w,h,dp,x,y,z,mat){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,dp),mat);
+    m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; g.add(m); return m;}
+  function clear(g){while(g.children.length){const c=g.children.pop();
+    c.traverse&&c.traverse(o=>{if(o.geometry)o.geometry.dispose();});}}
+
+  /* perfil Ue 70×40×12 extrudado, montante vertical girado no plano */
+  function ueGeom(len){
+    const s=new THREE.Shape(), t=0.0022, b=0.070, f=0.040, li=0.012;
+    s.moveTo(li,f); s.lineTo(0,f); s.lineTo(0,0); s.lineTo(b,0); s.lineTo(b,f); s.lineTo(b-li,f);
+    s.lineTo(b-li,f-t); s.lineTo(b-t,f-t); s.lineTo(b-t,t); s.lineTo(t,t); s.lineTo(t,f-t); s.lineTo(li,f-t);
+    const g=new THREE.ExtrudeGeometry(s,{depth:len,bevelEnabled:false});
+    g.translate(-b/2,-f/2,0); return g;}
+  function ue(g,len,x,y,z,yaw,mat){
+    const grp=new THREE.Group(); grp.position.set(x,y,z); grp.rotation.y=yaw||0;
+    const m=new THREE.Mesh(ueGeom(len),mat||M.aco);
+    m.rotation.x=-Math.PI/2; m.castShadow=true;
+    grp.add(m); g.add(grp); return grp;}
+
+  function faces(w,h,hole){
+    if(!hole)return [[-w/2,0,w,h]];
+    const x0=hole.x0, hw=hole.w, y0=hole.y0-PISO, hh=hole.h, x1=x0+hw, y1=y0+hh;
+    return [[-w/2,0,x0+w/2,h],[x1,0,w/2-x1,h],[x0,0,hw,y0],[x0,y1,hw,h-y1]];}
+
+  let metodo="A";
+  function build(){
+    for(const k in G)clear(G[k]);
+    const T=(metodo==="A")?0.12:0.14;
+    /* -------- FUNDAÇÃO -------- */
+    if(metodo==="A"){
+      box(G.fund,1.60,0.25,1.20,0,0.025,0,M.conc);
+      box(G.fund,L-2*T,0.02,P-2*T,0,0.16,0,M.conc);
+    }else{
+      box(G.fund,L+0.16,0.20,0.30,0,-0.35,P/2-0.07,M.conc);
+      box(G.fund,L+0.16,0.20,0.30,0,-0.35,-P/2+0.07,M.conc);
+      box(G.fund,0.30,0.20,P-0.14,-L/2+0.07,-0.35,0,M.conc);
+      box(G.fund,0.30,0.20,P-0.14,L/2-0.07,-0.35,0,M.conc);
+      [-0.15,0.05].forEach(y=>{
+        box(G.fund,L,0.19,T,0,y,P/2-T/2,M.bloco); box(G.fund,L,0.19,T,0,y,-P/2+T/2,M.bloco);
+        box(G.fund,T,0.19,P-2*T,-L/2+T/2,y,0,M.bloco); box(G.fund,T,0.19,P-2*T,L/2-T/2,y,0,M.bloco);});
+      box(G.fund,L-2*T,0.06,P-2*T,0,0.12,0,M.conc);
+    }
+    for(let i=0;i<7;i++)box(G.fund,L-2*T-0.06,0.018,0.075,0,PISO+0.04,-(P-2*T-0.08)/2+i*((P-2*T-0.08)/6),M.comp);
+
+    /* -------- ESTRUTURA -------- */
+    if(metodo==="A"){
+      const yb=PISO, yt=TOPO;
+      [[L,0,P/2-T/2,0],[L,0,-P/2+T/2,0],[P-0.12,-L/2+T/2,0,Math.PI/2],[P-0.12,L/2-T/2,0,Math.PI/2]]
+      .forEach(w=>{const len=w[0],x=w[1],z=w[2],ry=w[3];
+        [yb+0.02,yt-0.02].forEach(y=>{const m=box(G.estr,len,0.04,0.072,x,y,z,M.aco2); m.rotation.y=ry;});});
+      [-0.66,-0.28,0.10,0.66].forEach(x=>{[P/2-T/2,-P/2+T/2].forEach(z=>ue(G.estr,H-0.08,x,yb+0.04,z,0));});
+      const z0=P/2-T/2;
+      [DOOR.x0-0.048,DOOR.x0-0.006,DOOR.x0+DOOR.w+0.006,DOOR.x0+DOOR.w+0.048].forEach(x=>
+        ue(G.estr,H-0.08,x,yb+0.04,z0,0));
+      box(G.estr,DOOR.w+0.11,0.09,0.072,DOOR.x0+DOOR.w/2,DOOR.y0+DOOR.h+0.05,z0,M.aco2);
+      ue(G.estr,0.12,DOOR.x0+DOOR.w/2,DOOR.y0+DOOR.h+0.10,z0,0);
+      [-L/2+T/2,L/2-T/2].forEach(x=>{[-0.30,0,0.30].forEach(z=>ue(G.estr,H-0.08,x,yb+0.04,z,Math.PI/2));});
+      [-0.60,0,0.60].forEach(x=>{
+        const m=box(G.estr,0.045,0.070,1.47,x,uR(0.075)+0.035,0.075,M.aco2); m.rotation.x=-ang;});
+      box(G.estr,L,0.17,0.072,0,TOPO+0.085,P/2-T/2,M.aco2);
+    }else{
+      const A={h:[[0,0.39],[0.40,0.39],[0.80,0.39],[1.20,0.19]],v:[[0.15,0.34],[0.50,0.34]],c:true};
+      const B={h:[[0.15,0.39],[0.55,0.34],[0.90,0.34]],v:[[0,0.39],[0.40,0.39],[0.80,0.19]],c:false};
+      const Ad={h:[[0,0.34],[0.35,0.14],[0.90,0.34],[1.25,0.14]],v:A.v,c:true};
+      const Bd={h:[[0.15,0.34],[0.90,0.34]],v:B.v,c:false};
+      const seq=[A,Bd,Ad,Bd,A];
+      seq.forEach((f,i)=>{
+        const y=PISO+0.10+i*0.20, mat=(i===4)?M.canal:M.bloco;
+        f.h.forEach(s=>box(G.estr,s[1],0.19,T,-L/2+s[0]+s[1]/2,y,P/2-T/2,mat));
+        (i===4?A.h:(i%2===0?A.h:B.h)).forEach(s=>
+          box(G.estr,s[1],0.19,T,-L/2+s[0]+s[1]/2,y,-P/2+T/2,mat));
+        f.v.forEach(s=>{
+          if(i===3&&s[0]===0.80)return;
+          [-L/2+T/2,L/2-T/2].forEach(x=>box(G.estr,T,0.19,s[1],x,y,-P/2+s[0]+s[1]/2,mat));});
+        if(f.c)[[-L/2+T/2,P/2-T/2],[L/2-T/2,P/2-T/2],[-L/2+T/2,-P/2+T/2],[L/2-T/2,-P/2+T/2]]
+          .forEach(c=>box(G.estr,T,0.19,T,c[0],y,c[1],mat));});
+      [[-L/2+T/2,P/2-T/2],[L/2-T/2,P/2-T/2],[-L/2+T/2,-P/2+T/2],[L/2-T/2,-P/2+T/2]].forEach(c=>{
+        box(G.estr,0.09,1.00,0.09,c[0],PISO+0.50,c[1],M.graute);
+        const r=new THREE.Mesh(new THREE.CylinderGeometry(0.005,0.005,1.30,8),M.graute);
+        r.position.set(c[0],PISO+0.45,c[1]); G.estr.add(r);});
+    }
+
+    /* -------- ISOLAMENTO -------- */
+    if(metodo==="A"){
+      const T2=0.12;
+      faces(L,H,DOOR).forEach(r=>{if(r[2]>0.02&&r[3]>0.02)
+        box(G.isol,r[2],r[3],0.05,r[0]+r[2]/2,PISO+r[1]+r[3]/2,P/2-T2/2,M.la);});
+      faces(L,H).forEach(r=>box(G.isol,r[2],r[3],0.05,r[0]+r[2]/2,PISO+r[1]+r[3]/2,-P/2+T2/2,M.la));
+      [-L/2+T2/2,L/2-T2/2].forEach(x=>box(G.isol,0.05,H,P-2*T2,x,PISO+H/2,0,M.la));
+    }
+
+    /* -------- VEDAÇÃO -------- */
+    function shell(z,front,camadas){
+      const sgn=Math.sign(z);
+      camadas.forEach(c=>{                      // cada camada envolve o canto
+        faces(L+2*c[1],H,front?DOOR:null).forEach(r=>{ if(r[2]<=0.005||r[3]<=0.005)return;
+          box(G.ved,r[2],r[3],c[0],r[0]+r[2]/2,PISO+r[1]+r[3]/2,z+sgn*c[1],c[2]);});});}
+    if(metodo==="A"){
+      const cam=[[0.011,0.055,M.osb],[0.020,0.072,M.eps],[0.008,0.088,M.placa],[0.010,-0.055,M.comp]];
+      shell(P/2-T/2,true,cam); shell(-P/2+T/2,false,cam);
+      cam.forEach(c=>{[-1,1].forEach(sg=>box(G.ved,c[0],H,P-2*T,sg*(L/2-T/2)+sg*c[1],PISO+H/2,0,c[2]));});
+    }else{
+      const cam=[[0.02,0.08,M.reb],[0.02,-0.08,M.reb]];
+      shell(P/2-T/2,true,cam); shell(-P/2+T/2,false,cam);
+      cam.forEach(c=>{[-1,1].forEach(sg=>box(G.ved,c[0],H,P-2*T,sg*(L/2-T/2)+sg*c[1],PISO+H/2,0,c[2]));});
+    }
+    for(let i=0;i<7;i++)box(G.ved,0.05,DOOR.h-0.02,0.003,DOOR.x0+0.03+i*0.055,DOOR.y0+DOOR.h/2,P/2+0.005,M.eps);
+
+    /* -------- COBERTURA -------- */
+    box(G.cob,L-2*T+0.02,0.006,P-2*T+0.02,0,FORRO,0,M.forro);
+    const telha=box(G.cob,1.69,0.055,1.47,0,uR(0.075)+0.0975,0.075,M.telha);
+    telha.rotation.x=-ang;
+    for(let i=0;i<13;i++){
+      const r=box(G.cob,0.035,0.022,1.47,-0.78+i*0.13,uR(0.075)+0.135,0.075,M.telha);
+      r.rotation.x=-ang;}
+    box(G.cob,1.69,0.10,0.012,0,uR(0.795)+0.075,P/2+0.295,M.placa);
+    if(metodo==="B"){
+      [-0.60,0,0.60].forEach(x=>{
+        const m=box(G.cob,0.045,0.070,1.47,x,uR(0.075)+0.035,0.075,M.aco2); m.rotation.x=-ang;});
+      box(G.cob,L,0.17,0.072,0,TOPO+0.085,P/2-T/2,M.aco2);}
+
+    /* -------- CÃO (escala) -------- */
+    const dg=G.dog, base=0.24;
+    box(dg,0.62,0.30,0.26,0,base+0.30,0,M.dog);
+    box(dg,0.18,0.20,0.20,0.30,base+0.44,0,M.dog);
+    box(dg,0.16,0.11,0.12,0.42,base+0.38,0,M.dog);
+    [[0.34,0.07],[0.34,-0.07]].forEach(e=>box(dg,0.05,0.12,0.02,e[0],base+0.56,e[1],M.dog2));
+    [[0.22,0.11],[0.22,-0.11],[-0.22,0.11],[-0.22,-0.11]].forEach(l=>
+      box(dg,0.07,base+0.16,0.07,l[0],(base+0.16)/2,l[1],M.dog));
+    box(dg,0.06,0.22,0.06,-0.33,base+0.40,0,M.dog);
+    dg.position.set(0.05,0,P/2+0.62); dg.rotation.y=Math.PI;
+
+    applyToggles();
+    info.textContent = metodo==="A"
+      ? "Método A · LSF · 258 kgf · 0,86 m² úteis · parede 12 cm"
+      : "Método B · Alvenaria · 1.211 kgf · 0,79 m² úteis · 80 blocos";
+  }
+
+  const ui={fund:"lFund",estr:"lEstr",isol:"lIsol",ved:"lVed",cob:"lCob"};
+  function applyToggles(){
+    for(const k in ui){const el=document.getElementById(ui[k]); if(el)G[k].visible=el.checked;}
+    const dg=document.getElementById("lDog"); G.dog.visible=dg?dg.checked:true;
+    const ct=document.getElementById("lCorte");
+    renderer.clippingPlanes=(ct&&ct.checked)?[plane]:[];
+    const ex=+document.getElementById("exp").value/100;
+    for(const k in G)G[k].position.y=EXP[k]*ex;
+  }
+  document.querySelectorAll(".tgl input").forEach(i=>i.addEventListener("change",()=>{
+    i.closest(".tgl").dataset.on=i.checked?"1":"0"; applyToggles();}));
+  document.getElementById("exp").addEventListener("input",applyToggles);
+  const bA=document.getElementById("btnA"),bB=document.getElementById("btnB"),seg=document.getElementById("segSys");
+  function setMetodo(m){metodo=m;
+    bA.setAttribute("aria-pressed",m==="A"); bB.setAttribute("aria-pressed",m==="B");
+    seg.className="seg sys"+m; build();}
+  bA.onclick=()=>setMetodo("A"); bB.onclick=()=>setMetodo("B");
+
+  const st={r:3.5,th:0.92,ph:0.62,tx:0,ty:0.55,tz:0};
+  function place(){
+    camera.position.set(st.tx+st.r*Math.cos(st.ph)*Math.sin(st.th),
+                        st.ty+st.r*Math.sin(st.ph),
+                        st.tz+st.r*Math.cos(st.ph)*Math.cos(st.th));
+    camera.lookAt(st.tx,st.ty,st.tz);}
+  let drag=null,pinch=0;
+  cv.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);});
+  cv.addEventListener("pointermove",e=>{if(!drag)return;
+    st.th-=(e.clientX-drag.x)*0.008; st.ph=Math.max(-0.15,Math.min(1.42,st.ph+(e.clientY-drag.y)*0.006));
+    drag={x:e.clientX,y:e.clientY}; place();});
+  ["pointerup","pointercancel","pointerleave"].forEach(t=>cv.addEventListener(t,()=>drag=null));
+  cv.addEventListener("wheel",e=>{e.preventDefault();
+    st.r=Math.max(1.1,Math.min(9,st.r*(1+Math.sign(e.deltaY)*0.11))); place();},{passive:false});
+  cv.addEventListener("touchmove",e=>{if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
+    const d2=Math.hypot(dx,dy); if(pinch)st.r=Math.max(1.1,Math.min(9,st.r*pinch/d2)); pinch=d2; place();}},{passive:true});
+  cv.addEventListener("touchend",()=>pinch=0);
+  let spin=false;
+  const bs=document.getElementById("btnSpin");
+  bs.onclick=()=>{spin=!spin;bs.setAttribute("aria-pressed",spin);};
+  document.getElementById("btnReset").onclick=()=>{st.r=3.5;st.th=0.92;st.ph=0.62;place();};
+
+  document.getElementById("v3dleg").innerHTML=
+   [["#b9b9ae","concreto"],["#a9a49a","bloco 14"],["#b4682b","graute + Ø8"],["#9fb3c8","perfil de aço"],
+    ["#f0d97a","lã de vidro"],["#d6b98a","OSB / compensado"],["#e6e8e6","telha e forro"]]
+   .map(l=>"<span><i style='background:"+l[0]+"'></i>"+l[1]+"</span>").join("");
+
+  function resize(){
+    const w=cv.clientWidth,h=cv.clientHeight;
+    if(!w||!h)return;
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();}
+  const bg=()=>{scene.background=new THREE.Color(CSS("--sheet-2")||"#f3f4ef");
+    M.solo.color=new THREE.Color(CSS("--paper")==="#121513"?0x3a4432:0x7e8b63);};
+  if(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").addEventListener)
+    matchMedia("(prefers-color-scheme:dark)").addEventListener("change",bg);
+  new ResizeObserver(resize).observe(cv);
+  bg(); build(); place(); resize();
+  (function loop(){requestAnimationFrame(loop);
+    if(spin){st.th+=0.0035;place();}
+    renderer.render(scene,camera);})();
+})();
+</script>
