@@ -21,3 +21,13 @@ verificações do §7 mantidas.
 
 > Fora do escopo do sistema HallaxOS — vive apenas neste branch, não é mergeado
 > no `main` e não entra no fluxo de deploy.
+
+## Modelo 3D
+
+O visualizador do §9 monta a casinha peça a peça a partir das mesmas cotas das
+pranchas: bloco vazado com furo real, junta de argamassa de 10 mm entre cada
+peça, canaleta J/U com o graute e as barras dentro, perfis Ue e U extrudados do
+perfil real, chapa trapezoidal com onda de 93 mm e ~145 parafusos e chumbadores
+posicionados nos nós. Cada uma das 15 camadas tem três estados (sólido,
+transparente, oculto), há corte nos três eixos com posição contínua, explosão na
+ordem de montagem, cotas 3D e identificação da peça sob o cursor.
