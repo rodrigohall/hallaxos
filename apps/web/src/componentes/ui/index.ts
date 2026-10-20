@@ -14,3 +14,4 @@ export * from "./Timeline";
 export * from "./Tabela";
 export * from "./Trilha";
 export * from "./PlanilhaGrade";
+export * from "./TextoRico";

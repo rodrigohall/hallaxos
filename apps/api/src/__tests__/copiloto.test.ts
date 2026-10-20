@@ -7,6 +7,9 @@ import {
   ferramentasPara,
   executarFerramenta,
   perguntar,
+  montarMensagens,
+  hojeEmDourados,
+  MAX_TURNOS_HISTORICO,
 } from "../services/copiloto";
 import { pool } from "../db/client";
 import { AppError } from "../lib/erros";
@@ -219,3 +222,25 @@ if (!temBanco) {
     assert.equal(await contar(), antes, "nenhum lançamento criado pela proposta");
   });
 }
+
+// Sprint 17 — memória da conversa: o histórico vira pares user/assistant antes da
+// pergunta nova, cortado nos últimos turnos (custo previsível).
+test("montarMensagens intercala o histórico e termina na pergunta nova", () => {
+  const msgs = montarMensagens("e o cpf é 123", [
+    { pergunta: "lança um guincho de 400", resposta: "Qual o CPF do cliente?" },
+  ]);
+  assert.deepEqual(msgs.map((m) => m.role), ["user", "assistant", "user"]);
+  assert.equal(msgs.at(-1)!.content, "e o cpf é 123");
+});
+
+test("montarMensagens guarda só os últimos turnos", () => {
+  const historico = Array.from({ length: MAX_TURNOS_HISTORICO + 5 }, (_, i) => ({ pergunta: `p${i}`, resposta: `r${i}` }));
+  const msgs = montarMensagens("agora", historico);
+  assert.equal(msgs.length, MAX_TURNOS_HISTORICO * 2 + 1);
+  assert.equal(msgs[0]!.content, "p5");
+});
+
+test("hojeEmDourados usa o fuso de Campo Grande, não o UTC do servidor", () => {
+  // 02:30 UTC de 21/10 ainda é 20/10 em Dourados (UTC−4).
+  assert.equal(hojeEmDourados(new Date("2026-10-21T02:30:00Z")).data, "2026-10-20");
+});

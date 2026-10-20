@@ -474,9 +474,41 @@ function traduzirErroIa(err: unknown, AnthropicClient: typeof Anthropic): AppErr
   return new AppError(503, "IA_INDISPONIVEL", "O copiloto não conseguiu responder agora. Tente novamente.");
 }
 
+/** Turno já respondido, reenviado pelo chat para dar memória à conversa. */
+export interface TurnoAnterior {
+  pergunta: string;
+  resposta: string;
+}
+
+/** Quantos turnos anteriores a conversa carrega — o bastante para completar um
+ *  registro em várias mensagens, sem deixar a conta de tokens crescer sem fim. */
+export const MAX_TURNOS_HISTORICO = 12;
+
+/** "Hoje" no fuso da Hallax (Dourados-MS): o modelo precisa dele para entender
+ *  "hoje", "ontem" e "sexta passada" — e não pode vir do relógio UTC do VPS. */
+export function hojeEmDourados(agora = new Date()): { data: string; semana: string } {
+  const fuso = "America/Campo_Grande";
+  return {
+    data: new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(agora),
+    semana: new Intl.DateTimeFormat("pt-BR", { timeZone: fuso, weekday: "long" }).format(agora),
+  };
+}
+
+/** Monta as mensagens da requisição: histórico (pares pergunta/resposta) + a nova pergunta. */
+export function montarMensagens(pergunta: string, historico: TurnoAnterior[]): Anthropic.MessageParam[] {
+  return [
+    ...historico.slice(-MAX_TURNOS_HISTORICO).flatMap((t): Anthropic.MessageParam[] => [
+      { role: "user", content: t.pergunta },
+      { role: "assistant", content: t.resposta },
+    ]),
+    { role: "user", content: pergunta },
+  ];
+}
+
 export async function perguntar(
   pergunta: string,
-  papel: PapelUsuario
+  papel: PapelUsuario,
+  historico: TurnoAnterior[] = []
 ): Promise<RespostaCopiloto> {
   if (!config.iaApiKey) {
     throw new AppError(
@@ -495,7 +527,14 @@ export async function perguntar(
   const propostas: PropostaCopiloto[] = [];
   const vistas = new Set<string>(); // dedup de fontes por tipo:id
   const ferramentas = ferramentasPara(papel); // leitura + proposta (se o papel puder lançar)
-  const mensagens: Anthropic.MessageParam[] = [{ role: "user", content: pergunta }];
+  const mensagens = montarMensagens(pergunta, historico);
+  const hoje = hojeEmDourados();
+  // O prompt fixo vai num bloco com cache (ferramentas + sistema se repetem a
+  // cada volta do laço); a data, que muda, fica num bloco depois do cache.
+  const sistema: Anthropic.TextBlockParam[] = [
+    { type: "text", text: SISTEMA, cache_control: { type: "ephemeral" } },
+    { type: "text", text: `Hoje é ${hoje.semana}, ${hoje.data} (horário de Dourados-MS).` },
+  ];
 
   try {
     // Laço de tool use manual: o modelo pede uma ferramenta, executamos contra o
@@ -507,10 +546,18 @@ export async function perguntar(
       const resposta = await client.messages.create({
         model: config.iaModelo,
         max_tokens: 4096,
-        system: SISTEMA,
+        system: sistema,
         tools: ferramentas,
         messages: mensagens,
       });
+
+      if (resposta.stop_reason === "refusal") {
+        return {
+          resposta: "Não consigo ajudar com esse pedido. Tente reformular a mensagem.",
+          fontes,
+          propostas,
+        };
+      }
 
       if (resposta.stop_reason !== "tool_use") {
         const texto = resposta.content

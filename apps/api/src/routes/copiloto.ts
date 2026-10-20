@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { perguntar } from "../services/copiloto";
+import { perguntar, MAX_TURNOS_HISTORICO } from "../services/copiloto";
 import { exigirLogin } from "../plugins/auth";
 
 export default async function rotasCopiloto(app: FastifyInstance) {
@@ -14,11 +14,20 @@ export default async function rotasCopiloto(app: FastifyInstance) {
     "/copiloto/perguntar",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (req) => {
-      const { pergunta } = z
-        .object({ pergunta: z.string().min(1).max(2000) })
+      // Sprint 17: o chat manda os turnos anteriores para o copiloto poder
+      // perguntar o que falta e continuar de onde parou. Sem tabela nova — a
+      // conversa vive no navegador, e aqui só chega o recorte recente.
+      const { pergunta, historico } = z
+        .object({
+          pergunta: z.string().min(1).max(2000),
+          historico: z
+            .array(z.object({ pergunta: z.string().min(1).max(2000), resposta: z.string().min(1).max(8000) }))
+            .max(MAX_TURNOS_HISTORICO)
+            .default([]),
+        })
         .parse(req.body);
       const usuario = exigirLogin(req);
-      return { dados: await perguntar(pergunta, usuario.papel) };
+      return { dados: await perguntar(pergunta, usuario.papel, historico) };
     }
   );
 }

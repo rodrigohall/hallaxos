@@ -11,7 +11,7 @@ import {
   CheckCircle2, type LucideIcon,
 } from "lucide-react";
 import { api, ApiError } from "../api";
-import { AreaTexto, Botao, Campo, Entrada, Selecao, Drawer } from "./ui";
+import { AreaTexto, Botao, Campo, Entrada, Selecao, Drawer, TextoRico } from "./ui";
 
 interface Fonte {
   entidade_tipo: string;
@@ -73,6 +73,23 @@ const EXEMPLOS = [
   "Quais locações estão atrasadas?",
 ];
 
+// Memória da conversa (Sprint 17): os turnos já respondidos voltam ao servidor a
+// cada pergunta, para o copiloto perguntar o que falta e continuar o registro.
+// O resumo das propostas entra junto — sem ele, "na verdade foram 450" não
+// teria a que se referir.
+const MAX_TURNOS_HISTORICO = 12;
+
+function historicoDe(turnos: Turno[]): { pergunta: string; resposta: string }[] {
+  return turnos
+    .filter((t) => t.resposta !== undefined && !t.erro)
+    .slice(-MAX_TURNOS_HISTORICO)
+    .map((t) => {
+      const propostas = (t.propostas ?? []).map((p) => `[Proposta mostrada: ${p.titulo} — ${p.resumo}]`);
+      const resposta = [t.resposta, ...propostas].filter(Boolean).join("\n\n").trim();
+      return { pergunta: t.pergunta, resposta: (resposta || "(sem resposta em texto)").slice(0, 8000) };
+    });
+}
+
 function atualizarUltimo(turnos: Turno[], patch: Partial<Turno>): Turno[] {
   if (turnos.length === 0) return turnos;
   const ultimo = turnos.length - 1;
@@ -94,11 +111,12 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
       if (!pergunta || enviando) return;
       setTexto("");
       setEnviando(true);
+      const historico = historicoDe(turnos);
       setTurnos((t) => [...t, { pergunta }]);
       try {
         const { dados } = await api.post<{ dados: { resposta: string; fontes: Fonte[]; propostas?: Proposta[] } }>(
           "/copiloto/perguntar",
-          { pergunta }
+          { pergunta, historico }
         );
         setTurnos((t) => atualizarUltimo(t, { resposta: dados.resposta, fontes: dados.fontes, propostas: dados.propostas }));
       } catch (e) {
@@ -108,7 +126,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
         setEnviando(false);
       }
     },
-    [texto, enviando]
+    [texto, enviando, turnos]
   );
 
   const abrir = useCallback((pergunta?: string) => {
@@ -173,7 +191,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
               </p>
               {t.resposta !== undefined && (
                 <div className="max-w-[92%] rounded-lg rounded-bl-sm border border-borda bg-fundo/40 px-3 py-2">
-                  <p className="whitespace-pre-wrap text-sm text-texto">{t.resposta}</p>
+                  <TextoRico texto={t.resposta} />
                   {t.fontes && t.fontes.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {t.fontes.slice(0, 8).map((f) => {
