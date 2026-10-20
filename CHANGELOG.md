@@ -1,5 +1,56 @@
 # Changelog
 
+## Sprint 17 — Copiloto que lança (2026-10-20)
+
+Pedido do Rodrigo, com o financeiro recomeçando à mão: "hoje fizemos um guincho
+de 400 de X pra Y, carro tal, cliente fulano — lança aí". O copiloto agora
+entende, pergunta o que faltar e prepara o lançamento; **um toque** em
+"Confirmar e lançar" grava tudo.
+
+### O que dá para lançar pelo chat
+
+- **Guincho** já feito: cliente (existente ou novo), origem, destino, veículo
+  transportado, valor, pago ou a receber. Percorre solicitado → a caminho → em
+  execução → concluído e gera a receita.
+- **Locação**: reservada, em andamento ou já finalizada (com o total = diárias ×
+  dias e a receita).
+- **Venda** e **compra**: com o comprador/vendedor de verdade; compra pode
+  cadastrar o ativo novo junto; documentação transferida conclui a operação.
+- **Despesa ou receita avulsa**: "paguei 300 de diesel no Cresol".
+- Pago (conta + forma) ou pendente (vencimento, até 60 parcelas mensais).
+
+### Como funciona
+
+- **O copiloto não grava**: ele propõe (decisões #43 e #79). O card mostra o que
+  ele entendeu, linha a linha; o toque chama `POST /copiloto/registrar`, que
+  executa **pelos services de sempre** — máquina de estados, geração de
+  lançamentos, bloqueios de ativo e timeline intactos, autoria de quem tocou.
+- **O que é obrigatório é código, não prompt** (#80): se falta o CPF do cliente
+  novo, a conta do pagamento ou o destino, o copiloto recebe a lista e pergunta
+  numa mensagem só. Opcionais (data, caminhão, motorista, telefone, placa) não
+  são perguntados.
+- **Tudo ou nada** (#81): cliente, ativo, operação, transições e baixa numa
+  transação só. **Duplo toque não duplica** (#82).
+- O card vira **links** para tudo o que foi criado.
+- **Conversa com memória**: o chat reenvia os últimos 12 turnos — antes, cada
+  mensagem ia sozinha e o copiloto não tinha como perguntar e continuar.
+- O copiloto sabe **a data de hoje em Dourados** ("ontem", "sexta").
+- Respostas com **negrito e listas formatados** (antes os `**` apareciam crus).
+- `propor_lancamento` e `propor_operacao` (Sprints 12 e 16) saem: um caminho só.
+
+### Consertos que vieram junto
+
+- **Timeline**: toda mudança de status de operação aparecia com
+  "de: — → — / para: — → —" desde que a timeline existe. Agora só mudanças
+  campo a campo viram lista.
+- Link de lançamento vindo do copiloto abre o lançamento, não a lista inteira.
+
+### Validação
+
+Suíte da API 88/88 contra Postgres 16 (10 testes novos do registro, entre eles
+o rollback e o duplo toque). Fluxo validado em Chromium com API, Vite e banco
+reais — só a resposta da IA simulada.
+
 ## Recomeço do financeiro (2026-10-20)
 
 Depois do hiato de agosto–setembro, os lançamentos acumulados deixaram de

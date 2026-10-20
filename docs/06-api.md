@@ -261,9 +261,11 @@ GET    /relatorios/inadimplencia          → vencidos por pessoa, idade da dív
 ### Copiloto de IA
 
 ```
-POST   /copiloto/perguntar        { pergunta }
+POST   /copiloto/perguntar        { pergunta, historico?: [{ pergunta, resposta }] }   // até 12 turnos
         → { resposta, fontes: [{ entidade_tipo, entidade_id, titulo }],
-            propostas: [{ acao, titulo, resumo, endpoint, payload }] }   // Fase 2
+            propostas: [{ acao: "registrar", chave, titulo, resumo, linhas, registro }] }
+POST   /copiloto/registrar        { chave, registro }                // o toque em "Confirmar e lançar"
+        → { titulo, links: [{ entidade_tipo, entidade_id, titulo }], repetido }
 ```
 
 Perguntas em linguagem natural sobre os dados reais (doc 01 §6). **Fase 1: só
@@ -278,15 +280,20 @@ leitura e **revalidam o papel** do usuário (doc 05, decisão #45):
 | `dashboard_resumo`      | o payload do `/dashboard`                        | bloco financeiro só com papel |
 | `operacoes_abertas`     | `/operacoes?situacao=abertas\|atrasadas`         | quem lê operações             |
 | `relatorio_financeiro`  | DRE + resultado/ROI por ativo (`/relatorios/*`)  | só papéis financeiros         |
+| `opcoes_registro`       | contas, categorias e formas de pagamento         | contas/categorias só com papel financeiro |
 
-- **Fase 2 — escrita com confirmação humana (decisão #43/#55):** a única
-  ferramenta de mutação é `propor_lancamento`, exposta **só a quem pode criar
-  lançamentos** (doc 05). Ela **não escreve**: devolve uma `proposta`
-  (`acao: criar_lancamento`, `endpoint: POST /lancamentos`, `payload`). A UI
-  mostra um card; o humano escolhe conta/categoria e **confirma**, e só então a UI
-  dispara `POST /lancamentos` — com a própria autoria. Máquina de estados e
-  timeline intactas; nada destrutivo entra (anular/estornar/transicionar ficam de
-  fora). Garantido por teste: propor não cria linha no banco.
+- **Registro pelo chat (Sprint 17, decisões #43/#79–#82):** a única ferramenta
+  de escrita é `propor_registro` (guincho, locação, venda, compra, lançamento
+  avulso), exposta a quem cria operação ou lançamento. Ela **não escreve**:
+  valida o registro contra `registroCopilotoSchema` (packages/shared) e o banco
+  (`conferirRegistro`) e devolve ao modelo o que falta — para ele perguntar — ou
+  uma `proposta` com `chave` e as linhas do card. O toque do humano chama
+  `POST /copiloto/registrar`, que revalida tudo, confere a permissão de cada
+  passo e executa numa **transação única** pelos services de sempre (criar
+  pessoa/ativo → criar operação → transições → baixa), com a autoria de quem
+  tocou. A mesma `chave` devolve o resultado da primeira execução
+  (`repetido: true`) — o duplo toque não duplica. Garantido por teste: propor
+  não cria linha no banco; falha no meio desfaz tudo.
 
 - **Desligado por padrão:** sem `IA_API_KEY` no servidor, responde
   `503 IA_NAO_CONFIGURADA` e **nenhuma chamada paga** é feita. `GET /auth/sessao`

@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Recomeço do financeiro —
-> 2026-10-20 (Sprint 16 no ar desde esta data).
+> assumida — não esquecimento. Última revisão: Sprint 17 — Copiloto que lança —
+> 2026-10-20.
 
 ## Estado atual — o que está em produção
 
@@ -37,6 +37,8 @@
 | **Copiloto Fase 3**: propor operação com confirmação humana no formulário oficial | ✅ Sprint 16 |
 | **Tipos de manutenção**: renomear e desativar pela UI | ✅ Sprint 16 |
 | **Busca**: manutenções indexadas + reindexação automática versionada no arranque | ✅ Sprint 16 |
+| **Financeiro zerado** em 2026-10-20 (lançamentos arquivados, backup em `/root/backups-hallaxos/`) | ✅ Recomeço |
+| **Copiloto que lança**: guincho, locação, venda, compra e avulso pelo chat, com pergunta do que falta e confirmação de um toque | ✅ Sprint 17 |
 
 ## Pendências em aberto
 
@@ -52,7 +54,8 @@
 
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| Copiloto Fase 3 — demais ações de escrita | Propor operação entregue no Sprint 16. Ficaram fora, por escolha: concluir manutenção, agendar manutenção e baixar lançamento. Todas cabem no mesmo padrão (ferramenta `propor_*` + card de confirmação) | Sprint futuro |
+| Copiloto — o que ainda não lança | Sprint 17 cobre registrar operações e lançamentos. Ficam de fora: **manutenção** (agendar/concluir), **baixar um lançamento que já existe** ("o João pagou") e **cancelar**. Cabem no mesmo `propor_registro` + card | Sprint futuro |
+| Decidir o modelo do copiloto (`IA_MODELO`) | Padrão segue `claude-haiku-4-5` (decisão #46). Registrar pede extrair vários campos e perguntar certo; vale testar com uso real e trocar a variável no `.env` do VPS se errar demais — sem mudar código | Rodrigo |
 | Filtros por sessão nas telas restantes | Operações, Ativos e Manutenções já levam filtro na URL. Financeiro/Lançamentos ainda usa `useState` — de propósito: os params sem prefixo são contrato dos deep-links e mudá-los exige cuidado maior que o resto | Sprint futuro |
 
 ### Técnico (dívida pequena)
@@ -62,6 +65,8 @@
 | `pnpm build` na raiz está quebrado | `apps/api` aponta para um `tsconfig.build.json` que nunca existiu no repo. **Não afeta produção nem o CI** (o `deploy.yml` roda `--filter @hallaxos/api typecheck` e `--filter @hallaxos/web build`), nem a imagem Docker, que roda por `tsx`. É só o script agregador que falha | Sprint futuro |
 | Registro de tipo de manutenção fora da timeline | Criar/renomear/desativar tipo não gera evento — o tipo não é entidade referenciável. A auditoria indireta existe (a manutenção que usa o tipo registra o nome no evento) | Sprint futuro |
 | Instalar `react-leaflet` para mapa com marcadores custom | Bloqueado duas vezes pelo ambiente; o `CLAUDE.md` orienta a não insistir. Mapas seguem em iframe OSM com filtro CSS | Congelado |
+| Ativo veicular sem placa grava placa vazia | `criarAtivo` salva `placa ?? ""` numa coluna `UNIQUE NOT NULL`: o segundo veículo sem placa do sistema inteiro falha com erro de chave duplicada. O copiloto já exige placa em veículo novo; a correção de fundo é tornar a coluna anulável (migration) | Sprint futuro |
+| Branch do Sprint 17 antigo (pró-labore) | `claude/sistema-adjustments-klccc6` ficou sem merge; o Rodrigo vai refazer o pró-labore de outro jeito. Não aproveitar sem revisar — e a aritmética dele parte do financeiro zerado | Decidir |
 | Sem testes de frontend | Nenhum `*.test.*` em `apps/web`. O hub, os redirects e os atalhos não têm cobertura automatizada — por isso a lista de validação visual a cada sprint | Sprint futuro |
 
 ## Roadmap — próximos sprints sugeridos
