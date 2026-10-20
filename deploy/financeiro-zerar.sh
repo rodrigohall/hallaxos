@@ -32,6 +32,14 @@
 # semanas depois arquivaria o que foi lançado à mão desde então.
 set -euo pipefail
 
+# Tudo dentro de main(), chamada só na última linha: rodando por `curl | bash`,
+# o script chega pelo stdin, e o primeiro `docker compose exec -T` engolia o
+# resto dele — o bash terminava calado, sem backup nem erro. Com a função, o
+# bash lê o arquivo inteiro antes de executar; e o stdin passa a ser /dev/null,
+# para nenhum comando disputar a entrada (os heredocs do SQL trazem a própria).
+main() {
+exec </dev/null
+
 MODO="zerar"
 [ "${1:-}" = "--desfazer" ] && MODO="desfazer"
 
@@ -166,3 +174,6 @@ echo "Backup: $DESTINO"
 if [ "$MODO" = "zerar" ]; then
   echo "Para desfazer: o mesmo comando, com '| sudo bash -s -- --desfazer' no fim."
 fi
+}
+
+main "$@"
