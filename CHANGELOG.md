@@ -20,6 +20,10 @@ lançar à mão daqui em diante — sem apagar nada.
   lançado depois.
 - Os lançamentos antigos não aparecem mais no app — por escolha. Consulta futura
   pelo backup (runbook em `docs/operacao-vps.md §5`).
+- **Executado em produção em 2026-10-20 17:09**: 128 lançamentos arquivados
+  (R$ 750,00 a receber entre eles); saldos antes — Cresol 28.045,99 ·
+  Dinheiro −59.682,01 · Mercado Pago −5.604,48 · SICREDI −1.262,22 — e todos a
+  zero depois. Backup em `/root/backups-hallaxos/zerar-financeiro-20261020-170943/`.
 
 SSH do VPS destravado no mesmo dia (`deploy/ssh-destravar.sh`): não havia
 fail2ban, CrowdSec nem `hosts.deny` — o único ajuste foi `MaxStartups`, e o

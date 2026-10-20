@@ -44,7 +44,6 @@
 
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| **Rodar o zeramento do financeiro** | `deploy/financeiro-zerar.sh` pelo Console web: backup + arquiva todos os lançamentos + saldos iniciais a zero. Runbook em `docs/operacao-vps.md §5` | VPS · 1 min |
 | Porta alta no SSH do VPS (opcional) | Destravado em 2026-10-20 com `ssh-destravar.sh`: sem fail2ban/CrowdSec/`hosts.deny`, o único ajuste foi `MaxStartups` (varredura de bots na :22 enchendo os slots não autenticados) e o deploy passou. A porta alta (`deploy/ssh-porta-alta.sh` + variável `VPS_PORT`) perdeu a urgência — só se o reset voltar | VPS · ~10 min |
 | **Apagar 10 branches órfãos no remoto** | Deleção segue bloqueada para sessões remotas (o proxy responde "Everything up-to-date" sem apagar). Todos com prefixo `claude/`: `admiring-meitner-9m9ks9`, `admiring-wright-03b5np`, `event-hall-operational-planning-3rtgki`, `hallaxos-dev-status-ohoo7m`, `hallaxos-dev-status-w0bskq`, `hallaxos-repo-sprint14-srh9ct`, `inspiring-goldberg-vzsjgd`, `stoic-shannon-d3fxpi`, `test-coverage-analysis-wby40m`, `zealous-mayer-iwls56` | GitHub · 2 min |
 | Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
