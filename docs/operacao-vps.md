@@ -174,7 +174,7 @@ ADMIN_SENHA=$ADMIN_SENHA
 DOMINIO=$DOMINIO
 COOKIE_SECURE=$COOKIE_SECURE
 IA_API_KEY=
-IA_MODELO=claude-haiku-4-5
+IA_MODELO=
 FIM
 echo "DB_SENHA tem $(printf %s "$DB_SENHA" | wc -c) caracteres"
 ```

@@ -16,8 +16,10 @@ export const config = {
   uploadMaxBytes: 25 * 1024 * 1024,
   // Copiloto de IA (Sprint 9). Desligado enquanto IA_API_KEY estiver vazia —
   // sem chave, o endpoint responde 503 e nenhuma chamada paga é feita.
-  // Padrão Haiku 4.5 (mais barato/rápido); troque por IA_MODELO sem mexer no
-  // código (a requisição é model-agnostic, sem thinking/effort — decisão #46).
+  // Padrão Sonnet 5.5 desde o Sprint 17 (decisão #83): registrar pelo chat pede
+  // extrair vários campos e perguntar certo, e um valor mal lido vira dado errado
+  // no financeiro. Troque por IA_MODELO sem mexer no código (a requisição segue
+  // model-agnostic, sem thinking/effort — decisão #46).
   iaApiKey: process.env.IA_API_KEY ?? "",
-  iaModelo: process.env.IA_MODELO ?? "claude-haiku-4-5",
+  iaModelo: process.env.IA_MODELO || "claude-sonnet-5-5",
 };

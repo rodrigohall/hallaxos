@@ -37,6 +37,8 @@ entende, pergunta o que faltar e prepara o lançamento; **um toque** em
 - O copiloto sabe **a data de hoje em Dourados** ("ontem", "sexta").
 - Respostas com **negrito e listas formatados** (antes os `**` apareciam crus).
 - `propor_lancamento` e `propor_operacao` (Sprints 12 e 16) saem: um caminho só.
+- **Modelo padrão: Sonnet 5.5** (decisão #83, escolha do Rodrigo) no lugar do
+  Haiku 4.5 — mais acerto ao ler mensagens soltas, ~US$ 0,05 por registro.
 
 ### Consertos que vieram junto
 

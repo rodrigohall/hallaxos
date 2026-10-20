@@ -301,7 +301,7 @@ leitura e **revalidam o papel** do usuário (doc 05, decisão #45):
   está desligada.
 - **Degradação graciosa:** falha/limite da IA vira `503 IA_INDISPONIVEL` /
   `429 IA_LIMITE` no envelope `{erro:{...}}`; o resto do sistema não cai junto.
-- **Modelo** configurável por `IA_MODELO` (padrão `claude-haiku-4-5`). Rate limit
+- **Modelo** configurável por `IA_MODELO` (padrão `claude-sonnet-5-5`, decisão #83). Rate limit
   próprio de 20 req/min por IP no endpoint, além do global.
 - **Escrita é Fase 2** e, quando vier, será uma *proposta de ação* confirmada
   pelo humano que dispara os endpoints já documentados acima — a IA não ganha

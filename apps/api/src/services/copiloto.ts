@@ -519,13 +519,15 @@ export async function perguntar(
     // núcleo (escopado ao papel) e devolvemos; repete até ele responder em texto.
     // Limite de voltas por segurança (evita laço infinito e custo descontrolado).
     // Requisição mantida model-agnostic (sem thinking/effort) para funcionar com
-    // qualquer IA_MODELO — Haiku 4.5 (padrão), Sonnet 4.6 ou Opus (decisão #46).
+    // qualquer IA_MODELO — Sonnet 5.5 (padrão, decisão #83), Haiku ou Opus (decisão #46).
     // Registrar pede mais voltas que consultar: busca do cliente, do ativo,
     // opções de conta/categoria e a proposta.
     for (let volta = 0; volta < 8; volta++) {
       const resposta = await client.messages.create({
         model: config.iaModelo,
-        max_tokens: 4096,
+        // Folga para o raciocínio dos modelos que pensam antes de responder
+        // (Sonnet 5.5 pensa por padrão; com 4096 a resposta podia sair cortada).
+        max_tokens: 16000,
         system: sistema,
         tools: ferramentas,
         messages: mensagens,
@@ -545,7 +547,11 @@ export async function perguntar(
           .map((b) => b.text)
           .join("\n")
           .trim();
-        return { resposta: texto, fontes, propostas };
+        return {
+          resposta: texto || "Não consegui formular a resposta agora. Pode repetir?",
+          fontes,
+          propostas,
+        };
       }
 
       mensagens.push({ role: "assistant", content: resposta.content });

@@ -55,7 +55,6 @@
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
 | Copiloto — o que ainda não lança | Sprint 17 cobre registrar operações e lançamentos. Ficam de fora: **manutenção** (agendar/concluir), **baixar um lançamento que já existe** ("o João pagou") e **cancelar**. Cabem no mesmo `propor_registro` + card | Sprint futuro |
-| Decidir o modelo do copiloto (`IA_MODELO`) | Padrão segue `claude-haiku-4-5` (decisão #46). Registrar pede extrair vários campos e perguntar certo; vale testar com uso real e trocar a variável no `.env` do VPS se errar demais — sem mudar código | Rodrigo |
 | Filtros por sessão nas telas restantes | Operações, Ativos e Manutenções já levam filtro na URL. Financeiro/Lançamentos ainda usa `useState` — de propósito: os params sem prefixo são contrato dos deep-links e mudá-los exige cuidado maior que o resto | Sprint futuro |
 
 ### Técnico (dívida pequena)
