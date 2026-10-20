@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { FORMAS_PAGAMENTO } from "../enums";
 import { pessoaCriarSchema } from "./pessoa";
+import { cpfCnpjSchema } from "./comum";
 import { ativoVeiculoSchema } from "./ativo";
 
 // Registro pelo copiloto (Sprint 17): "hoje fizemos um guincho de 400 do local X
@@ -23,6 +24,9 @@ export const pessoaRegistroSchema = z
         .pick({ tipo: true, nome: true, cpf_cnpj: true })
         .extend({
           tipo: pessoaCriarSchema.shape.tipo.default("pf"),
+          // As regras são as do cadastro; só a falta ganha pergunta própria.
+          nome: z.string({ required_error: "Informe o nome do cliente novo" }).pipe(pessoaCriarSchema.shape.nome),
+          cpf_cnpj: z.string({ required_error: "Informe o CPF ou CNPJ do cliente novo" }).pipe(cpfCnpjSchema),
           telefone: z
             .string()
             .transform((v) => v.replace(/\D/g, ""))

@@ -27,6 +27,15 @@ test("schema aponta o que falta em frases prontas para o usuário", () => {
   assert.ok(msgs.some((m) => m.includes("CPF")), "CPF curto deve ser apontado");
 });
 
+test("cliente novo sem CPF vira pergunta, não 'Required'", () => {
+  const r = registroCopilotoCompletoSchema.safeParse({
+    tipo: "venda", cliente: { novo: { nome: "João" } }, ativo_id: crypto.randomUUID(), valor: 10,
+    pagamento: { situacao: "pendente", data_vencimento: "2026-11-01" },
+  });
+  assert.equal(r.success, false);
+  assert.deepEqual(r.success ? [] : r.error.issues.map((i) => i.message), ["Informe o CPF ou CNPJ do cliente novo"]);
+});
+
 test("locação finalizada sem pagamento é recusada; reservada não precisa", () => {
   const base = {
     tipo: "locacao", cliente: { id: crypto.randomUUID() }, ativo_id: crypto.randomUUID(),

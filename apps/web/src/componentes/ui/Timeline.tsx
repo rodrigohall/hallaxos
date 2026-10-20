@@ -13,7 +13,10 @@ export interface EventoTimeline {
   id: string;
   evento: string;
   descricao: string;
-  dados?: Record<string, { de: unknown; para: unknown }> | null;
+  /** Edições guardam `{ campo: { de, para } }`; outros eventos guardam dados
+   *  próprios (a transição `{ de, para }`, o registro do copiloto) — só o
+   *  primeiro formato vira lista de mudanças. */
+  dados?: Record<string, unknown> | null;
   usuario?: { nome: string } | null;
   createdAt: string;
   link?: string;
@@ -33,6 +36,16 @@ const ICONES: Record<string, { icone: LucideIcon; cor: string; rotulo: string }>
 
 const PADRAO = { icone: PencilLine, cor: "text-suave bg-elevado ring-borda", rotulo: "Evento" };
 
+/** Só as mudanças campo a campo: o resto já está dito na descrição do evento
+ *  (antes, a transição de status aparecia como "de: — → —"). */
+function mudancas(dados: EventoTimeline["dados"]): [string, { de: unknown; para: unknown }][] {
+  if (!dados) return [];
+  return Object.entries(dados).filter(
+    (par): par is [string, { de: unknown; para: unknown }] =>
+      typeof par[1] === "object" && par[1] !== null && ("de" in par[1] || "para" in par[1])
+  );
+}
+
 export function Timeline({ eventos }: { eventos: EventoTimeline[] }) {
   if (eventos.length === 0) {
     return <EstadoVazio icone={History} titulo="Sem história ainda" descricao="Tudo o que acontecer com este registro aparecerá aqui." />;
@@ -48,9 +61,9 @@ export function Timeline({ eventos }: { eventos: EventoTimeline[] }) {
             </span>
             <div className="min-w-0 pt-0.5">
               <p className="text-sm leading-snug">{e.descricao}</p>
-              {e.dados && Object.keys(e.dados).length > 0 && (
+              {mudancas(e.dados).length > 0 && (
                 <ul className="mt-1.5 space-y-0.5">
-                  {Object.entries(e.dados).map(([campo, { de, para }]) => (
+                  {mudancas(e.dados).map(([campo, { de, para }]) => (
                     <li key={campo} className="text-xs text-suave">
                       <span className="text-mudo">{campo}:</span> {String(de ?? "—")}{" "}
                       <span className="text-mudo">→</span>{" "}

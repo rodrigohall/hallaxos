@@ -64,6 +64,11 @@ const ROTULO_SITUACAO_LOCACAO = { reservada: "reservada", ativa: "em andamento",
 
 const reais = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dataBr = (d: string) => d.split("-").reverse().join("/");
+/** CPF/CNPJ como se confere num documento: 111.444.777-35 / 11.444.777/0001-61. */
+const documento = (d: string) =>
+  d.length === 11
+    ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+    : d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 
 /** Data simples vira meio-dia em Dourados (UTC−4, sem horário de verão desde
  *  2019): `new Date("2026-10-20")` seria meia-noite UTC, ou seja 19/10 às 20h lá. */
@@ -148,7 +153,7 @@ export async function conferirRegistro(entrada: unknown, papel: PapelUsuario): P
       if (existente) {
         problemas.push(`Já existe cadastro com este CPF/CNPJ: ${existente.nome} (id ${existente.id}). Use o cadastro existente.`);
       }
-      linhas.push({ rotulo, valor: `${n.nome} (novo · ${n.tipo === "pj" ? "CNPJ" : "CPF"} ${n.cpf_cnpj})` });
+      linhas.push({ rotulo, valor: `${n.nome} (novo · ${n.tipo === "pj" ? "CNPJ" : "CPF"} ${documento(n.cpf_cnpj)})` });
     }
   }
 

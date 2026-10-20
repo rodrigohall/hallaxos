@@ -11,41 +11,37 @@ import {
   CheckCircle2, type LucideIcon,
 } from "lucide-react";
 import { api, ApiError } from "../api";
-import { AreaTexto, Botao, Campo, Entrada, Selecao, Drawer, TextoRico } from "./ui";
+import { AreaTexto, Botao, Caixa, Drawer, TextoRico } from "./ui";
 
 interface Fonte {
   entidade_tipo: string;
   entidade_id: string;
   titulo: string;
 }
-// Fase 2: proposta de ação. O copiloto não escreve — propõe; o humano confirma
-// aqui, e só então a UI dispara o endpoint existente (decisão #43).
-type TipoOperacao = "guincho" | "locacao" | "venda" | "compra";
-
-interface PropostaLancamentoDados {
-  acao: "criar_lancamento";
+// Registro pelo chat (Sprint 17 · decisão #79): o copiloto não escreve —
+// propõe. O card mostra o resumo; o humano toca em "Confirmar e lançar" e só
+// então a UI chama POST /copiloto/registrar, que grava tudo numa transação.
+interface PropostaRegistro {
+  acao: "registrar";
+  chave: string;
   titulo: string;
   resumo: string;
+  linhas: { rotulo: string; valor: string }[];
   endpoint: string;
-  payload: { tipo: "receita" | "despesa"; descricao: string; valor: number; data_vencimento: string | null };
+  registro: unknown;
 }
-// Fase 3 (Sprint 16): proposta de operação. Mesmo contrato — inerte até o
-// humano confirmar; a operação nasce no formulário oficial de Nova Operação.
-interface PropostaOperacaoDados {
-  acao: "criar_operacao";
+interface ResultadoRegistro {
   titulo: string;
-  resumo: string;
-  endpoint: string;
-  tipoOperacao: TipoOperacao;
-  payload: Record<string, string | number | null | undefined>;
-  sugestoes?: { clienteNome?: string; ativoNome?: string };
+  links: Fonte[];
+  repetido: boolean;
 }
-type Proposta = PropostaLancamentoDados | PropostaOperacaoDados;
 interface Turno {
   pergunta: string;
   resposta?: string;
   fontes?: Fonte[];
-  propostas?: Proposta[];
+  propostas?: PropostaRegistro[];
+  /** Títulos do que foi confirmado neste turno — voltam ao copiloto no histórico. */
+  registrados?: string[];
   erro?: string;
 }
 
@@ -63,11 +59,12 @@ const ROTA_FONTE: Record<string, { icone: LucideIcon; rota?: (id: string) => str
   ativo: { icone: Car, rota: (id) => `/ativos/${id}` },
   operacao: { icone: Workflow, rota: (id) => `/operacoes/${id}` },
   manutencao: { icone: Wrench, rota: (id) => `/manutencoes/${id}` },
-  lancamento: { icone: CircleDollarSign, rota: () => `/financeiro` },
+  lancamento: { icone: CircleDollarSign, rota: (id) => `/financeiro?lancamento=${id}` },
   documento: { icone: FileText },
 };
 
 const EXEMPLOS = [
+  "Hoje fizemos um guincho de R$ 400, lança aí",
   "Quais guinchos estão abertos?",
   "Quanto faturei este mês?",
   "Quais locações estão atrasadas?",
@@ -84,8 +81,9 @@ function historicoDe(turnos: Turno[]): { pergunta: string; resposta: string }[] 
     .filter((t) => t.resposta !== undefined && !t.erro)
     .slice(-MAX_TURNOS_HISTORICO)
     .map((t) => {
-      const propostas = (t.propostas ?? []).map((p) => `[Proposta mostrada: ${p.titulo} — ${p.resumo}]`);
-      const resposta = [t.resposta, ...propostas].filter(Boolean).join("\n\n").trim();
+      const propostas = (t.propostas ?? []).map((p) => `[Card de confirmação mostrado: ${p.titulo} — ${p.resumo}]`);
+      const registrados = (t.registrados ?? []).map((r) => `[O usuário confirmou e foi gravado: ${r}]`);
+      const resposta = [t.resposta, ...propostas, ...registrados].filter(Boolean).join("\n\n").trim();
       return { pergunta: t.pergunta, resposta: (resposta || "(sem resposta em texto)").slice(0, 8000) };
     });
 }
@@ -114,7 +112,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
       const historico = historicoDe(turnos);
       setTurnos((t) => [...t, { pergunta }]);
       try {
-        const { dados } = await api.post<{ dados: { resposta: string; fontes: Fonte[]; propostas?: Proposta[] } }>(
+        const { dados } = await api.post<{ dados: { resposta: string; fontes: Fonte[]; propostas?: PropostaRegistro[] } }>(
           "/copiloto/perguntar",
           { pergunta, historico }
         );
@@ -149,6 +147,9 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turnos, enviando]);
 
+  const marcarRegistrado = (indice: number, titulo: string) =>
+    setTurnos((ts) => ts.map((t, i) => (i === indice ? { ...t, registrados: [...(t.registrados ?? []), titulo] } : t)));
+
   const irParaFonte = (f: Fonte) => {
     const rota = ROTA_FONTE[f.entidade_tipo]?.rota;
     if (!rota) return;
@@ -161,14 +162,26 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
       {children}
       <Drawer aberto={aberto} aoFechar={() => setAberto(false)} titulo="Copiloto">
         <div className="flex min-h-[60vh] flex-col gap-4">
+          {turnos.length > 0 && (
+            <Botao
+              variante="link"
+              tamanho="xs"
+              className="self-end"
+              disabled={enviando}
+              onClick={() => setTurnos([])}
+            >
+              Nova conversa
+            </Botao>
+          )}
           {turnos.length === 0 && (
             <div className="rounded-lg border border-borda bg-fundo/40 p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-medium text-suave">
-                <Sparkles className="h-4 w-4 text-ouro" /> Pergunte sobre a operação
+                <Sparkles className="h-4 w-4 text-ouro" /> Pergunte ou mande lançar
               </div>
               <p className="text-xs text-mudo">
                 Respondo consultando os dados reais do sistema — nunca invento números.
-                Você vê as fontes e abre a tela de origem com um clique.
+                Conte um guincho, uma locação, uma venda, uma compra ou uma despesa: eu
+                pergunto o que faltar e preparo o lançamento para você confirmar.
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {EXEMPLOS.map((ex) => (
@@ -219,14 +232,15 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
                   )}
                 </div>
               )}
-              {/* Propostas de ação (Fase 2): o humano confirma; só então cria. */}
-              {t.propostas?.map((p, j) =>
-                p.acao === "criar_operacao" ? (
-                  <PropostaOperacao key={j} proposta={p} />
-                ) : (
-                  <PropostaLancamento key={j} proposta={p} />
-                )
-              )}
+              {/* Registro (decisão #79): o humano confirma; só então grava. */}
+              {t.propostas?.map((p) => (
+                <CardRegistro
+                  key={p.chave}
+                  proposta={p}
+                  aoRegistrar={(titulo) => marcarRegistrado(i, titulo)}
+                  aoAbrir={irParaFonte}
+                />
+              ))}
               {t.erro && (
                 <p className="max-w-[92%] rounded-lg rounded-bl-sm border border-erro/25 bg-erro/10 px-3 py-2 text-sm text-erro">
                   {t.erro}
@@ -254,7 +268,7 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
                   enviar();
                 }
               }}
-              placeholder="Pergunte algo sobre a operação…"
+              placeholder="Pergunte, ou conte o que aconteceu para eu lançar…"
               rows={1}
               className="min-h-10 flex-1 resize-none"
               autoFocus
@@ -269,165 +283,92 @@ export function ProvedorCopiloto({ children }: { children: ReactNode }) {
   );
 }
 
-// Card de proposta (Fase 2): o copiloto sugere, o humano revisa (conta/categoria/
-// vencimento) e confirma — só então dispara POST /lancamentos, com a própria
-// autoria. A criação fica na timeline/auditoria como qualquer outro lançamento.
-interface ContaOpt { id: string; nome: string }
-interface CategoriaOpt { id: string; nome: string; tipo: string }
-
-function PropostaLancamento({ proposta }: { proposta: PropostaLancamentoDados }) {
-  const navegar = useNavigate();
-  const [contas, setContas] = useState<ContaOpt[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaOpt[]>([]);
-  const [contaId, setContaId] = useState("");
-  const [categoriaId, setCategoriaId] = useState("");
-  const hoje = new Date().toISOString().slice(0, 10);
-  const [vencimento, setVencimento] = useState(proposta.payload.data_vencimento ?? hoje);
+// Card de confirmação do registro (Sprint 17 · decisão #79). Mostra o que o
+// copiloto entendeu, linha a linha; um toque grava tudo pelo endpoint, com a
+// autoria de quem tocou. Erro aparece no card (nunca falha calado); o sucesso
+// vira links para cada coisa criada — operação, cliente, ativo, lançamentos.
+function CardRegistro({
+  proposta, aoRegistrar, aoAbrir,
+}: {
+  proposta: PropostaRegistro;
+  aoRegistrar: (titulo: string) => void;
+  aoAbrir: (f: Fonte) => void;
+}) {
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState("");
-  const [feito, setFeito] = useState(false);
-
-  useEffect(() => {
-    Promise.all([
-      api.get<{ dados: ContaOpt[] }>("/contas").then((r) => r.dados).catch(() => []),
-      api.get<{ dados: CategoriaOpt[] }>("/categorias-financeiras").then((r) => r.dados).catch(() => []),
-    ]).then(([c, cat]) => {
-      setContas(c);
-      setCategorias(cat);
-    });
-  }, []);
-
-  const cats = categorias.filter((c) => c.tipo === proposta.payload.tipo);
+  const [resultado, setResultado] = useState<ResultadoRegistro | null>(null);
 
   const confirmar = async () => {
-    if (!contaId || !categoriaId) {
-      setErro("Escolha a conta e a categoria.");
-      return;
-    }
+    if (confirmando || resultado) return;
     setConfirmando(true);
     setErro("");
     try {
-      await api.post("/lancamentos", {
-        tipo: proposta.payload.tipo,
-        descricao: proposta.payload.descricao,
-        valor: proposta.payload.valor,
-        data_vencimento: vencimento,
-        parcelas: 1,
-        pago: false,
-        conta_id: contaId,
-        categoria_id: categoriaId,
+      const { dados } = await api.post<{ dados: ResultadoRegistro }>("/copiloto/registrar", {
+        chave: proposta.chave,
+        registro: proposta.registro,
       });
-      setFeito(true);
+      setResultado(dados);
+      aoRegistrar(dados.titulo);
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : "Não foi possível criar o lançamento.");
+      setErro(e instanceof ApiError ? e.message : "Não consegui lançar agora. Tente de novo.");
     } finally {
       setConfirmando(false);
     }
   };
 
-  if (feito) {
-    return (
-      <div className="max-w-[92%] rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-sm">
-        <div className="flex items-center gap-2 text-ok">
-          <CheckCircle2 className="h-4 w-4" /> Lançamento criado.
-        </div>
-        <button
-          onClick={() => navegar("/financeiro")}
-          className="mt-1 text-xs text-suave underline hover:text-ouro-claro"
-        >
-          Ver no financeiro
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-[92%] space-y-2 rounded-lg border border-ouro/30 bg-ouro/5 px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-sm font-medium text-texto">
-        <Sparkles className="h-3.5 w-3.5 text-ouro" /> {proposta.titulo}
-      </div>
-      <p className="text-xs text-mudo">{proposta.resumo}</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Campo rotulo="Conta">
-          <Selecao value={contaId} onChange={(e) => setContaId(e.target.value)}>
-            <option value="">Escolher…</option>
-            {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </Selecao>
-        </Campo>
-        <Campo rotulo="Categoria">
-          <Selecao value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
-            <option value="">Escolher…</option>
-            {cats.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </Selecao>
-        </Campo>
-      </div>
-      <Campo rotulo="Vencimento">
-        <Entrada type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
-      </Campo>
-      {erro && <p className="text-xs text-erro">{erro}</p>}
-      <div className="flex justify-end">
-        <Botao tamanho="sm" carregando={confirmando} onClick={confirmar}>Confirmar e criar</Botao>
-      </div>
-    </div>
-  );
-}
-
-// Card de proposta de OPERAÇÃO (Fase 3). Diferente do lançamento, aqui não
-// reconstruímos o formulário: a operação tem quatro fluxos, validação visível e
-// regras próprias que já vivem em /operacoes/nova. O card grava o mesmo rascunho
-// que aquela tela já sabe restaurar (o mecanismo usado no desvio "novo cliente")
-// e leva o usuário para lá com tudo pré-preenchido. Quem cria é ele, no lugar de
-// sempre — o copiloto só adiantou a digitação.
-const CHAVE_RASCUNHO_OPERACAO = "operacao-nova-rascunho";
-
-const ROTULO_TIPO_OP: Record<TipoOperacao, string> = {
-  guincho: "Guincho", locacao: "Locação", venda: "Venda", compra: "Compra",
-};
-
-function PropostaOperacao({ proposta }: { proposta: PropostaOperacaoDados }) {
-  const navegar = useNavigate();
-  const { fechar } = useCopiloto();
-
-  const revisar = () => {
-    const { cliente_id, ativo_id, ...resto } = proposta.payload;
-    // O formulário guarda os campos como texto; números viram string aqui.
-    const campos: Record<string, string> = {};
-    Object.entries(resto).forEach(([k, v]) => {
-      if (v !== null && v !== undefined && v !== "") {
-        // A locação chama a diária de `valor_diaria_base` no formulário.
-        campos[k === "valor_diaria" ? "valor_diaria_base" : k] = String(v);
-      }
-    });
-    sessionStorage.setItem(
-      CHAVE_RASCUNHO_OPERACAO,
-      JSON.stringify({
-        tipo: proposta.tipoOperacao,
-        ativo: ativo_id
-          ? { id: String(ativo_id), titulo: proposta.sugestoes?.ativoNome ?? "Ativo sugerido", subtitulo: "sugerido pelo copiloto" }
-          : null,
-        campos,
-        retroativo: false,
-        descontoTipo: "R$",
-      })
-    );
-    fechar();
-    navegar(`/operacoes/nova${cliente_id ? `?cliente_id=${cliente_id}` : ""}`);
-  };
-
-  return (
-    <div className="max-w-[92%] space-y-2 rounded-lg border border-ouro/30 bg-ouro/5 px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-sm font-medium text-texto">
-        <Sparkles className="h-3.5 w-3.5 text-ouro" /> {proposta.titulo}
-      </div>
-      <p className="text-xs text-mudo">{proposta.resumo}</p>
-      <p className="text-xs text-suave">
-        Nada foi criado. Ao revisar você abre o formulário de {ROTULO_TIPO_OP[proposta.tipoOperacao]}{" "}
-        já preenchido — a operação só nasce quando você confirmar lá.
-      </p>
-      <div className="flex justify-end">
-        <Botao tamanho="sm" onClick={revisar}>Revisar e abrir</Botao>
-      </div>
-    </div>
+    <Caixa
+      tom={resultado ? "ok" : "ouro"}
+      icone={resultado ? CheckCircle2 : Sparkles}
+      titulo={resultado ? resultado.titulo : proposta.titulo}
+      className="max-w-[92%]"
+    >
+      {!resultado && (
+        <>
+          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            {proposta.linhas.map((l) => (
+              <div key={l.rotulo} className="contents">
+                <dt className="text-mudo">{l.rotulo}</dt>
+                <dd className="text-texto">{l.valor}</dd>
+              </div>
+            ))}
+          </dl>
+          {erro && (
+            <Caixa tom="erro" className="mt-2">
+              {erro}
+            </Caixa>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Botao tamanho="sm" carregando={confirmando} onClick={confirmar}>
+              Confirmar e lançar
+            </Botao>
+            <span className="text-[11px] text-mudo">Nada foi gravado ainda. Algo errado? Me diga aqui no chat.</span>
+          </div>
+        </>
+      )}
+      {resultado && (
+        <>
+          {resultado.repetido && (
+            <p className="mt-1 text-xs text-mudo">Isso já tinha sido lançado — nada foi duplicado.</p>
+          )}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {resultado.links.map((f) => {
+              const Icone = ROTA_FONTE[f.entidade_tipo]?.icone ?? FileText;
+              return (
+                <button
+                  key={`${f.entidade_tipo}:${f.entidade_id}`}
+                  onClick={() => aoAbrir(f)}
+                  className="inline-flex items-center gap-1 rounded-full bg-elevado px-2 py-0.5 text-[11px] font-medium text-suave ring-1 ring-inset ring-borda transition-colors duration-150 hover:text-ouro-claro hover:ring-ouro/60"
+                >
+                  <Icone className="h-3 w-3 shrink-0" />
+                  <span className="max-w-[14rem] truncate">{f.titulo}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </Caixa>
   );
 }
 
