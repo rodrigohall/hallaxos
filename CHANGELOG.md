@@ -1,5 +1,30 @@
 # Changelog
 
+## Recomeço do financeiro (2026-10-20)
+
+Depois do hiato de agosto–setembro, os lançamentos acumulados deixaram de
+refletir a realidade. Decisão do Rodrigo: recomeçar o financeiro do zero e
+lançar à mão daqui em diante — sem apagar nada.
+
+- **`deploy/financeiro-zerar.sh`**: arquiva todos os lançamentos (pagos,
+  previstos, parcelas futuras) pelo `deleted_at` que todo indicador já respeita
+  e zera o saldo inicial das contas. Contas, Painel, DRE, Planilha, Por Ativo,
+  fichas de pessoa e notificações de vencido mostram zero sem nenhuma mudança
+  de código. Ativos não são tocados: aquisição, FIPE e diária são colunas do
+  ativo, não lançamentos.
+- **Backup obrigatório antes**: dump completo + CSVs para Excel em
+  `~/backups-hallaxos/`. Se o backup falhar, nada é alterado.
+- **Reversível**: o instante do zeramento e os saldos iniciais antigos ficam em
+  `meta_sistema`; `--desfazer` devolve exatamente os lançamentos arquivados
+  naquele instante. Recusa rodar duas vezes, para não arquivar o que foi
+  lançado depois.
+- Os lançamentos antigos não aparecem mais no app — por escolha. Consulta futura
+  pelo backup (runbook em `docs/operacao-vps.md §5`).
+
+SSH do VPS destravado no mesmo dia (`deploy/ssh-destravar.sh`): não havia
+fail2ban, CrowdSec nem `hosts.deny` — o único ajuste foi `MaxStartups`, e o
+deploy do Sprint 16 passou. Sprint 16 está no ar desde 2026-10-20.
+
 ## Sprint 16 — Um só caminho (2026-07-30)
 
 Sprint de coerência: nenhuma funcionalidade nova por funcionalidade, e sim

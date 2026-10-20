@@ -196,6 +196,29 @@ grep ADMIN_SENHA ~/hallaxos/.env     # admin@hallax.com + esse valor
 Em produção a senha do admin é a gerada no `.env` (não é a `hallax123`, que é só
 do ambiente de desenvolvimento com seed).
 
+### 5. Zerar o financeiro (recomeço) e desfazer
+Usado em 2026-10-20, depois do hiato de ago–set/2026: todos os lançamentos são
+**arquivados** (soft delete, nada é apagado) e o saldo inicial das contas vai a
+zero. Ativos (aquisição, FIPE, diária) não são tocados.
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigohall/hallaxos/main/deploy/financeiro-zerar.sh | sudo bash
+```
+- **Backup antes de tudo** em `~/backups-hallaxos/zerar-financeiro-<data>/`:
+  `hallaxos-completo.sql.gz` (dump do banco inteiro) e CSVs para Excel
+  (`lancamentos-legivel.csv`, `lancamentos-tabela-completa.csv`, `contas.csv`).
+  Fica fora de `~/hallaxos` porque o rsync do deploy apaga o que não é do repo.
+- Roda **uma vez só**: com um zeramento já registrado em `meta_sistema`, recusa.
+- **Desfazer** devolve os lançamentos arquivados e os saldos iniciais antigos —
+  o que foi lançado depois continua, somando junto:
+  `... | sudo bash -s -- --desfazer`
+- **Consultar algo antigo sem desfazer**: abrir o CSV no Excel, ou subir o dump
+  num banco à parte, sem tocar no de produção:
+  ```bash
+  cd ~/hallaxos && docker compose -f docker-compose.prod.yml exec -T db createdb -U hallax arquivo
+  gunzip -c ~/backups-hallaxos/zerar-financeiro-*/hallaxos-completo.sql.gz \
+    | docker compose -f docker-compose.prod.yml exec -T db psql -U hallax -d arquivo -q
+  ```
+
 ## Checklist rápido pós-deploy
 - `docker compose -f docker-compose.prod.yml ps` → todos `Up`/healthy.
 - Logs da API sem `level:50` repetindo (crash loop).

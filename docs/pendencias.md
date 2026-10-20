@@ -1,8 +1,8 @@
 # Pendências e Próximos Passos
 
 > Atualizado ao fim de cada sprint. O que está aqui é dívida conhecida e
-> assumida — não esquecimento. Última revisão: Sprint 16 — Um só caminho —
-> 2026-07-30, conferida contra o código.
+> assumida — não esquecimento. Última revisão: Recomeço do financeiro —
+> 2026-10-20 (Sprint 16 no ar desde esta data).
 
 ## Estado atual — o que está em produção
 
@@ -44,8 +44,8 @@
 
 | Pendência | Contexto | Plano |
 |-----------|----------|-------|
-| **Destravar o SSH do VPS** (deploy do Sprint 16 parado) | O deploy do `926a580` falhou nas duas execuções — 8 tentativas, todas com `kex_exchange_identification: read: Connection reset by peer`. **Não é o timeout que o runbook documentava**: a conexão morre em ~150ms, o que indica rejeição ativa no servidor (fail2ban/CrowdSec/`hosts.deny`/`MaxStartups`), não pacote descartado. Rodar `deploy/ssh-destravar.sh` pelo Console web e reexecutar o deploy | VPS · 1 min |
-| **Estabilizar o SSH do VPS** (porta alta) | Correção definitiva, para o problema acima não voltar. O `deploy.yml` já lê `VPS_PORT`; o script `deploy/ssh-porta-alta.sh` empacota a mudança no servidor (idempotente, mantém a :22 até você confirmar a porta nova). Falta rodar no Console web da Hostinger, liberar a porta no firewall do painel e criar a variável `VPS_PORT` no GitHub. Runbook em `docs/operacao-vps.md §1` | VPS · ~10 min |
+| **Rodar o zeramento do financeiro** | `deploy/financeiro-zerar.sh` pelo Console web: backup + arquiva todos os lançamentos + saldos iniciais a zero. Runbook em `docs/operacao-vps.md §5` | VPS · 1 min |
+| Porta alta no SSH do VPS (opcional) | Destravado em 2026-10-20 com `ssh-destravar.sh`: sem fail2ban/CrowdSec/`hosts.deny`, o único ajuste foi `MaxStartups` (varredura de bots na :22 enchendo os slots não autenticados) e o deploy passou. A porta alta (`deploy/ssh-porta-alta.sh` + variável `VPS_PORT`) perdeu a urgência — só se o reset voltar | VPS · ~10 min |
 | **Apagar 10 branches órfãos no remoto** | Deleção segue bloqueada para sessões remotas (o proxy responde "Everything up-to-date" sem apagar). Todos com prefixo `claude/`: `admiring-meitner-9m9ks9`, `admiring-wright-03b5np`, `event-hall-operational-planning-3rtgki`, `hallaxos-dev-status-ohoo7m`, `hallaxos-dev-status-w0bskq`, `hallaxos-repo-sprint14-srh9ct`, `inspiring-goldberg-vzsjgd`, `stoic-shannon-d3fxpi`, `test-coverage-analysis-wby40m`, `zealous-mayer-iwls56` | GitHub · 2 min |
 | Verificação visual em navegador real | Ambiente remoto sem browser; validar no `pnpm dev` local | Contínuo |
 
