@@ -16,13 +16,23 @@ const valor = (msg: string) => z.coerce.number({ required_error: msg, invalid_ty
 
 /** Pessoa do registro: um cadastro que já existe ou os dados mínimos de um novo. */
 export const pessoaRegistroSchema = z
-  .object({
-    id: z.string().uuid().optional(),
-    novo: pessoaCriarSchema
-      .pick({ tipo: true, nome: true, cpf_cnpj: true, telefone: true })
-      .extend({ tipo: pessoaCriarSchema.shape.tipo.default("pf") })
-      .optional(),
-  })
+  .object(
+    {
+      id: z.string().uuid("Id de cliente inválido — procure o cadastro com busca_global").optional(),
+      novo: pessoaCriarSchema
+        .pick({ tipo: true, nome: true, cpf_cnpj: true })
+        .extend({
+          tipo: pessoaCriarSchema.shape.tipo.default("pf"),
+          telefone: z
+            .string()
+            .transform((v) => v.replace(/\D/g, ""))
+            .pipe(z.string().min(10, "Telefone precisa de DDD + número").max(13, "Telefone longo demais"))
+            .optional(),
+        })
+        .optional(),
+    },
+    { required_error: "Informe o cliente: um cadastro existente ou nome + CPF/CNPJ de um novo" }
+  )
   .refine((p) => !!p.id !== !!p.novo, {
     message: "Informe o cliente: um cadastro existente ou nome + CPF/CNPJ de um novo",
   });
@@ -67,8 +77,8 @@ export const registroGuinchoSchema = z.object({
     .trim()
     .min(2, "Informe o veículo transportado"),
   veiculo_cliente_placa: z.string().trim().optional(),
-  caminhao_id: z.string().uuid().optional(),
-  motorista_id: z.string().uuid().optional(),
+  caminhao_id: z.string().uuid("Id de caminhão inválido — procure com busca_global").optional(),
+  motorista_id: z.string().uuid("Id de motorista inválido — procure com busca_global").optional(),
   valor: valor("Informe o valor do guincho"),
   pagamento: pagamentoRegistroSchema,
 });
@@ -113,7 +123,7 @@ export const registroVendaSchema = z.object({
 /** Ativo da compra: um que já existe ou o cadastro mínimo de um novo. */
 export const ativoRegistroSchema = z
   .object({
-    id: z.string().uuid().optional(),
+    id: z.string().uuid("Id de ativo inválido — procure com busca_global").optional(),
     novo: z
       .object({
         nome: z.string({ required_error: "Informe o nome do ativo comprado" }).trim().min(2, "Informe o nome do ativo comprado"),
@@ -123,7 +133,7 @@ export const ativoRegistroSchema = z
           .optional(),
       })
       .optional(),
-  })
+  }, { required_error: "Informe o ativo comprado: um já cadastrado ou nome, categoria e dados do novo" })
   .refine((a) => !!a.id !== !!a.novo, { message: "Informe o ativo: um já cadastrado ou os dados de um novo" });
 
 export const registroCompraSchema = z.object({
@@ -146,8 +156,8 @@ export const registroLancamentoSchema = z.object({
   descricao: z.string({ required_error: "Descreva o lançamento" }).trim().min(2, "Descreva o lançamento"),
   valor: valor("Informe o valor"),
   categoria_id: uuid("Informe a categoria"),
-  pessoa_id: z.string().uuid().optional(),
-  ativo_id: z.string().uuid().optional(),
+  pessoa_id: z.string().uuid("Id de pessoa inválido — procure com busca_global").optional(),
+  ativo_id: z.string().uuid("Id de ativo inválido — procure com busca_global").optional(),
   pagamento: pagamentoRegistroSchema,
 });
 

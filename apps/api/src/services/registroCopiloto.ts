@@ -109,7 +109,18 @@ async function linha<T>(consulta: ReturnType<typeof sql>): Promise<T | undefined
 export async function conferirRegistro(entrada: unknown, papel: PapelUsuario): Promise<Conferencia & { registro?: RegistroCopiloto }> {
   const parse = registroCopilotoCompletoSchema.safeParse(entrada);
   if (!parse.success) {
-    const problemas = [...new Set(parse.error.issues.map((i) => i.message))];
+    // As mensagens do schema já são perguntas ("Informe o destino"); o que
+    // escapar em inglês do zod ganha o caminho do campo, para o modelo saber
+    // o que corrigir.
+    const problemas = [
+      ...new Set(
+        parse.error.issues.map((i) =>
+          /^(Required|Invalid|Expected|String must|Number must|Array must)/.test(i.message)
+            ? `Campo ${i.path.join(".") || "registro"}: ${i.message}`
+            : i.message
+        )
+      ),
+    ];
     return { problemas, titulo: "Registro incompleto", linhas: [] };
   }
   const r = parse.data;

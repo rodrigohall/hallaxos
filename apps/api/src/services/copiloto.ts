@@ -14,12 +14,16 @@
 // chamada paga é feita. Para ligar, defina IA_API_KEY (secret no servidor,
 // NUNCA no repositório) — o resto já está pronto.
 import type Anthropic from "@anthropic-ai/sdk";
-import { pode, type PapelUsuario, type TipoOperacao } from "@hallaxos/shared";
+import { randomUUID } from "node:crypto";
+import { pode, type PapelUsuario, type RegistroCopiloto, type TipoOperacao } from "@hallaxos/shared";
 import { db } from "../db/client";
 import { buscar } from "./busca";
 import { listarOperacoes } from "./operacoes";
 import { dre, resultadoPorAtivo } from "./relatorios";
 import { montarDashboard } from "./dashboard";
+import { listarContas, listarCategoriasFinanceiras } from "./financeiro";
+import { listarCategorias } from "./ativos";
+import { conferirRegistro, type LinhaResumo } from "./registroCopiloto";
 import { AppError } from "../lib/erros";
 import { config } from "../config";
 import { hojeEmDourados } from "../lib/hoje";
@@ -32,20 +36,21 @@ export interface FonteCopiloto {
   titulo: string;
 }
 
-// Fase 2 (decisão #43): o copiloto NÃO escreve no banco. Quando o usuário pede
-// uma ação, o modelo monta uma PROPOSTA estruturada (endpoint existente + payload
-// + resumo). A UI mostra, o humano confirma, e SÓ ENTÃO a UI dispara o endpoint —
-// com a autoria do humano e a máquina de estados intactas. A proposta é inerte.
+// Decisão #43, refinada na #79 (Sprint 17): o copiloto NÃO escreve no banco.
+// Quando o usuário conta algo que aconteceu ("hoje fizemos um guincho…"), o
+// modelo monta uma PROPOSTA de registro; a UI mostra o card com o resumo, o
+// humano toca em "Confirmar e lançar" e SÓ ENTÃO a UI chama
+// POST /copiloto/registrar — que executa pelos services de sempre, com a
+// autoria do humano e a máquina de estados intacta. A proposta é inerte.
 export interface PropostaCopiloto {
-  acao: "criar_lancamento" | "criar_operacao";
+  acao: "registrar";
+  /** Gerada na proposta; a confirmação a reenvia para o duplo toque não lançar duas vezes. */
+  chave: string;
   titulo: string;
   resumo: string;
-  endpoint: string; // ex.: "POST /lancamentos" — disparado pela UI após confirmar
-  payload: Record<string, unknown>; // o que a UI vai enviar (conta/categoria o humano escolhe)
-  /** Só em criar_operacao: qual tipo de operação a UI deve montar. */
-  tipoOperacao?: TipoOperacao;
-  /** Nomes legíveis do que o copiloto encontrou, para a UI pré-preencher. */
-  sugestoes?: { clienteNome?: string; ativoNome?: string };
+  linhas: LinhaResumo[];
+  endpoint: "POST /copiloto/registrar";
+  registro: RegistroCopiloto;
 }
 
 export interface RespostaCopiloto {
@@ -56,31 +61,39 @@ export interface RespostaCopiloto {
 
 const SISTEMA = [
   "Você é o copiloto do HallaxOS, o sistema operacional da Hallax (guincho,",
-  "locação, compra e venda de veículos, financeiro e manutenções).",
-  "Responda em português do Brasil, de forma direta e objetiva.",
-  "Você NÃO tem dados próprios e NÃO executa ações que alterem dados — apenas",
-  "consulta e responde. Para qualquer pergunta sobre clientes, ativos, operações,",
-  "lançamentos, indicadores ou manutenções, use as ferramentas antes de responder",
-  "— nunca invente números ou nomes. Use busca_global para encontrar registros;",
-  "dashboard_resumo para a fotografia do dia (ativos, guinchos abertos, caixa);",
-  "operacoes_abertas para operações em andamento ou atrasadas; e",
-  "relatorio_financeiro para faturamento, DRE e resultado/ROI por ativo.",
-  "Se uma ferramenta responder que o papel do usuário não tem acesso, diga isso",
-  "sem expor o dado. Se a consulta não trouxer o que é preciso, diga que não",
-  "encontrou. Cite as entidades que embasaram a resposta.",
-  "Você NUNCA cria, altera ou apaga dados diretamente. Quando o usuário pedir para",
-  "REGISTRAR uma despesa/receita (lançamento), use a ferramenta propor_lancamento:",
-  "ela apenas monta uma PROPOSTA que o usuário confirma na tela — você não está",
-  "criando nada. Nunca diga que criou/lançou; diga que preparou uma proposta para",
-  "ele revisar e confirmar (a conta e a categoria ele escolhe ao confirmar). Se a",
-  "ferramenta propor_lancamento não estiver disponível, diga que o papel do usuário",
-  "não pode lançar no financeiro.",
-  "Do mesmo jeito, quando ele pedir para ABRIR/REGISTRAR um guincho, uma locação,",
-  "uma venda ou uma compra, use propor_operacao: ela também só monta uma PROPOSTA",
-  "que o usuário confirma na tela. Antes de propor, use busca_global para achar o",
-  "cliente e o ativo citados e passe os ids encontrados — nunca invente um id. O que",
-  "você não souber, deixe em branco: o usuário completa ao confirmar. Nunca diga que",
-  "abriu ou criou a operação; diga que preparou uma proposta para ele revisar.",
+  "locação, compra e venda de veículos, financeiro e manutenções), em Dourados-MS.",
+  "Responda em português do Brasil, de forma direta e curta.",
+  "",
+  "CONSULTAS. Você não tem dados próprios: para qualquer pergunta sobre clientes,",
+  "ativos, operações, lançamentos, indicadores ou manutenções, use as ferramentas",
+  "antes de responder e nunca invente números ou nomes. busca_global encontra",
+  "registros; dashboard_resumo dá a fotografia do dia; operacoes_abertas lista o que",
+  "está em andamento ou atrasado; relatorio_financeiro traz faturamento, DRE e ROI",
+  "por ativo. Se uma ferramenta disser que o papel do usuário não tem acesso, diga",
+  "isso sem expor o dado. Cite as entidades que embasaram a resposta.",
+  "",
+  "REGISTROS. Quando o usuário contar algo que aconteceu ou pedir para lançar — um",
+  "guincho, uma locação, uma venda, uma compra, uma despesa ou receita — use",
+  "propor_registro. Ela NÃO grava nada: confere os dados e, se estiver tudo certo,",
+  "mostra ao usuário um card com o resumo e o botão Confirmar e lançar.",
+  "Antes de propor: use busca_global para achar o cliente e o ativo citados e passe",
+  "o id encontrado; se houver mais de um parecido, pergunte qual. Se o cliente não",
+  "estiver cadastrado, cadastre-o como novo — para isso são obrigatórios o nome e o",
+  "CPF/CNPJ. Use opcoes_registro para os ids de conta e de categoria; mapeie o que",
+  "o usuário disser (\"no Cresol\", \"no pix\") para o id e a forma da lista.",
+  "Chame propor_registro com tudo o que já souber, mesmo incompleto: ela responde",
+  "o que falta ou o que está errado. Aí pergunte ao usuário, numa mensagem só e",
+  "curta, apenas o que falta. Sempre é preciso saber se já foi pago (e então em",
+  "qual conta e de que forma) ou se fica a receber/pagar (e o vencimento).",
+  "Nunca invente dado: CPF, valor, placa, conta, data — o que não foi dito, pergunte.",
+  "Datas como \"hoje\", \"ontem\" ou \"sexta\" você converte a partir da data de hoje",
+  "informada abaixo. Data, caminhão, motorista, telefone e placa do veículo",
+  "transportado são opcionais: não pergunte por eles se o usuário não falou.",
+  "Quando a proposta for montada, diga em uma frase que o card está pronto para",
+  "ele conferir e tocar em Confirmar e lançar. Nunca diga que lançou, criou ou",
+  "registrou — até o toque, nada foi gravado. Se ele corrigir algo depois (\"na",
+  "verdade foram 450\"), chame propor_registro de novo com o registro inteiro",
+  "corrigido.",
 ].join(" ");
 
 // As ferramentas expostas ao modelo — TODAS de leitura (Fase 1). A lista é a
@@ -141,86 +154,137 @@ export const FERRAMENTAS_LEITURA: Anthropic.Tool[] = [
       },
     },
   },
-];
-
-// Ferramentas de PROPOSTA (Fase 2) — NÃO escrevem. propor_lancamento devolve uma
-// proposta inerte que a UI confirma e dispara via POST /lancamentos. Mantida fora
-// de FERRAMENTAS_LEITURA de propósito: o invariante "leitura não muta" segue válido
-// e testável; esta lista é exposta só a quem pode criar lançamentos (doc 05).
-export const FERRAMENTAS_PROPOSTA: Anthropic.Tool[] = [
   {
-    name: "propor_lancamento",
+    name: "opcoes_registro",
     description:
-      "PROPÕE (não cria) um lançamento financeiro para o usuário confirmar na tela. " +
-      "Use quando ele pedir para registrar/lançar uma despesa ou receita. Não cria nada: " +
-      "monta a proposta; a conta e a categoria são escolhidas pelo usuário ao confirmar.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        tipo: { type: "string", enum: ["receita", "despesa"], description: "Tipo do lançamento." },
-        descricao: { type: "string", description: "Descrição curta (ex.: 'IPVA do caminhão AT-0003')." },
-        valor: { type: "number", description: "Valor em reais, positivo." },
-        data_vencimento: { type: "string", description: "Vencimento YYYY-MM-DD (opcional)." },
-      },
-      required: ["tipo", "descricao", "valor"],
-    },
+      "Ids e nomes que um registro precisa: contas financeiras (Cresol, Dinheiro…), " +
+      "categorias financeiras, categorias de ativo e formas de pagamento. Use antes de " +
+      "propor_registro para trocar \"no Cresol\" ou \"despesa de diesel\" pelo id certo.",
+    input_schema: { type: "object" as const, properties: {} },
   },
 ];
 
-// Fase 3 (Sprint 16): propor OPERAÇÃO. Mesmo guardrail da Fase 2 — a ferramenta
-// não escreve; devolve uma proposta inerte que a UI confirma. Lista separada
-// porque a permissão é outra (operacoes:criar, não lancamentos:criar).
-export const FERRAMENTAS_PROPOSTA_OPERACAO: Anthropic.Tool[] = [
+// Ferramenta de REGISTRO (Sprint 17 · decisão #79) — NÃO escreve. Confere o
+// registro e devolve uma proposta inerte (ou o que falta); quem grava é
+// POST /copiloto/registrar, quando o humano confirma. Mantida fora de
+// FERRAMENTAS_LEITURA de propósito: o invariante "leitura não muta" segue
+// testável, e a lista só é exposta a quem pode criar operação ou lançamento.
+const PESSOA_REGISTRO = {
+  type: "object",
+  description: "Cadastro existente ({ id }) OU dados de um novo ({ novo }).",
+  properties: {
+    id: { type: "string", description: "UUID de um cadastro achado com busca_global." },
+    novo: {
+      type: "object",
+      properties: {
+        tipo: { type: "string", enum: ["pf", "pj"], description: "pf (CPF) ou pj (CNPJ). Padrão pf." },
+        nome: { type: "string" },
+        cpf_cnpj: { type: "string", description: "Só dígitos ou formatado; 11 (CPF) ou 14 (CNPJ)." },
+        telefone: { type: "string", description: "Opcional, com DDD." },
+      },
+    },
+  },
+};
+
+const PAGAMENTO_REGISTRO = {
+  type: "object",
+  description: "Pago (conta + forma) ou pendente (vencimento).",
+  properties: {
+    situacao: { type: "string", enum: ["pago", "pendente"] },
+    conta_id: { type: "string", description: "UUID da conta (opcoes_registro). Obrigatório se pago." },
+    forma_pagamento: {
+      type: "string",
+      enum: ["dinheiro", "pix", "cartao_credito", "cartao_debito", "boleto", "transferencia"],
+      description: "Obrigatório se pago.",
+    },
+    data_pagamento: { type: "string", description: "YYYY-MM-DD, se pago em outra data." },
+    data_vencimento: { type: "string", description: "YYYY-MM-DD. Obrigatório se pendente." },
+    parcelas: { type: "integer", description: "Só pendente. Parcelas mensais a partir do vencimento. Padrão 1." },
+  },
+};
+
+export const FERRAMENTAS_REGISTRO: Anthropic.Tool[] = [
   {
-    name: "propor_operacao",
+    name: "propor_registro",
     description:
-      "PROPÕE (não cria) uma operação — guincho, locação, venda ou compra — para o " +
-      "usuário confirmar na tela. Use quando ele pedir para abrir/registrar uma dessas. " +
-      "Não cria nada: monta a proposta. Use busca_global antes para achar o cliente e o " +
-      "ativo e passe os ids encontrados; o usuário revisa e completa o que faltar ao confirmar.",
+      "PROPÕE (não grava) o registro de algo que aconteceu: guincho, locação, venda, " +
+      "compra ou lançamento financeiro avulso. Confere os dados contra o sistema e responde " +
+      "o que falta (para você perguntar ao usuário) ou monta o card de confirmação. " +
+      "Envie sempre o registro inteiro, com tudo o que já sabe.",
     input_schema: {
       type: "object" as const,
       properties: {
-        tipo: {
-          type: "string",
-          enum: ["guincho", "locacao", "venda", "compra"],
-          description: "Tipo da operação.",
+        tipo: { type: "string", enum: ["guincho", "locacao", "venda", "compra", "lancamento"] },
+        data: { type: "string", description: "YYYY-MM-DD em que aconteceu. Omitir = hoje. (Não usado em locação.)" },
+        observacoes: { type: "string" },
+        cliente: {
+          ...PESSOA_REGISTRO,
+          description: "Guincho/locação/venda: o cliente. Compra: quem vendeu. " + PESSOA_REGISTRO.description,
         },
-        cliente_id: { type: "string", description: "UUID do cliente, vindo de busca_global." },
-        cliente_nome: { type: "string", description: "Nome do cliente, para o usuário conferir." },
-        ativo_id: { type: "string", description: "UUID do ativo (locação, venda, compra)." },
-        ativo_nome: { type: "string", description: "Nome do ativo, para o usuário conferir." },
-        valor: { type: "number", description: "Valor total (guincho, venda, compra) em reais." },
-        valor_diaria: { type: "number", description: "Valor da diária, só para locação." },
-        data_devolucao_prevista: { type: "string", description: "Devolução prevista YYYY-MM-DD (locação)." },
-        origem_endereco: { type: "string", description: "Endereço de origem (guincho)." },
-        destino_endereco: { type: "string", description: "Endereço de destino (guincho)." },
-        veiculo_cliente_descricao: { type: "string", description: "Veículo do cliente a rebocar (guincho)." },
-        observacoes: { type: "string", description: "Observações livres." },
+        pagamento: { ...PAGAMENTO_REGISTRO, description: "Locação: só quando finalizada. " + PAGAMENTO_REGISTRO.description },
+        valor: { type: "number", description: "Valor em reais (guincho, venda, compra, lançamento)." },
+        origem_endereco: { type: "string", description: "Guincho." },
+        destino_endereco: { type: "string", description: "Guincho." },
+        veiculo_cliente_descricao: { type: "string", description: "Guincho: veículo transportado (ex.: 'Gol prata')." },
+        veiculo_cliente_placa: { type: "string", description: "Guincho, opcional." },
+        caminhao_id: { type: "string", description: "Guincho, opcional: UUID do caminhão (ativo)." },
+        motorista_id: { type: "string", description: "Guincho, opcional: UUID do motorista (pessoa)." },
+        ativo_id: {
+          type: "string",
+          description: "Locação: veículo alugado. Venda: ativo vendido. Lançamento: ativo relacionado (opcional).",
+        },
+        valor_diaria: { type: "number", description: "Locação." },
+        data_retirada: { type: "string", description: "Locação: YYYY-MM-DD." },
+        data_devolucao: { type: "string", description: "Locação: YYYY-MM-DD, prevista ou real." },
+        situacao: {
+          type: "string",
+          enum: ["reservada", "ativa", "finalizada"],
+          description: "Locação: reservada (não saiu), ativa (com o cliente), finalizada (já voltou).",
+        },
+        transferido: { type: "boolean", description: "Venda/compra: documentação já transferida." },
+        ativo: {
+          type: "object",
+          description: "Compra: ativo já cadastrado ({ id }) ou novo ({ novo }).",
+          properties: {
+            id: { type: "string" },
+            novo: {
+              type: "object",
+              properties: {
+                nome: { type: "string" },
+                categoria_id: { type: "string", description: "UUID da categoria de ativo (opcoes_registro)." },
+                veiculo: {
+                  type: "object",
+                  description: "Obrigatório se a categoria for veicular.",
+                  properties: {
+                    placa: { type: "string" },
+                    marca: { type: "string" },
+                    modelo: { type: "string" },
+                    ano_modelo: { type: "integer" },
+                    cor: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        natureza: { type: "string", enum: ["receita", "despesa"], description: "Lançamento." },
+        descricao: { type: "string", description: "Lançamento: descrição curta." },
+        categoria_id: { type: "string", description: "Lançamento: UUID da categoria financeira (opcoes_registro)." },
+        pessoa_id: { type: "string", description: "Lançamento, opcional: UUID de quem paga/recebe." },
       },
       required: ["tipo"],
     },
   },
 ];
 
-// Ferramentas disponíveis ao papel: leitura para todos; proposta de lançamento só
-// para quem pode criar lançamentos (doc 05). Mantém o copiloto escopado ao papel.
+// Ferramentas disponíveis ao papel: leitura para todos; registro para quem pode
+// criar operação ou lançamento — cada passo é revalidado na execução (doc 05).
 export function ferramentasPara(papel: PapelUsuario): Anthropic.Tool[] {
-  return [
-    ...FERRAMENTAS_LEITURA,
-    ...(pode(papel, "lancamentos", "criar") ? FERRAMENTAS_PROPOSTA : []),
-    ...(pode(papel, "operacoes", "criar") ? FERRAMENTAS_PROPOSTA_OPERACAO : []),
-  ];
+  const registra = pode(papel, "operacoes", "criar") || pode(papel, "lancamentos", "criar");
+  return [...FERRAMENTAS_LEITURA, ...(registra ? FERRAMENTAS_REGISTRO : [])];
 }
 
 const TIPOS_OPERACAO = new Set<TipoOperacao>(["guincho", "locacao", "venda", "compra"]);
-
-const ROTULO_OPERACAO: Record<TipoOperacao, string> = {
-  guincho: "guincho", locacao: "locação", venda: "venda", compra: "compra",
-};
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ResultadoFerramenta {
   conteudo: string;
@@ -319,136 +383,57 @@ export async function executarFerramenta(
       return { conteudo: JSON.stringify({ ano, dre: demonstrativo, resultado_por_ativo: ativos }), fontes: [] };
     }
 
-    case "propor_lancamento": {
-      // Fase 2: NÃO escreve. Revalida o papel (defesa em profundidade) e devolve
-      // uma proposta inerte; a criação real só acontece quando o humano confirma
-      // na UI, que dispara POST /lancamentos com a própria autoria (decisão #43).
-      if (!pode(papel, "lancamentos", "criar")) return semPermissao("lançar no financeiro");
-      const tipo = input.tipo === "receita" ? "receita" : "despesa";
-      const descricao = String(input.descricao ?? "").trim();
-      const valor = typeof input.valor === "number" ? input.valor : Number(input.valor);
-      if (descricao.length < 2 || !Number.isFinite(valor) || valor <= 0) {
-        return {
-          conteudo: JSON.stringify({ erro: "Para propor um lançamento preciso de descrição e valor positivo." }),
-          fontes: [],
-        };
-      }
-      const dataVencimento =
-        typeof input.data_vencimento === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.data_vencimento)
-          ? input.data_vencimento
-          : undefined;
-      const proposta: PropostaCopiloto = {
-        acao: "criar_lancamento",
-        titulo: `Criar ${tipo}: ${descricao}`,
-        resumo:
-          `${tipo === "receita" ? "Receita" : "Despesa"} de R$ ${valor.toFixed(2)}` +
-          (dataVencimento ? ` com vencimento em ${dataVencimento}` : "") +
-          ". Confirme escolhendo a conta e a categoria.",
-        endpoint: "POST /lancamentos",
-        payload: { tipo, descricao, valor, data_vencimento: dataVencimento ?? null },
-      };
-      // O tool_result diz ao modelo que NADA foi criado — só proposto.
+    case "opcoes_registro": {
+      // Ids que o registro precisa — conta e categoria financeira só para quem
+      // enxerga o financeiro (doc 05); categoria de ativo para quem cadastra ativo.
+      const [contas, categorias, categoriasAtivo] = await Promise.all([
+        pode(papel, "contas", "ler") ? listarContas() : Promise.resolve([]),
+        pode(papel, "categorias_financeiras", "ler") ? listarCategoriasFinanceiras() : Promise.resolve([]),
+        listarCategorias(),
+      ]);
       return {
         conteudo: JSON.stringify({
-          proposta_registrada: true,
-          mensagem: "Proposta montada. O usuário precisa confirmar na tela para efetivar; nada foi criado ainda.",
+          contas: (contas as Array<Record<string, unknown>>).map((c) => ({ id: c.id, nome: c.nome })),
+          categorias_financeiras: categorias.map((c) => ({ id: c.id, nome: c.nome, tipo: c.tipo })),
+          categorias_de_ativo: categoriasAtivo.map((c) => ({ id: c.id, nome: c.nome, veicular: c.ehVeicular })),
+          formas_pagamento: ["dinheiro", "pix", "cartao_credito", "cartao_debito", "boleto", "transferencia"],
         }),
         fontes: [],
-        proposta,
       };
     }
 
-    case "propor_operacao": {
-      // Fase 3: NÃO escreve. Mesma mecânica da Fase 2 — revalida o papel e
-      // devolve uma proposta inerte. A operação só nasce quando o humano
-      // confirma na UI, que dispara POST /operacoes/{tipo} com a própria
-      // autoria e a máquina de estados intacta (decisão #43).
-      if (!pode(papel, "operacoes", "criar")) return semPermissao("criar operações");
-
-      const tipo = String(input.tipo ?? "") as TipoOperacao;
-      if (!TIPOS_OPERACAO.has(tipo)) {
+    case "propor_registro": {
+      // NÃO escreve: confere contra o banco e devolve o que falta (o modelo
+      // pergunta) ou uma proposta inerte (a UI mostra o card de confirmação).
+      const c = await conferirRegistro(input, papel);
+      if (c.problemas.length > 0 || !c.registro) {
         return {
-          conteudo: JSON.stringify({ erro: "Tipo de operação inválido. Use guincho, locacao, venda ou compra." }),
+          conteudo: JSON.stringify({
+            registro_incompleto: true,
+            faltando: c.problemas,
+            instrucao:
+              "Nada foi proposto nem gravado. Resolva o que der com as ferramentas (busca_global, " +
+              "opcoes_registro); o resto, pergunte ao usuário numa mensagem só e curta. Não invente dados.",
+          }),
           fontes: [],
         };
       }
-
-      const texto = (chave: string): string | undefined => {
-        const v = input[chave];
-        if (typeof v !== "string") return undefined;
-        const t = v.trim();
-        return t.length > 0 ? t : undefined;
-      };
-      const numero = (chave: string): number | undefined => {
-        const v = typeof input[chave] === "number" ? (input[chave] as number) : Number(input[chave]);
-        return Number.isFinite(v) && v >= 0 ? v : undefined;
-      };
-      const uuid = (chave: string): string | undefined => {
-        const v = texto(chave);
-        return v && UUID.test(v) ? v : undefined;
-      };
-
-      // O payload espelha o schema de criação do tipo (packages/shared). Campos
-      // que o copiloto não soube preencher ficam de fora — o humano completa na
-      // tela, onde a validação normal do formulário vale.
-      const payload: Record<string, unknown> = {};
-      const clienteId = uuid("cliente_id");
-      if (clienteId) payload.cliente_id = clienteId;
-      const observacoes = texto("observacoes");
-      if (observacoes) payload.observacoes = observacoes;
-
-      const partes: string[] = [];
-      if (tipo === "guincho") {
-        const origem = texto("origem_endereco");
-        const destino = texto("destino_endereco");
-        const veiculo = texto("veiculo_cliente_descricao");
-        const valor = numero("valor");
-        if (origem) payload.origem_endereco = origem;
-        if (destino) payload.destino_endereco = destino;
-        if (veiculo) payload.veiculo_cliente_descricao = veiculo;
-        if (valor !== undefined) payload.valor_total = valor;
-        if (origem && destino) partes.push(`de ${origem} para ${destino}`);
-        if (veiculo) partes.push(`veículo ${veiculo}`);
-        if (valor !== undefined) partes.push(`R$ ${valor.toFixed(2)}`);
-      } else {
-        const ativoId = uuid("ativo_id");
-        if (ativoId) payload.ativo_id = ativoId;
-        if (tipo === "locacao") {
-          const diaria = numero("valor_diaria");
-          const devolucao = texto("data_devolucao_prevista");
-          if (diaria !== undefined) payload.valor_diaria = diaria;
-          if (devolucao && DATA.test(devolucao)) payload.data_devolucao_prevista = devolucao;
-          if (diaria !== undefined) partes.push(`diária de R$ ${diaria.toFixed(2)}`);
-          if (devolucao) partes.push(`devolução prevista em ${devolucao}`);
-        } else {
-          const valor = numero("valor");
-          if (valor !== undefined) payload.valor_total = valor;
-          if (valor !== undefined) partes.push(`R$ ${valor.toFixed(2)}`);
-        }
-      }
-
-      const clienteNome = texto("cliente_nome");
-      const ativoNome = texto("ativo_nome");
-      if (clienteNome) partes.unshift(`cliente ${clienteNome}`);
-      if (ativoNome && tipo !== "guincho") partes.unshift(`ativo ${ativoNome}`);
-
       const proposta: PropostaCopiloto = {
-        acao: "criar_operacao",
-        tipoOperacao: tipo,
-        titulo: `Abrir ${ROTULO_OPERACAO[tipo]}`,
-        resumo:
-          (partes.length > 0 ? `${partes.join(" · ")}. ` : "") +
-          "Confirme revisando os campos na tela; o que faltar você completa lá.",
-        endpoint: `POST /operacoes/${tipo}`,
-        payload,
-        sugestoes: { clienteNome, ativoNome },
+        acao: "registrar",
+        chave: randomUUID(),
+        titulo: c.titulo,
+        resumo: c.linhas.map((l) => `${l.rotulo}: ${l.valor}`).join(" · "),
+        linhas: c.linhas,
+        endpoint: "POST /copiloto/registrar",
+        registro: c.registro,
       };
-      // O tool_result diz ao modelo que NADA foi criado — só proposto.
       return {
         conteudo: JSON.stringify({
           proposta_registrada: true,
+          resumo: c.linhas,
           mensagem:
-            "Proposta de operação montada. O usuário precisa revisar e confirmar na tela para efetivar; nada foi criado ainda.",
+            "O card com este resumo foi mostrado ao usuário, com o botão Confirmar e lançar. " +
+            "Nada foi gravado ainda. Diga em uma frase para ele conferir e confirmar.",
         }),
         fontes: [],
         proposta,
@@ -535,7 +520,9 @@ export async function perguntar(
     // Limite de voltas por segurança (evita laço infinito e custo descontrolado).
     // Requisição mantida model-agnostic (sem thinking/effort) para funcionar com
     // qualquer IA_MODELO — Haiku 4.5 (padrão), Sonnet 4.6 ou Opus (decisão #46).
-    for (let volta = 0; volta < 6; volta++) {
+    // Registrar pede mais voltas que consultar: busca do cliente, do ativo,
+    // opções de conta/categoria e a proposta.
+    for (let volta = 0; volta < 8; volta++) {
       const resposta = await client.messages.create({
         model: config.iaModelo,
         max_tokens: 4096,

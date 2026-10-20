@@ -2,8 +2,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import {
   FERRAMENTAS_LEITURA,
-  FERRAMENTAS_PROPOSTA,
-  FERRAMENTAS_PROPOSTA_OPERACAO,
+  FERRAMENTAS_REGISTRO,
   ferramentasPara,
   executarFerramenta,
   perguntar,
@@ -33,6 +32,7 @@ const LEITURA_PERMITIDA = new Set([
   "dashboard_resumo",
   "operacoes_abertas",
   "relatorio_financeiro",
+  "opcoes_registro",
 ]);
 
 test("copiloto só expõe ferramentas de leitura (nenhuma de escrita)", () => {
@@ -47,106 +47,49 @@ test("copiloto só expõe ferramentas de leitura (nenhuma de escrita)", () => {
   }
 });
 
-// 1b. Fase 2: a ferramenta de proposta vive FORA da lista de leitura (o invariante
-//     "leitura não muta" segue válido) e o copiloto continua NÃO escrevendo — ela
-//     só monta uma proposta inerte que o humano confirma (decisão #43).
-test("propor_lancamento existe como ferramenta de proposta, separada da leitura", () => {
-  assert.ok(!FERRAMENTAS_LEITURA.some((f) => f.name === "propor_lancamento"), "propor não é leitura");
-  assert.ok(FERRAMENTAS_PROPOSTA.some((f) => f.name === "propor_lancamento"), "propor é proposta");
+// 1b. Registro (Sprint 17 · decisão #79): a ferramenta vive FORA da lista de
+//     leitura (o invariante "leitura não muta" segue válido) e continua NÃO
+//     escrevendo — só confere e monta uma proposta inerte que o humano confirma.
+test("propor_registro existe como ferramenta de registro, separada da leitura", () => {
+  assert.ok(!FERRAMENTAS_LEITURA.some((f) => f.name === "propor_registro"), "registro não é leitura");
+  assert.ok(FERRAMENTAS_REGISTRO.some((f) => f.name === "propor_registro"));
+  // As propostas antigas deram lugar a um caminho só.
+  const todas = [...FERRAMENTAS_LEITURA, ...FERRAMENTAS_REGISTRO].map((f) => f.name);
+  assert.ok(!todas.includes("propor_lancamento") && !todas.includes("propor_operacao"));
 });
 
-test("ferramentasPara expõe propor_lancamento só a quem pode lançar", () => {
-  const nomes = (papel: Parameters<typeof ferramentasPara>[0]) =>
-    ferramentasPara(papel).map((f) => f.name);
-  assert.ok(nomes("admin").includes("propor_lancamento"), "admin pode propor");
-  assert.ok(nomes("financeiro").includes("propor_lancamento"), "financeiro pode propor");
-  assert.ok(!nomes("operador").includes("propor_lancamento"), "operador não pode propor");
+test("ferramentasPara expõe propor_registro a quem cria operação ou lançamento", () => {
+  const nomes = (papel: Parameters<typeof ferramentasPara>[0]) => ferramentasPara(papel).map((f) => f.name);
+  for (const papel of ["admin", "gestor", "operador", "financeiro"] as const) {
+    assert.ok(nomes(papel).includes("propor_registro"), `${papel} registra pelo copiloto`);
+  }
 });
 
-test("propor_lancamento devolve PROPOSTA e não escreve (decisão #43)", async () => {
+test("propor_registro incompleto devolve o que falta, sem proposta (o modelo pergunta)", async () => {
   const r = await executarFerramenta(
-    "propor_lancamento",
-    { tipo: "despesa", descricao: "IPVA do caminhão", valor: 1200, data_vencimento: "2026-08-10" },
+    "propor_registro",
+    { tipo: "guincho", origem_endereco: "Centro", valor: 400 },
     "admin"
   );
-  assert.ok(r.proposta, "deve devolver uma proposta");
-  assert.equal(r.proposta!.acao, "criar_lancamento");
-  assert.equal(r.proposta!.endpoint, "POST /lancamentos");
-  assert.equal(r.proposta!.payload.tipo, "despesa");
-  // O tool_result diz ao modelo que nada foi criado — só proposto.
-  const corpo = JSON.parse(r.conteudo) as { proposta_registrada?: boolean };
-  assert.equal(corpo.proposta_registrada, true);
+  assert.equal(r.proposta, undefined, "nada a confirmar enquanto faltar dado");
+  const corpo = JSON.parse(r.conteudo) as { registro_incompleto?: boolean; faltando: string[] };
+  assert.equal(corpo.registro_incompleto, true);
+  for (const esperado of ["Informe o destino", "Informe o veículo transportado"]) {
+    assert.ok(corpo.faltando.includes(esperado), `faltou "${esperado}"`);
+  }
+  assert.ok(corpo.faltando.some((f) => f.includes("cliente")), "pede o cliente");
+  assert.ok(corpo.faltando.some((f) => f.includes("pago")), "pergunta se já foi pago");
 });
 
-test("propor_lancamento nega o operador (não pode lançar)", async () => {
-  const r = await executarFerramenta("propor_lancamento", { tipo: "despesa", descricao: "x", valor: 10 }, "operador");
-  assert.equal((JSON.parse(r.conteudo) as { sem_permissao?: boolean }).sem_permissao, true);
-  assert.equal(r.proposta, undefined);
-});
-
-// 1c. Fase 3 (Sprint 16): propor OPERAÇÃO segue exatamente o mesmo guardrail —
-//     fora da lista de leitura, inerte, e escopada a quem pode criar operação.
-test("propor_operacao existe como proposta, separada da leitura", () => {
-  assert.ok(!FERRAMENTAS_LEITURA.some((f) => f.name === "propor_operacao"), "propor não é leitura");
-  assert.ok(FERRAMENTAS_PROPOSTA_OPERACAO.some((f) => f.name === "propor_operacao"), "propor é proposta");
-});
-
-test("ferramentasPara expõe propor_operacao só a quem pode criar operação", () => {
-  const nomes = (papel: Parameters<typeof ferramentasPara>[0]) =>
-    ferramentasPara(papel).map((f) => f.name);
-  assert.ok(nomes("admin").includes("propor_operacao"), "admin pode propor operação");
-  assert.ok(nomes("operador").includes("propor_operacao"), "operador pode propor operação");
-  // O papel financeiro só lê operações — não pode criar, logo não vê a ferramenta.
-  assert.ok(!nomes("financeiro").includes("propor_operacao"), "financeiro não cria operação");
-});
-
-test("propor_operacao devolve PROPOSTA e não escreve (decisão #43)", async () => {
+test("propor_registro aponta id inventado pelo modelo em vez de aceitar", async () => {
   const r = await executarFerramenta(
-    "propor_operacao",
-    {
-      tipo: "guincho",
-      cliente_id: "3f1c1b52-9a2e-4c77-8f1d-2b7a5c9e4d10",
-      cliente_nome: "Auto Center Dourados",
-      origem_endereco: "Rua Brasil, 100",
-      destino_endereco: "Av. Marcelino Pires, 2000",
-      veiculo_cliente_descricao: "Gol prata",
-      valor: 350,
-    },
+    "propor_registro",
+    { tipo: "venda", cliente: { id: "o cliente João" }, ativo_id: "123", valor: 50000 },
     "admin"
   );
-  assert.ok(r.proposta, "deve devolver uma proposta");
-  assert.equal(r.proposta!.acao, "criar_operacao");
-  assert.equal(r.proposta!.tipoOperacao, "guincho");
-  assert.equal(r.proposta!.endpoint, "POST /operacoes/guincho");
-  assert.equal(r.proposta!.payload.valor_total, 350);
-  assert.equal(r.proposta!.payload.cliente_id, "3f1c1b52-9a2e-4c77-8f1d-2b7a5c9e4d10");
-  const corpo = JSON.parse(r.conteudo) as { proposta_registrada?: boolean };
-  assert.equal(corpo.proposta_registrada, true);
-});
-
-test("propor_operacao descarta id inventado pelo modelo", async () => {
-  const r = await executarFerramenta(
-    "propor_operacao",
-    { tipo: "venda", cliente_id: "o cliente João", ativo_id: "123", valor: 50000 },
-    "admin"
-  );
-  assert.ok(r.proposta);
-  // Id fora do formato uuid não entra no payload — o humano escolhe na tela.
-  assert.equal(r.proposta!.payload.cliente_id, undefined);
-  assert.equal(r.proposta!.payload.ativo_id, undefined);
-  assert.equal(r.proposta!.payload.valor_total, 50000);
-});
-
-test("propor_operacao recusa tipo inválido", async () => {
-  const r = await executarFerramenta("propor_operacao", { tipo: "reboque" }, "admin");
   assert.equal(r.proposta, undefined);
-  assert.ok((JSON.parse(r.conteudo) as { erro?: string }).erro);
-});
-
-test("propor_operacao nega o papel financeiro (não cria operação)", async () => {
-  const r = await executarFerramenta("propor_operacao", { tipo: "guincho" }, "financeiro");
-  assert.equal((JSON.parse(r.conteudo) as { sem_permissao?: boolean }).sem_permissao, true);
-  assert.equal(r.proposta, undefined);
+  const { faltando } = JSON.parse(r.conteudo) as { faltando: string[] };
+  assert.ok(faltando.some((f) => f.includes("busca_global")), "manda procurar o cadastro de verdade");
 });
 
 // 2. Permissão por ferramenta: um operador não enxerga o financeiro pelo copiloto.
@@ -205,21 +148,43 @@ if (!temBanco) {
     assert.ok(Array.isArray(corpo.resultado_por_ativo));
   });
 
-  // Invariante central da Fase 2: propor NÃO escreve. Contamos os lançamentos
-  // antes e depois — propor_lancamento não pode criar nenhuma linha (decisão #43).
-  test("propor_lancamento não cria nada no banco (só confirmação humana escreve)", async () => {
+  test("opcoes_registro esconde contas de quem não vê o financeiro", async () => {
+    const operador = JSON.parse((await executarFerramenta("opcoes_registro", {}, "operador")).conteudo) as {
+      contas: unknown[]; categorias_de_ativo: unknown[];
+    };
+    assert.deepEqual(operador.contas, []);
+    assert.ok(Array.isArray(operador.categorias_de_ativo));
+  });
+
+  // Invariante central: propor NÃO escreve. Com um registro completo e válido a
+  // ferramenta devolve a proposta (com chave) e nenhuma linha muda (decisão #43).
+  test("propor_registro completo devolve proposta e não grava nada", async () => {
     const { db } = await import("../db/client");
     const { sql } = await import("drizzle-orm");
+    const { criarConta } = await import("../services/financeiro");
+    const conta = await criarConta(`Conta Proposta ${crypto.randomUUID()}`, 0);
     const contar = async () =>
-      Number((await db.execute(sql`SELECT count(*)::int AS n FROM lancamentos`)).rows[0]!.n);
+      (await db.execute(sql`SELECT (SELECT count(*) FROM lancamentos) + (SELECT count(*) FROM operacoes)
+                                + (SELECT count(*) FROM pessoas) AS n`)).rows[0]!.n;
     const antes = await contar();
     const r = await executarFerramenta(
-      "propor_lancamento",
-      { tipo: "despesa", descricao: "Proposta sem efeito", valor: 99.9 },
+      "propor_registro",
+      {
+        tipo: "guincho",
+        cliente: { novo: { nome: "Proposta Sem Efeito", cpf_cnpj: "52998224725" } },
+        origem_endereco: "Rua Monte Alegre, 10",
+        destino_endereco: "Av. Weimar Torres, 900",
+        veiculo_cliente_descricao: "Strada branca",
+        valor: 380,
+        pagamento: { situacao: "pago", conta_id: conta.id, forma_pagamento: "pix" },
+      },
       "admin"
     );
     assert.ok(r.proposta, "devolve proposta");
-    assert.equal(await contar(), antes, "nenhum lançamento criado pela proposta");
+    assert.equal(r.proposta!.acao, "registrar");
+    assert.match(r.proposta!.chave, /^[0-9a-f-]{36}$/);
+    assert.ok(r.proposta!.linhas.some((l) => l.valor.includes("Strada branca")));
+    assert.equal(await contar(), antes, "a proposta não grava nada");
   });
 }
 
