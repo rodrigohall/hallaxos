@@ -22,6 +22,9 @@ import { dre, resultadoPorAtivo } from "./relatorios";
 import { montarDashboard } from "./dashboard";
 import { AppError } from "../lib/erros";
 import { config } from "../config";
+import { hojeEmDourados } from "../lib/hoje";
+
+export { hojeEmDourados };
 
 export interface FonteCopiloto {
   entidade_tipo: string;
@@ -483,16 +486,6 @@ export interface TurnoAnterior {
 /** Quantos turnos anteriores a conversa carrega — o bastante para completar um
  *  registro em várias mensagens, sem deixar a conta de tokens crescer sem fim. */
 export const MAX_TURNOS_HISTORICO = 12;
-
-/** "Hoje" no fuso da Hallax (Dourados-MS): o modelo precisa dele para entender
- *  "hoje", "ontem" e "sexta passada" — e não pode vir do relógio UTC do VPS. */
-export function hojeEmDourados(agora = new Date()): { data: string; semana: string } {
-  const fuso = "America/Campo_Grande";
-  return {
-    data: new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(agora),
-    semana: new Intl.DateTimeFormat("pt-BR", { timeZone: fuso, weekday: "long" }).format(agora),
-  };
-}
 
 /** Monta as mensagens da requisição: histórico (pares pergunta/resposta) + a nova pergunta. */
 export function montarMensagens(pergunta: string, historico: TurnoAnterior[]): Anthropic.MessageParam[] {

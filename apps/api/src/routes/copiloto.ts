@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { perguntar, MAX_TURNOS_HISTORICO } from "../services/copiloto";
 import { exigirLogin } from "../plugins/auth";
+import { confirmarRegistroSchema } from "@hallaxos/shared";
+import { executarRegistro } from "../services/registroCopiloto";
 
 export default async function rotasCopiloto(app: FastifyInstance) {
   // Copiloto de IA (Sprint 9) — Fase 1, só leitura. Qualquer usuário logado pode
@@ -28,6 +30,20 @@ export default async function rotasCopiloto(app: FastifyInstance) {
         .parse(req.body);
       const usuario = exigirLogin(req);
       return { dados: await perguntar(pergunta, usuario.papel, historico) };
+    }
+  );
+
+  // Sprint 17 · decisão #79: o toque em "Confirmar e lançar" no card do copiloto.
+  // Executa o registro inteiro numa transação pelos services de sempre, com a
+  // autoria de quem confirmou. Cada passo revalida a permissão do papel; a
+  // `chave` da proposta faz o segundo toque devolver o primeiro resultado.
+  app.post(
+    "/copiloto/registrar",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req) => {
+      const { chave, registro } = confirmarRegistroSchema.parse(req.body);
+      const usuario = exigirLogin(req);
+      return { dados: await executarRegistro(chave, registro, usuario) };
     }
   );
 }
