@@ -400,8 +400,11 @@ export async function executarRegistro(
       principal = { tipo: "lancamento", id: criados[0]!.id, titulo: r.descricao };
     } else {
       const clienteId = await resolverPessoa(r.cliente, usuario.id, links);
-      const dataInicio = r.data ? momento(r.data) : undefined;
-      const quandoTransicao = r.data ? momento(r.data) : undefined;
+      // Retroativo vira meio-dia daquele dia; "hoje" fica com o horário real
+      // (meio-dia de hoje, às 9h, seria um guincho concluído no futuro).
+      const retroativo = r.data && r.data < hoje ? momento(r.data) : undefined;
+      const dataInicio = retroativo;
+      const quandoTransicao = retroativo;
       let op: { id: string; codigo: string };
 
       if (r.tipo === "guincho") {

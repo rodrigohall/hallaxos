@@ -122,6 +122,10 @@ if (!temBanco) {
     assert.equal(lancs[0]!.forma_pagamento, "pix");
     assert.equal(lancs[0]!.data_pagamento, hoje);
 
+    const datas = await umaLinha<{ no_futuro: boolean }>(sql`
+      SELECT (data_inicio > now() OR data_fim > now()) AS no_futuro FROM operacoes WHERE id = ${opLink.entidade_id}`);
+    assert.equal(datas.no_futuro, false, "guincho de hoje não pode terminar no futuro");
+
     const autoria = await umaLinha<{ n: number }>(sql`
       SELECT count(*)::int AS n FROM timeline WHERE entidade_id = ${opLink.entidade_id} AND usuario_id = ${admin.id}`);
     assert.ok(autoria.n >= 4, "criação e transições ficam com a autoria de quem confirmou");
